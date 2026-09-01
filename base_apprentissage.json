@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T21:18:29"
+      "mis_a_jour": "2026-09-01T21:28:20"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -984,9 +984,11 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
+      "prix_exemples": [
+        10.0
+      ],
+      "prix_cible_median": 10.0,
+      "prix_cible_max": 13.0,
       "prix_marche_bas": 35.0,
       "prix_marche_haut": 66.75,
       "liens_exemples": [
@@ -994,7 +996,16 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "Zelda skyward sword hd - Neuf jamais joué\nZelda skyward sword hd - Neuf jamais joué",
-      "mis_a_jour": "2026-09-01T21:21:16"
+      "mis_a_jour": "2026-09-01T21:28:29",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_01bbb_8w6A7A6KEo9nG9CMkyBuoKEu/f800/1788287961.webp?s=25691997940272eb8e493060b307739237d0ff47",
+          "embedding": "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",
+          "ahash": "3c1f073f3fff647c",
+          "dhash": "0b05292193333313"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_01bbb_8w6A7A6KEo9nG9CMkyBuoKEu/f800/1788287961.webp?s=25691997940272eb8e493060b307739237d0ff47"
     },
     "89e4c6e132cc33": {
       "profil_id": "89e4c6e132cc33",
@@ -1088,9 +1099,11 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
+      "prix_exemples": [
+        10.0
+      ],
+      "prix_cible_median": 10.0,
+      "prix_cible_max": 13.0,
       "prix_marche_bas": 35.0,
       "prix_marche_haut": 40.0,
       "liens_exemples": [
@@ -1098,7 +1111,16 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "Elden Ring ps5 - Elden Ring ps5\nElden Ring ps5 - Elden Ring ps5",
-      "mis_a_jour": "2026-09-01T21:21:50"
+      "mis_a_jour": "2026-09-01T21:31:32",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_00c9c_bvziPtp4qrvarPj2mmfzCQgF/f800/1788290038.webp?s=138ab3f1c3e82059bc74f3d576d4f0382ca72e28",
+          "embedding": "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",
+          "ahash": "dbff00003800ffff",
+          "dhash": "cc0dc98f0fc754dc"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_00c9c_bvziPtp4qrvarPj2mmfzCQgF/f800/1788290038.webp?s=138ab3f1c3e82059bc74f3d576d4f0382ca72e28"
     },
     "4962ae950e3ad3": {
       "profil_id": "4962ae950e3ad3",
@@ -1216,7 +1238,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "Animal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.\nAnimal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.",
-      "mis_a_jour": "2026-09-01T21:22:21"
+      "mis_a_jour": "2026-09-01T21:31:43"
     },
     "d88643756307ec": {
       "profil_id": "d88643756307ec",
@@ -1318,7 +1340,7 @@
       "prix_cible_median": 13.0,
       "prix_cible_max": 16.0,
       "prix_marche_bas": 30.0,
-      "prix_marche_haut": 30.0,
+      "prix_marche_haut": 32.4,
       "liens_exemples": [
         "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5"
       ],
@@ -1333,7 +1355,7 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/03_0114e_eT2AqrEKoro3tPJ7J21AptYb/f800/1788290223.webp?s=d71cefb387ad9228d86c33956f2db02168932585",
-      "mis_a_jour": "2026-09-01T21:22:25"
+      "mis_a_jour": "2026-09-01T21:31:49"
     },
     "038d9d97308c3c": {
       "profil_id": "038d9d97308c3c",
@@ -1442,7 +1464,7 @@
       "description_reference": "",
       "empreintes_visuelles": [],
       "image_reference_url": "",
-      "mis_a_jour": "2026-09-01T21:22:30"
+      "mis_a_jour": "2026-09-01T21:31:55"
     },
     "f397cc55508dbb": {
       "profil_id": "f397cc55508dbb",
@@ -1544,7 +1566,7 @@
       "prix_cible_median": 12.0,
       "prix_cible_max": 15.0,
       "prix_marche_bas": 30.0,
-      "prix_marche_haut": 34.52,
+      "prix_marche_haut": 35.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch"
       ],
@@ -1559,7 +1581,125 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_01dd3_Kxfwd1YMBRdcTZifULYkFBVi/f800/1788290620.webp?s=44cfb7b021898c2f11c07af17d50c621e10b9779",
-      "mis_a_jour": "2026-09-01T21:11:08"
+      "mis_a_jour": "2026-09-01T21:32:01"
+    },
+    "0ccd6d530d4d2d": {
+      "profil_id": "0ccd6d530d4d2d",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_SWITCH",
+      "plateforme": "switch",
+      "modele": "The Walking Dead Switch | Vinted",
+      "titre_reference": "The Walking Dead Switch | Vinted",
+      "requete": "walking dead vinted switch",
+      "mots_obligatoires": [
+        "walking",
+        "dead"
+      ],
+      "mots_secondaires": [
+        "vinted"
+      ],
+      "mots_description": [
+        "walking",
+        "dead",
+        "verkaufe",
+        "hier",
+        "spiel"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        10.0
+      ],
+      "prix_cible_median": 10.0,
+      "prix_cible_max": 13.0,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9858626704-the-walking-dead-switch"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "The Walking Dead Switch - Hey verkaufe hier die Nintendo Switch Spiel The Walking Dead.\nThe Walking Dead Switch - Hey verkaufe hier die Nintendo Switch Spiel The Walking Dead.",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/06_01bd9_Sgvrf1nJHHF1hqQmbpKTJdsZ/f800/1788291507.webp?s=a8259c580f2c61b66b04b59a62cbdd02eb377acd",
+          "embedding": "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",
+          "ahash": "003e7e7e7c7ce6c0",
+          "dhash": "3e2b372727677373"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/06_01bd9_Sgvrf1nJHHF1hqQmbpKTJdsZ/f800/1788291507.webp?s=a8259c580f2c61b66b04b59a62cbdd02eb377acd",
+      "mis_a_jour": "2026-09-01T21:32:11"
     }
   },
   "liens_classes": [
@@ -1576,7 +1716,8 @@
     "https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja",
     "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5",
     "https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel",
-    "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch"
+    "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch",
+    "https://www.vinted.be/items/9858626704-the-walking-dead-switch"
   ],
   "historique_importe": [],
   "profils_negatifs": {
@@ -1907,6 +2048,158 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/05_006eb_DJuswFXHZwEEKdJo3EK2bUni/f800/r2/1788017545.webp?s=7e073261514c280c48b85d1601829033e1df43e2",
       "mis_a_jour": "2026-09-01T21:18:06"
+    },
+    "46f6c07ff9b082": {
+      "rejet_id": "46f6c07ff9b082",
+      "actif": true,
+      "titre_reference": "🕹 Spider-Man 2 PlayStation 2 #bw0108 | Vinted",
+      "tokens_titre": [
+        "spider",
+        "man",
+        "bw0108"
+      ],
+      "mots_description": [
+        "spider",
+        "bw0108",
+        "spedizione",
+        "rapida",
+        "bowserps",
+        "categoria",
+        "originale",
+        "funzionante",
+        "seguimi",
+        "perdere",
+        "novita",
+        "qualsiasi",
+        "domanda",
+        "scrivimi",
+        "ampia",
+        "collezione",
+        "personale",
+        "giochi",
+        "retro",
+        "pokemon"
+      ],
+      "prix_reference": 14.9,
+      "liens": [
+        "https://www.vinted.be/items/9745385272-joystick-spider-man-2-playstation-2-bw0108"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "🕹 Spider-Man 2 PlayStation 2 #bw0108 - 🚀 SPEDIZIONE RAPIDA 24/48H \n #bowserps ⬅️ Categoria\n\n🕹 Spider-Man 2 PlayStation 2 #bw0108 – Originale & Funzionante 🎮\n\n🔜 Seguimi per non perdere le novità\n\nℹ️ Per qualsiasi domanda, scrivimi!\n\n🔹 Ampia collezione personale di giochi e console retrò per Nintendo DS 2DS 3DS Wii, PlayStation 1 2 3 4 5 ps tra cui Pokémon  Mario Zelda Dragon Quest  Yo-Kai Watch  Inazuma Eleven Castlevania Kirby  Layton e tanti altri! Gioco  ps1 ps2 ps3 ps4 game boy color advance sp ps5 regalo idee idea gb gbc gba gameboy  spiderman spider man\n\n\n#bowserjr\n🕹 Spider-Man 2 PlayStation 2 #bw0108 - 🚀 SPEDIZIONE RAPIDA 24/48H \n #bowserps ⬅️ Categoria\n\n🕹 Spider-Man 2 PlayStation 2 #bw0108 – Originale & Funzionante 🎮\n\n🔜 Seguimi per non perdere le novità\n\nℹ️ Per qualsiasi domanda, scrivimi!\n\n🔹 Ampia collezione personale di giochi e console retrò per Nintendo DS 2DS 3DS Wii, PlayStation 1 2 3 4 5 ps tra cui Pokémon  Mario Zelda Dragon Quest  Yo-Kai Watch  Inazuma Eleven Castlevania Kirby  Layton e tanti altri! Gioco  ps1 ps2 ps3 ps4 game boy color advance sp ps5 regalo idee idea gb gbc gba gameboy  spiderman spider man\n\n\n#bowserjr",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_01676_aqLqnx8kW9Yh9P9XipWDpg5c/f800/1787432740.webp?s=5bf9f4f7c2cd25babb0442c6c0965fb52eaa4c11",
+          "embedding": "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",
+          "ahash": "7fffc1c0c4c06010",
+          "dhash": "0fd8d6f2e3e33f8d"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_01676_aqLqnx8kW9Yh9P9XipWDpg5c/f800/1787432740.webp?s=5bf9f4f7c2cd25babb0442c6c0965fb52eaa4c11",
+      "mis_a_jour": "2026-09-01T21:27:54"
+    },
+    "3a86be5ad8f2cf": {
+      "rejet_id": "3a86be5ad8f2cf",
+      "actif": true,
+      "titre_reference": "Zelda Skyward sword édition limitée (boite et notices uniquement) | Vinted",
+      "tokens_titre": [
+        "zelda",
+        "skyward",
+        "sword",
+        "edition",
+        "limitee",
+        "boite",
+        "et",
+        "notices",
+        "uniquement"
+      ],
+      "mots_description": [
+        "zelda",
+        "skyward",
+        "sword",
+        "limitee",
+        "boite",
+        "notices",
+        "uniquement",
+        "musique",
+        "manquant",
+        "acheter",
+        "grouper",
+        "frais",
+        "port",
+        "beneficier",
+        "egalement",
+        "remise",
+        "nombreux",
+        "autres",
+        "jeux",
+        "courants"
+      ],
+      "prix_reference": 9.9,
+      "liens": [
+        "https://www.vinted.be/items/7560413022-zelda-skyward-sword-edition-limitee-boite-et-notices-uniquement"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Zelda Skyward sword édition limitée (boite et notices uniquement) - En excellent état.\nJeu et cd de musique manquant.\n\n****Acheter en lot pour grouper les frais de port et bénéficier également d'une remise****\n\n****De nombreux autres jeux courants et très rares de ma collection à venir sur mon profil Vinted. Pensez à me suivre pour ne manquer aucune vente****\nZelda Skyward sword édition limitée (boite et notices uniquement) - En excellent état.\nJeu et cd de musique manquant.\n\n****Acheter en lot pour grouper les frais de port et bénéficier également d'une remise****\n\n****De nombreux autres jeux courants et très rares de ma collection à venir sur mon profil Vinted. Pensez à me suivre pour ne manquer aucune vente****",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_01d6d_gyYnWk8jPRAHRXSe7EYcnEqX/f800/1763215137.webp?s=c68776591ad00b3a6ceaa2423823d27065e7bf03",
+          "embedding": "ABxnqXOocKqVql2kcKExqSKpR6fNpY2g36XAqF2jZqsFph6mAazUqPSpIaeJqYmrbqjTpbWmwqXVqMOpr6UAqO+kGagYpjKpKKQwo10QYKc+rMmpaqO+pMen26hSqZao86lIpDal46IopeGlsaSDqjeoLqdTo0Ok4ae9qaGoGadAqlKmgqSWqN2lH5+mp0KoxKkQHGKpERdZpBeoMiMVHmKm/KtjqUeo7Kzvp5io6qT6pXOiQauBqk2oi6sapm+nv6oorPOn9Ki2qmQhgqTjowas8antpqypdaW0qI2nDJ98JsOmWKlTq56j6aWwnLWiy6JNpw0cfKX0niqlKaLZpPunOKU4rHKsI6kJqYysM6yqpw2pd6rxqjWqMKA4oxOnoquCqJKqs6ksrEaq/qTIJScoNifwKPkmqRqoH2wbzpTQmFyZbh47J8iYhI8OHfMasSJPICGZT6fepCaoeyExJQWkgKLXHP0b8pvYnmohSCQTm7Ql3SR+J4IjMiWRHRsm4CXII8SkVJ84ITGd46FAI0kU9CQunsMl/yTUpbik2idIHvIZHqBKH1QZNpz3nO0ePxw+og6hdiH9JbCiSCB+F6CbTBsrIuEaHaARJEwmeCf4oMseTqUOJKQYX5sjneSldqNIp0ikm54hIDcZjab8G2woKydpJz2koiXopjYgoiJwG0IlcyhCKiQqqShqKnScXKcTITih7YCypHijxBAkqE2lmaQqpZuoAKlnEqWhByKqHFskS5oCK8KY2JT8p0inuaKDpcyovSdZlIuLW6X6qFIj8KeZqKOkNqBJqs6lC55xqWKqIqdhpiep2KVyHy6nOaqRpP+h5aI3qECh6aqPpBeoqKrYqcCm9qotpJCoBp9BGn+qNqzWqoCh15wipaKcRqa/prAjJKmvqKanlKZTqbuofqCunG2p46fzqQGsuqKhpQ+omKEuqZIdJJ1zIWUWmqbLpNumxaeWqTGmiqkjpxOiAKrFpn6d0ajFG86kIqzcqc6gg6bsqS2lG6gppa2nVqW7ImKkVKzBqFOeEqsDp9ij/qrDqJ2mKqu7qYYrmB2BDCUdWSY9nFKfbaEEK8uoSqmrKV+gtCsNJJSg2ifloi8l5SQ3Kbgq5CGypNomMaBbpaGlLyrqJ/qWDiK4pG+ZHifwJPEs9BTnpXiVsiG4JKYn2CidJTYqqKDmISQs2yf7IyamhaAMLZ4aIihcmSklEShmK9ErKyXopNMpgCpVKMAs6ia9qFWnDKK7AFos9qBHJ04rCSQbqRKomiofJSGpI58VKHwjFRpjGwqks556H3wlq6TAJK+iFSw2IkgsupU/KW6bYSSPK1ukMSgrJ1kpeSgzJUSkdSaUHiGoyZt0pscs4CeAJAMkByEin0+lWip8Jrki6CsUJcYpOahDJyskCCMSKggg8yBRKxwoAxtzq92oOyUIqOon3xwAJ3ssjiWgpKceZCVfqiIkOC1XoHsrIxzaJY6oIqmZIB4pjyYPJ9CahA2SpPYpsqDcowkcZhuCJJulDyYTp/EoxR4hKFKl86U9K/glJShsqNCoU5s+KdEsXihMHscp8ymxJNmaEC3hIrcoUyfrlc4qOyaeHm4k3CmOHKImX6hzKKElJifcoi0s9KiQLKgq8qclJMgnf5PSHkIqICGVKwoiZZj0pXIs9iewqYAt9KbFpB0o+yUBKwWhSSfjoJAp9SoyIxEo2yWWjBspGSV1KLgqdaHaJVUkcSiJEDAj2qHBIzYl+aqEJqioOKJoJqcd/Kf/po4kqyFeHgWqNCQhKAKkr6TAqzOpPxjQJhwvoqW1KfgoOR08KtcpByYxH3AkcSn1quspjZtBlrAfu6CeoN0unSktqZ8n6SqEJ7CcjyuXKXomRCSMoxeq06q7p22gvigCLfsqZiw+IngRtyxqJlqWqql/IAscpyidJm4f4xwsISkoryW1pmYrwin/Egkox5mCKeSqjCd/JBYhbhz7oX4cvC0nHScQv6Jpob6c0igTK2MsmClmIWUhKKA4IIamJ58YpsEcbplTKackKB6+JugimCWpoX8rKKbgKWSi/ibjK4YmBBoQKbUjLymeIciqaZPsIl0V5yl7KtGjICW1K6aacyjPJ90gOCwLJcwi0By6lU4ldyiaodKcYJTopPylgyb3lzsoJ57IKLIiuSSZGE2ddihvpFirqiZWqHUomKHbqaak3KVcKPQh6aCwI0MkEigYqUwjNSh1HX2j6CgWKDskqCLmKrWklCrhKbEquQpBKRclqCt5oDQiI6ESJtAfnyZrFdMdpCxZpmgoZ6VFHxsbFijfHA4QJqnjoi2mmaYqLCQoqpxsHD2CmiTSrPEl3SFypSchsiEuFD0mQyF+KZoRpissojYrJ6n6IiGp6CVfLdUr4yhcIc4nACAcJsAlhCLoKyMsCihCGM8mfyyAKUKoC6UPKZIqA6NQpHKnoKhAJ8UpiSYzJm4fYC2kJwEoJh2ZJgqf8ZlXpJgnIBMgIy8dhaVUoGAYbqLEFI2KlB+VIDEVBCcUIA2l1p9XoougfiD+o1WhCqBmHeykYyAVqECmU6d/pnYeZCDBJUeaZqE1H9Ak5ipoJvwjQSpAouKmIxiMpmAjv511m90lOhvgqPSm16VbqKOoDpdepWGsHpOtoUipLKLWpkmc6qayp76bBRT5odKcOSg=",
+          "ahash": "3effe7c3e3e77e00",
+          "dhash": "3b1f697179693f3f"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_01d6d_gyYnWk8jPRAHRXSe7EYcnEqX/f800/1763215137.webp?s=c68776591ad00b3a6ceaa2423823d27065e7bf03",
+      "mis_a_jour": "2026-09-01T21:28:00"
+    },
+    "b73ec300a4d927": {
+      "rejet_id": "b73ec300a4d927",
+      "actif": true,
+      "titre_reference": "Pokémon Advanced Kanto GBA FR | Vinted",
+      "tokens_titre": [
+        "pokemon",
+        "advanced",
+        "kanto",
+        "gba",
+        "fr"
+      ],
+      "mots_description": [
+        "kanto",
+        "pokemon",
+        "advanced",
+        "vous",
+        "sans",
+        "plus",
+        "leaders",
+        "arene",
+        "chaque",
+        "simple",
+        "jamais",
+        "nostalgie",
+        "generations",
+        "bien",
+        "difficulte",
+        "mieux",
+        "starters",
+        "classiques",
+        "premiere",
+        "generation"
+      ],
+      "prix_reference": 34.99,
+      "liens": [
+        "https://www.vinted.be/items/9853916547-pokemon-advanced-kanto-gba-fr"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Pokémon Advanced Kanto GBA FR - Advanced Kanto telle qu'elle aurait dû paraître à l'époque. Cette déclinaison revisite la région que vous maîtrisez par cœur et perfectionne chaque élément la rendant trop simple — sans jamais altérer la nostalgie qui fait le succès de FireRed.\n\nLes Pokémon des trois premières générations sont inclus directement dans les tables de rencontre, avec des niveaux d'évolution finement ajustés pour une progression bien plus cohérente que l'original. La difficulté a été totalement repensée et mieux équilibrée pour proposer un réel défi sans jamais devenir injuste — fini les Leaders d'Arène qui tombent en deux tours.\n\nTous les Leaders d'Arène ont été retravaillés avec des formations bien plus robustes que celles dont vous avez le souvenir, faisant de chaque badge une véritable victoire méritée plutôt qu'une simple formalité. Vous conservez vos starters classiques de la première génération, votre nostalgie intacte, mais avec tout ce qui faisait défaut cruellement à l'expérience originale.\n\nPour les nostalgiques de Kanto qui souhaitent retrouver leurs marques, avec un vrai challenge en supplément.\n\n✅ Kanto classique avec Pokémon des générations 1 à 3\n✅ Leaders d'Arène entièrement remaniés, équipes plus solides\n✅ Difficulté revue et mieux dosée du début à la fin\n✅ Starters classiques de première génération conservés\n✅ Version entièrement en français\n✅ Compat",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_00bee_JjtNcVx2LWESBWWDftDfPnsQ/f800/1788268904.webp?s=8d5beed616de4870cde04cd46c2540816a486da0",
+          "embedding": "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",
+          "ahash": "1808ff7e7e770600",
+          "dhash": "0f0d43474b5b330f"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_00bee_JjtNcVx2LWESBWWDftDfPnsQ/f800/1788268904.webp?s=8d5beed616de4870cde04cd46c2540816a486da0",
+      "mis_a_jour": "2026-09-01T21:28:06"
     }
   },
   "liens_rejetes_classes": [
@@ -1916,6 +2209,9 @@
     "https://www.vinted.be/items/9542930655-pokemon-cristal-de-jade-gba-fr",
     "https://www.vinted.be/items/9843204658-videogame-leeg-origineel-nintendo-switch-doosje-crash-bandicoot-n-sane-trilogy",
     "https://www.vinted.be/items/9430589965-eeg-origineel-nintendo-switch-doosje-luigis-mansion-3",
-    "https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule"
+    "https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule",
+    "https://www.vinted.be/items/9745385272-joystick-spider-man-2-playstation-2-bw0108",
+    "https://www.vinted.be/items/7560413022-zelda-skyward-sword-edition-limitee-boite-et-notices-uniquement",
+    "https://www.vinted.be/items/9853916547-pokemon-advanced-kanto-gba-fr"
   ]
 }
