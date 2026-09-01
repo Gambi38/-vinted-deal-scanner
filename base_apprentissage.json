@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T22:56:53"
+      "mis_a_jour": "2026-09-01T22:59:39"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -2522,8 +2522,8 @@
       ],
       "prix_cible_median": 25.0,
       "prix_cible_max": 29.5,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 6.57,
+      "prix_marche_haut": 11.16,
       "liens_exemples": [
         "https://www.vinted.be/items/9714905425-ufc-6"
       ],
@@ -2538,7 +2538,10 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_0209e_gCcsYu57UGqCZip3gacuX9q7/f800/1787175398.webp?s=013e079add83c6c848b6405aa5f59d52be389fd6",
-      "mis_a_jour": "2026-09-01T21:58:49"
+      "mis_a_jour": "2026-09-01T22:59:46",
+      "confiance_marche": 85,
+      "nb_comparables_marche": 86,
+      "marche_mis_a_jour": "2026-09-01T22:59:47"
     },
     "7ca6220e8e54a8": {
       "profil_id": "7ca6220e8e54a8",
@@ -4095,8 +4098,26 @@
       "9850573947",
       "9832646053",
       "9820026216",
-      "9816582201"
+      "9816582201",
+      "9847300380",
+      "9843307867",
+      "9846552584",
+      "9828451027",
+      "9824862629",
+      "9777127581",
+      "9859915426",
+      "9830338855",
+      "9771353076",
+      "9762911286",
+      "9730460643",
+      "9725205580",
+      "9859914055",
+      "9859914075",
+      "9859919893",
+      "9859919508",
+      "9859915298",
+      "9859913525"
     ],
-    "dernier_flash": "2026-09-01T22:57:29"
+    "dernier_flash": "2026-09-01T22:59:59"
   }
 }
