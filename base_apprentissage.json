@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T23:08:19"
+      "mis_a_jour": "2026-09-01T23:15:17"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -3189,6 +3189,131 @@
       "confiance_marche": 85,
       "nb_comparables_marche": 17,
       "marche_mis_a_jour": "2026-09-01T23:03:40"
+    },
+    "8e5d096e4a974c": {
+      "profil_id": "8e5d096e4a974c",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_PS5",
+      "plateforme": "ps5",
+      "modele": "Hitmann 3 PS5 | Vinted",
+      "titre_reference": "Hitmann 3 PS5 | Vinted",
+      "requete": "hitmann 3 vinted ps5",
+      "mots_obligatoires": [
+        "hitmann",
+        "3"
+      ],
+      "mots_secondaires": [
+        "vinted"
+      ],
+      "mots_description": [
+        "hitmann",
+        "hitman",
+        "jeux",
+        "fonctionne",
+        "parfaitement",
+        "juste",
+        "scotch",
+        "boite",
+        "visible",
+        "photo",
+        "etiquette",
+        "enlever"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        8.0
+      ],
+      "prix_cible_median": 8.0,
+      "prix_cible_max": 11.0,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9859892964-hitmann-3-ps5"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Hitmann 3 PS5 - Hitman 3 PS5\nJeux fonctionne parfaitement,\nJuste du scotch sur la boite ( visible sur la photo) car l’étiquette du jeu s’enlever\nHitmann 3 PS5 - Hitman 3 PS5\nJeux fonctionne parfaitement,\nJuste du scotch sur la boite ( visible sur la photo) car l’étiquette du jeu s’enlever",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_0113b_ryphTHTuEhWG1niQqSMJgrGF/f800/1788303043.webp?s=cbc7750b1e6dc20fdc8527b375a4d93a40a1a676",
+          "embedding": "",
+          "ahash": "ffff3f0303011903",
+          "dhash": "000080c0d0e04cc4"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_0113b_ryphTHTuEhWG1niQqSMJgrGF/f800/1788303043.webp?s=cbc7750b1e6dc20fdc8527b375a4d93a40a1a676",
+      "mis_a_jour": "2026-09-01T23:15:52"
     }
   },
   "liens_classes": [
@@ -3219,7 +3344,8 @@
     "https://www.vinted.be/items/9755628921-ps-vita-noir",
     "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate",
     "https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir",
-    "https://www.vinted.be/items/9714775894-hitman-ps5"
+    "https://www.vinted.be/items/9714775894-hitman-ps5",
+    "https://www.vinted.be/items/9859892964-hitmann-3-ps5"
   ],
   "historique_importe": [],
   "profils_negatifs": {
@@ -4195,8 +4321,19 @@
       "9859892898",
       "9859929817",
       "9859943432",
-      "9859939323"
+      "9859939323",
+      "9837051317",
+      "9826391123",
+      "9859957271",
+      "9859925508",
+      "9859922819",
+      "9859971066",
+      "9859966438",
+      "9859964305",
+      "9859960203",
+      "9859954463",
+      "9859970410"
     ],
-    "dernier_flash": "2026-09-01T23:10:13"
+    "dernier_flash": "2026-09-01T23:16:33"
   }
 }
