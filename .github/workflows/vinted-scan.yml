@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -32,14 +32,30 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Scan Vinted once
+      - name: Test ntfy
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -fsS -X POST \
+            -H "Title: Scanner Vinted" \
+            -H "Priority: high" \
+            -d "Connexion ntfy OK - le scanner peut envoyer des notifications." \
+            "https://ntfy.sh/$NTFY_TOPIC"
+
+      - name: Fix ntfy
+        run: |
+          sed -i 's/🔥 Deal Vinted/Deal Vinted/g' vinted_scraper.py
+          sed -i 's/🔎 Annonce Vinted à vérifier/Annonce Vinted a verifier/g' vinted_scraper.py
+
+      - name: Scan Vinted
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_SERVER: "https://ntfy.sh"
           HEADLESS: "1"
         run: python vinted_scraper.py --once --headless
 
-      - name: Save seen listings
+      - name: Save scanner state
         if: always()
         run: |
           git config user.name "vinted-scanner-bot"
