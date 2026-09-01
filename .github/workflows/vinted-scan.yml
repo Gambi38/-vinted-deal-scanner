@@ -1,26 +1,21 @@
-name: Vinted Deal Scanner
+name: Test ntfy
 
 "on":
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  scan:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Test ntfy
+      - name: Envoyer notification
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          curl -fsS -X POST \
-            -H "Title: Scanner Vinted" \
-            -d "Test notification OK" \
+          curl -fsS \
+            -H "Title: Test Vinted" \
+            -d "Si tu vois ceci, les notifications fonctionnent." \
             "https://ntfy.sh/$NTFY_TOPIC"
