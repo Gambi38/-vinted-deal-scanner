@@ -13,3 +13,5 @@
 2026-09-01T20:58:51 | 038d9d97308c3c | jeu |  | ? EUR | https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel
 2026-09-01T20:59:06 | f397cc55508dbb | jeu | switch | 12.0 EUR | https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch
 2026-09-01T21:32:11 | 0ccd6d530d4d2d | jeu | switch | 10.0 EUR | https://www.vinted.be/items/9858626704-the-walking-dead-switch
+2026-09-01T21:39:11 | ed031b796cfe43 | jeu | ds | 35.0 EUR | https://www.vinted.be/items/9838883211-vendo-nintendo-ds
+2026-09-01T21:39:20 | 3bf5be384a1453 | jeu | switch | 10.0 EUR | https://www.vinted.be/items/9859293663-sonic-colours-ultimate-nintendo-switch-2021-pal-authentic

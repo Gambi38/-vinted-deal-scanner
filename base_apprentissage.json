@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T21:28:20"
+      "mis_a_jour": "2026-09-01T21:35:57"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -1228,9 +1228,11 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
+      "prix_exemples": [
+        3.5
+      ],
+      "prix_cible_median": 3.5,
+      "prix_cible_max": 6.5,
       "prix_marche_bas": 32.0,
       "prix_marche_haut": 35.0,
       "liens_exemples": [
@@ -1238,7 +1240,16 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "Animal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.\nAnimal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.",
-      "mis_a_jour": "2026-09-01T21:31:43"
+      "mis_a_jour": "2026-09-01T21:36:08",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_0144e_FWREuCBRQtuv6D1TtdgtZvJ9/f800/1788289968.webp?s=9742e9a64cf39d3809e3670e71c79cce68252ff7",
+          "embedding": "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",
+          "ahash": "fffbc38181d1c1c0",
+          "dhash": "3ff4e8cc9cdcf8fd"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_0144e_FWREuCBRQtuv6D1TtdgtZvJ9/f800/1788289968.webp?s=9742e9a64cf39d3809e3670e71c79cce68252ff7"
     },
     "d88643756307ec": {
       "profil_id": "d88643756307ec",
@@ -1340,7 +1351,7 @@
       "prix_cible_median": 13.0,
       "prix_cible_max": 16.0,
       "prix_marche_bas": 30.0,
-      "prix_marche_haut": 32.4,
+      "prix_marche_haut": 30.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5"
       ],
@@ -1355,7 +1366,7 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/03_0114e_eT2AqrEKoro3tPJ7J21AptYb/f800/1788290223.webp?s=d71cefb387ad9228d86c33956f2db02168932585",
-      "mis_a_jour": "2026-09-01T21:31:49"
+      "mis_a_jour": "2026-09-01T21:38:40"
     },
     "038d9d97308c3c": {
       "profil_id": "038d9d97308c3c",
@@ -1464,7 +1475,7 @@
       "description_reference": "",
       "empreintes_visuelles": [],
       "image_reference_url": "",
-      "mis_a_jour": "2026-09-01T21:31:55"
+      "mis_a_jour": "2026-09-01T21:38:46"
     },
     "f397cc55508dbb": {
       "profil_id": "f397cc55508dbb",
@@ -1566,7 +1577,7 @@
       "prix_cible_median": 12.0,
       "prix_cible_max": 15.0,
       "prix_marche_bas": 30.0,
-      "prix_marche_haut": 35.0,
+      "prix_marche_haut": 33.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch"
       ],
@@ -1581,7 +1592,7 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_01dd3_Kxfwd1YMBRdcTZifULYkFBVi/f800/1788290620.webp?s=44cfb7b021898c2f11c07af17d50c621e10b9779",
-      "mis_a_jour": "2026-09-01T21:32:01"
+      "mis_a_jour": "2026-09-01T21:38:52"
     },
     "0ccd6d530d4d2d": {
       "profil_id": "0ccd6d530d4d2d",
@@ -1683,8 +1694,8 @@
       ],
       "prix_cible_median": 10.0,
       "prix_cible_max": 13.0,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 20.0,
+      "prix_marche_haut": 25.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858626704-the-walking-dead-switch"
       ],
@@ -1699,7 +1710,242 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_01bd9_Sgvrf1nJHHF1hqQmbpKTJdsZ/f800/1788291507.webp?s=a8259c580f2c61b66b04b59a62cbdd02eb377acd",
-      "mis_a_jour": "2026-09-01T21:32:11"
+      "mis_a_jour": "2026-09-01T21:38:58"
+    },
+    "ed031b796cfe43": {
+      "profil_id": "ed031b796cfe43",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_DS",
+      "plateforme": "ds",
+      "modele": "Vendo Nintendo DS, | Vinted",
+      "titre_reference": "Vendo Nintendo DS, | Vinted",
+      "requete": "vendo vinted",
+      "mots_obligatoires": [
+        "vendo",
+        "vinted"
+      ],
+      "mots_secondaires": [],
+      "mots_description": [
+        "vendo",
+        "funciona",
+        "perfectamente",
+        "tiene",
+        "cargador"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        35.0
+      ],
+      "prix_cible_median": 35.0,
+      "prix_cible_max": 41.3,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9838883211-vendo-nintendo-ds"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Vendo Nintendo DS, - Nintendo DS, funciona perfectamente y tiene su cargador.\nVendo Nintendo DS, - Nintendo DS, funciona perfectamente y tiene su cargador.",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_00f8d_ZYunD8LoHGTswB8weSufD6tc/f800/1788163597.webp?s=dd1776b6e84d2a074fbcb61ec948fa081b89ac70",
+          "embedding": "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",
+          "ahash": "838383838383e7ff",
+          "dhash": "ccc8c8c4c4f071e9"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_00f8d_ZYunD8LoHGTswB8weSufD6tc/f800/1788163597.webp?s=dd1776b6e84d2a074fbcb61ec948fa081b89ac70",
+      "mis_a_jour": "2026-09-01T21:39:11"
+    },
+    "3bf5be384a1453": {
+      "profil_id": "3bf5be384a1453",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_SWITCH",
+      "plateforme": "switch",
+      "modele": "Sonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic | Vinted",
+      "titre_reference": "Sonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic | Vinted",
+      "requete": "sonic colours ultimate 2021 switch",
+      "mots_obligatoires": [
+        "sonic",
+        "colours"
+      ],
+      "mots_secondaires": [
+        "ultimate",
+        "2021"
+      ],
+      "mots_description": [
+        "sonic",
+        "colours",
+        "ultimate",
+        "2021",
+        "authentic"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        10.0
+      ],
+      "prix_cible_median": 10.0,
+      "prix_cible_max": 13.0,
+      "prix_marche_bas": 14.0,
+      "prix_marche_haut": 15.0,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9859293663-sonic-colours-ultimate-nintendo-switch-2021-pal-authentic"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Sonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic - Sonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic\nSonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic - Sonic Colours Ultimate (Nintendo Switch, 2021) PAL authentic",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_02571_svSdxjvQQmKrEyuUvbAwPr3r/f800/1788295917.webp?s=15be005ed495aa8ac3bb1c7f67ab7cd397600e7a",
+          "embedding": "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",
+          "ahash": "fc7cfcfc7c7d38c0",
+          "dhash": "672b6f6a26360efb"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_02571_svSdxjvQQmKrEyuUvbAwPr3r/f800/1788295917.webp?s=15be005ed495aa8ac3bb1c7f67ab7cd397600e7a",
+      "mis_a_jour": "2026-09-01T21:39:24"
     }
   },
   "liens_classes": [
@@ -1717,7 +1963,9 @@
     "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5",
     "https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel",
     "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch",
-    "https://www.vinted.be/items/9858626704-the-walking-dead-switch"
+    "https://www.vinted.be/items/9858626704-the-walking-dead-switch",
+    "https://www.vinted.be/items/9838883211-vendo-nintendo-ds",
+    "https://www.vinted.be/items/9859293663-sonic-colours-ultimate-nintendo-switch-2021-pal-authentic"
   ],
   "historique_importe": [],
   "profils_negatifs": {
@@ -2200,6 +2448,37 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/05_00bee_JjtNcVx2LWESBWWDftDfPnsQ/f800/1788268904.webp?s=8d5beed616de4870cde04cd46c2540816a486da0",
       "mis_a_jour": "2026-09-01T21:28:06"
+    },
+    "7206ac0d9fd716": {
+      "rejet_id": "7206ac0d9fd716",
+      "actif": true,
+      "titre_reference": "caratula new super mario bros u deluxe switchhttps:",
+      "tokens_titre": [
+        "caratula",
+        "new",
+        "super",
+        "mario",
+        "bros",
+        "deluxe",
+        "switchhttps"
+      ],
+      "mots_description": [
+        "caratula",
+        "super",
+        "mario",
+        "bros",
+        "deluxe",
+        "switchhttps"
+      ],
+      "prix_reference": null,
+      "liens": [
+        "https://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switchhttps://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switch"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "",
+      "empreintes_visuelles": [],
+      "image_reference_url": "",
+      "mis_a_jour": "2026-09-01T21:35:43"
     }
   },
   "liens_rejetes_classes": [
@@ -2212,6 +2491,7 @@
     "https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule",
     "https://www.vinted.be/items/9745385272-joystick-spider-man-2-playstation-2-bw0108",
     "https://www.vinted.be/items/7560413022-zelda-skyward-sword-edition-limitee-boite-et-notices-uniquement",
-    "https://www.vinted.be/items/9853916547-pokemon-advanced-kanto-gba-fr"
+    "https://www.vinted.be/items/9853916547-pokemon-advanced-kanto-gba-fr",
+    "https://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switchhttps://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switch"
   ]
 }
