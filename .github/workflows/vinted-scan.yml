@@ -64,8 +64,7 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_SERVER: https://ntfy.sh
           HEADLESS: "1"
-        run: python -u vinted_tarayici.py --once --headless
-
+        run: python -u vinted_v70.py --once --headless
       - name: Sauvegarder
         if: always()
         run: |
