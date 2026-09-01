@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SCANNER_PATCH: BROAD_GAMES_V6
 import asyncio
 import csv
 import json
@@ -69,23 +68,14 @@ def fee_estimate(price, cfg):
     )
 
 
-def term_present(text, term):
-    """Whole-term matching: prevents hs/pes/casse from matching inside other words."""
-    t = norm(text)
-    nt = norm(term)
-    if not nt:
-        return False
-    pattern = rf"(?<!\w){re.escape(nt)}(?!\w)"
-    return re.search(pattern, t) is not None
-
-
 def keyword_hits(text, words):
-    return [w for w in words if term_present(text, w)]
-
-
-def title_keyword_hits(text, words):
-    """Match accessory words in titles without partial-word false matches."""
-    return keyword_hits(text, words)
+    t = norm(text)
+    out = []
+    for w in words:
+        nw = norm(w)
+        if nw and nw in t:
+            out.append(w)
+    return out
 
 
 def clean_title(value):
@@ -115,21 +105,6 @@ def title_from_card(card):
 
 
 def blacklist_check(title, text, blacklist):
-    # V5: reject obvious accessories directly from the listing title.
-    # Boundary matching avoids cases such as "case" matching "showcase".
-    title_hits = title_keyword_hits(
-        title,
-        blacklist.get("title_accessory_blacklist", []),
-    )
-
-    if title_hits:
-        return (
-            True,
-            "title_accessory_blacklist",
-            title_hits[:3],
-            [],
-        )
-
     combined = f"{title} {text}"
 
     for group in (
@@ -152,127 +127,41 @@ def blacklist_check(title, text, blacklist):
     return False, "", [], risks[:3]
 
 
-
-def low_value_game_check(title, text, blacklist):
-    combined = norm(f"{title} {text}")
-
-    low_games = [
-        norm(x)
-        for x in blacklist.get(
-            "low_value_games",
-            [],
-        )
-    ]
-
-    collector_words = [
-        norm(x)
-        for x in blacklist.get(
-            "collector_exception_words",
-            [],
-        )
-    ]
-
-    low_hits = [
-        x
-        for x in low_games
-        if x and term_present(combined, x)
-    ]
-
-    if not low_hits:
-        return False, []
-
-    has_collector_exception = any(
-        x
-        for x in collector_words
-        if x and term_present(combined, x)
-    )
-
-    if has_collector_exception:
-        return False, []
-
-    return True, low_hits[:3]
-
-
-GAME_MERCH_WORDS = [
-    "steelbook", "steel book", "pin", "pins", "badge", "coin",
-    "pièce de collection", "piece de collection", "médaille", "medaille",
-    "keychain", "porte-clés", "porte cles", "porte clé", "porte cle",
-    "figurine", "amiibo", "poster", "affiche", "artbook", "art book",
-    "soundtrack", "ost", "guide", "manuel seul", "manual only",
-    "case only", "game case only", "boite vide", "boîte vide",
-    "empty box", "box only", "boitier vide", "boîtier vide",
-    "pochette", "housse", "coque", "cover only", "skin", "sticker",
-    "carte pokemon", "pokemon card", "trading card"
-]
-
-CONSOLE_GAME_WORDS = [
-    "jeu", "game", "gioco", "juego", "spiel", "cartouche",
-    "cartridge", "videogame", "video game"
-]
-
-CONSOLE_ACCESSORY_WORDS = [
-    "caricatore", "caricabatterie", "cargador", "chargeur", "charger",
-    "batteria", "bateria", "batterie", "battery", "custodia", "funda",
-    "housse", "pochette", "coque", "carcasa", "scocca", "shell",
-    "stylus", "stylet", "dock", "support", "screen", "écran", "ecran"
-]
-
-
-def category_sanity_check(category, title):
-    if category.startswith("JEU_"):
-        hits = keyword_hits(title, GAME_MERCH_WORDS)
-        if hits:
-            return False, "objet derive/accessoire: " + ", ".join(hits[:3])
-    elif category == "CONSOLE":
-        hits = keyword_hits(title, CONSOLE_ACCESSORY_WORDS)
-        if hits:
-            return False, "accessoire console: " + ", ".join(hits[:3])
-        hits = keyword_hits(title, CONSOLE_GAME_WORDS)
-        if hits:
-            return False, "annonce de jeu, pas console: " + ", ".join(hits[:3])
-    return True, ""
-
-
-def exact_title_matches(title, candidates):
-    t = norm(title).strip(" -|:/")
-    return any(t == norm(x).strip(" -|:/") for x in candidates if norm(x))
-
-
-def rule_match(rule, title, text, deep=False):
+def rule_match(rule, title, text):
     title_n = norm(title)
     full_n = norm(f"{title} {text}")
 
-    must = rule.get("must_contain", [])
-    any_kw = rule.get("any_contain", [])
-    hardware = rule.get("hardware_any", [])
-    platform = rule.get("platform_any", [])
-    exact_titles = rule.get("exact_title_any", [])
-    excludes = rule.get("exclude", [])
+    must = [
+        norm(x)
+        for x in rule.get("must_contain", [])
+    ]
+    any_kw = [
+        norm(x)
+        for x in rule.get("any_contain", [])
+    ]
+    hardware = [
+        norm(x)
+        for x in rule.get("hardware_any", [])
+    ]
+    excludes = [
+        norm(x)
+        for x in rule.get("exclude", [])
+    ]
 
-    if must and not all(term_present(title_n, x) for x in must):
+    if must and not all(x in title_n for x in must):
         return False
 
-    if any_kw and not any(term_present(title_n, x) for x in any_kw):
+    if any_kw and not any(x in title_n for x in any_kw):
         return False
 
-    if excludes and any(term_present(full_n, x) for x in excludes):
+    if hardware and not any(x in full_n for x in hardware):
         return False
 
-    # Fast pre-filter: do not require description evidence yet.
-    if not deep:
-        return True
-
-    if platform and not any(term_present(full_n, x) for x in platform):
+    if excludes and any(x in full_n for x in excludes):
         return False
-
-    if hardware:
-        hardware_text = title_n if rule.get("hardware_in_title") else full_n
-        has_hardware = any(term_present(hardware_text, x) for x in hardware)
-        has_exact = exact_title_matches(title, exact_titles) if exact_titles else False
-        if not has_hardware and not has_exact:
-            return False
 
     return True
+
 
 def score_candidate(rule, price, cfg):
     total = price + fee_estimate(price, cfg)
@@ -363,38 +252,6 @@ def ignored_brand_check(text, cfg):
         cfg.get("ignored_brands", []),
     )
     return hits[:3]
-
-
-
-def electronics_condition_check(title, text, cfg, category):
-    if category not in {"CONSOLE", "ELECTRONIQUE"}:
-        return True, ""
-
-    combined = f"{title} {text}"
-
-    fatal_hits = keyword_hits(
-        combined,
-        cfg.get(
-            "fatal_electronics_condition_words",
-            [],
-        ),
-    )
-
-    if fatal_hits:
-        return False, "etat: " + ", ".join(fatal_hits[:3])
-
-    missing_power = keyword_hits(
-        combined,
-        cfg.get(
-            "power_missing_words",
-            [],
-        ),
-    )
-
-    if missing_power:
-        return False, "alimentation manquante: " + ", ".join(missing_power[:2])
-
-    return True, ""
 
 
 def opportunity_score(
@@ -503,29 +360,21 @@ def ntfy_send(row):
 
     size = row.get("size") or "?"
 
-    condition = (
-        "OK"
-        if not row.get("risk")
-        else "A verifier"
-    )
-
-    article_type = row.get(
-        "category",
-        "ARTICLE",
-    )
-
     body = (
-        f"[{row['opportunity_score']}/10] | "
-        f"[{article_type}] "
-        f"{row.get('brand','?')} "
-        f"{row.get('model','?')} "
-        f"[{condition}] | "
-        f"Achat {row['listing_price']:.2f} EUR "
-        f"→ Revente {row['resale_low']:.0f}-"
-        f"{row['resale_high']:.0f} EUR | "
-        f"Bénéfice net {row['margin_low']:.2f} EUR | "
-        f"{row['reason']} | "
-        f"{row['url']}"
+        f"🔥 Score d'opportunité : "
+        f"{row['opportunity_score']}/10\n"
+        f"📦 L'Article : "
+        f"{row.get('brand','?')} - "
+        f"{row.get('model','?')} - "
+        f"{size}\n"
+        f"💰 Prix Achat : "
+        f"{row['listing_price']:.2f} €\n"
+        f"📈 Prix Revente Estimé : "
+        f"{row['resale_low']:.0f}-"
+        f"{row['resale_high']:.0f} €\n"
+        f"💎 La Raison : "
+        f"{row['reason']}\n"
+        f"🔗 Lien : {row['url']}"
     )
 
     headers = {
@@ -687,10 +536,10 @@ async def verify_listing(
         await detail.goto(
             url,
             wait_until="domcontentloaded",
-            timeout=12000,
+            timeout=30000,
         )
 
-        await detail.wait_for_timeout(350)
+        await detail.wait_for_timeout(1200)
 
         title = fallback_title
 
@@ -730,7 +579,7 @@ async def verify_listing(
         try:
             main_text = await detail.locator(
                 "main"
-            ).inner_text(timeout=3000)
+            ).inner_text(timeout=7000)
 
             if main_text:
                 description_parts.append(
@@ -909,7 +758,7 @@ async def scan_search(
         await page.goto(
             url,
             wait_until="domcontentloaded",
-            timeout=20000,
+            timeout=45000,
         )
 
         await page.wait_for_timeout(
@@ -924,7 +773,7 @@ async def scan_search(
         await page.locator(
             'a[href*="/items/"]'
         ).first.wait_for(
-            timeout=6000
+            timeout=12000
         )
 
     except PlaywrightTimeoutError:
@@ -941,12 +790,9 @@ async def scan_search(
     new_alerts = []
 
     max_items = int(
-        search.get(
-            "max_items",
-            cfg.get(
-                "max_items_per_search",
-                40,
-            ),
+        cfg.get(
+            "max_items_per_search",
+            40,
         )
     )
 
@@ -1018,31 +864,6 @@ async def scan_search(
             )
             continue
 
-        low_value_blocked, low_value_hits = (
-            low_value_game_check(
-                title,
-                text,
-                blacklist,
-            )
-        )
-
-        if low_value_blocked:
-            print(
-                f"  X JEU FAIBLE VALEUR | "
-                f"{title[:65]} | "
-                f"{low_value_hits}"
-            )
-            continue
-
-        category = search.get("category", "")
-        sane, sane_reason = category_sanity_check(category, title)
-        if not sane:
-            print(
-                f"  X TYPE PRODUIT | "
-                f"{title[:65]} | {sane_reason}"
-            )
-            continue
-
         matched_rule = None
 
         for rule in search.get(
@@ -1085,11 +906,7 @@ async def scan_search(
 
         max_buy_ratio = (
             matched_rule.get(
-                "max_buy_ratio",
-                cfg.get(
-                    "max_buy_ratio_default",
-                    0.40,
-                ),
+                "max_buy_ratio"
             )
         )
 
@@ -1102,23 +919,13 @@ async def scan_search(
         ):
             continue
 
-        category_min_margin = (
-            cfg.get(
-                "category_min_margin",
-                {},
-            ).get(
-                category,
+        min_margin = float(
+            matched_rule.get(
+                "min_margin",
                 cfg.get(
                     "min_margin",
                     25,
                 ),
-            )
-        )
-
-        min_margin = float(
-            matched_rule.get(
-                "min_margin",
-                category_min_margin,
             )
         )
 
@@ -1234,22 +1041,6 @@ async def scan_search(
             )
             continue
 
-        low_value_blocked, low_value_hits = (
-            low_value_game_check(
-                verified_title,
-                verified_text,
-                blacklist,
-            )
-        )
-
-        if low_value_blocked:
-            print(
-                f"  X JEU FAIBLE VALEUR "
-                f"APRES VERIFICATION | "
-                f"{low_value_hits}"
-            )
-            continue
-
         ignored_hits = ignored_brand_check(
             f"{verified_title} "
             f"{verified_text}",
@@ -1301,42 +1092,14 @@ async def scan_search(
             )
             continue
 
-        sane, sane_reason = category_sanity_check(category, verified_title)
-        if not sane:
-            print(
-                f"  X TYPE PRODUIT APRES VERIFICATION | "
-                f"{verified_title[:65]} | {sane_reason}"
-            )
-            continue
-
         if not rule_match(
             matched_rule,
             verified_title,
             verified_text,
-            deep=True,
         ):
             print(
                 f"  X MAUVAIS PRODUIT | "
                 f"{verified_title[:65]}"
-            )
-            continue
-
-        electronics_ok, electronics_reason = (
-            electronics_condition_check(
-                verified_title,
-                verified_text,
-                cfg,
-                search.get(
-                    "category",
-                    "",
-                ),
-            )
-        )
-
-        if not electronics_ok:
-            print(
-                f"  X ETAT/ALIMENTATION | "
-                f"{electronics_reason}"
             )
             continue
 
@@ -1417,8 +1180,6 @@ async def scan_search(
                 "; prix extrêmement bas, "
                 "verifier vendeur et authenticite"
             )
-            risks = list(dict.fromkeys(risks + ["prix anormalement bas"]))
-            score = min(score, 6)
 
         size = extract_size(
             f"{title} {text}"
@@ -1552,7 +1313,7 @@ async def main():
     )
 
     print(
-        "Vinted Deal Scanner V6"
+        "Vinted Deal Scanner V3"
     )
 
     print(
