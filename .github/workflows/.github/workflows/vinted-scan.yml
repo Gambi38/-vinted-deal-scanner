@@ -1,0 +1,51 @@
+name: Vinted Deal Scanner
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vinted-scanner
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Scan Vinted
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: "https://ntfy.sh"
+          HEADLESS: "1"
+        run: python vinted_scraper.py --once --headless
+
+      - name: Save scanner state
+        if: always()
+        run: |
+          git config user.name "vinted-scanner-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add seen.json alerts.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "Update scanner state [skip ci]"
+            git push
+          fi
