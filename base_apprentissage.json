@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T22:17:15"
+      "mis_a_jour": "2026-09-01T22:23:32"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -2949,8 +2949,8 @@
       ],
       "prix_cible_median": 12.0,
       "prix_cible_max": 15.0,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 8.99,
+      "prix_marche_haut": 10.36,
       "liens_exemples": [
         "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate"
       ],
@@ -2965,7 +2965,10 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_0248e_DUs2cFGfYrFhmYH9uaBfEvbM/f800/1788299006.webp?s=445f4354857170b4aba67b06afcc6fa524bca4f8",
-      "mis_a_jour": "2026-09-01T22:13:27"
+      "mis_a_jour": "2026-09-01T22:23:58",
+      "confiance_marche": 85,
+      "nb_comparables_marche": 42,
+      "marche_mis_a_jour": "2026-09-01T22:23:59"
     },
     "f16d8cc5b2ebd2": {
       "profil_id": "f16d8cc5b2ebd2",
@@ -3055,6 +3058,125 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/01_014e3_F1qPXtRBUtaqycUSK25vp3yX/f800/1787171694.webp?s=4025d57d934267af27eaa6c90990c7cf4848d962",
       "mis_a_jour": "2026-09-01T22:18:51"
+    },
+    "70bd512086d175": {
+      "profil_id": "70bd512086d175",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_PS5",
+      "plateforme": "ps5",
+      "modele": "Hitman PS5 | Vinted",
+      "titre_reference": "Hitman PS5 | Vinted",
+      "requete": "hitman vinted ps5",
+      "mots_obligatoires": [
+        "hitman",
+        "vinted"
+      ],
+      "mots_secondaires": [],
+      "mots_description": [
+        "hitman",
+        "heel",
+        "goede",
+        "staat",
+        "kras",
+        "vrij",
+        "keer",
+        "gespeeld"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        7.0
+      ],
+      "prix_cible_median": 7.0,
+      "prix_cible_max": 10.0,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9714775894-hitman-ps5"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Hitman PS5 - Heel goede staat kras vrij. 1 keer op gespeeld.\nHitman PS5 - Heel goede staat kras vrij. 1 keer op gespeeld.",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_02186_yoc2GqqjLRQAJL4svb5cPUJw/f800/1787173971.webp?s=63d3d38785ba84e963532d6015a61578991e5e5b",
+          "embedding": "",
+          "ahash": "fffe0000a0f8c0ff",
+          "dhash": "2bb3f2f2b6f7fffc"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_02186_yoc2GqqjLRQAJL4svb5cPUJw/f800/1787173971.webp?s=63d3d38785ba84e963532d6015a61578991e5e5b",
+      "mis_a_jour": "2026-09-01T22:23:51"
     }
   },
   "liens_classes": [
@@ -3084,7 +3206,8 @@
     "https://www.vinted.be/items/9745183583-gravity-rush-2",
     "https://www.vinted.be/items/9755628921-ps-vita-noir",
     "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate",
-    "https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir"
+    "https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir",
+    "https://www.vinted.be/items/9714775894-hitman-ps5"
   ],
   "historique_importe": [],
   "profils_negatifs": {

@@ -25,3 +25,4 @@
 2026-09-01T21:59:33 | dbfc73cb8fc82a | console |  | 70.0 EUR | https://www.vinted.be/items/9755628921-ps-vita-noir
 2026-09-01T22:13:24 | 54f52aa8d65932 | jeu |  | 12.0 EUR | https://www.vinted.be/items/9859615183-super-smash-bros-ultimate
 2026-09-01T22:18:48 | f16d8cc5b2ebd2 | console |  | 69.0 EUR | https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir
+2026-09-01T22:23:51 | 70bd512086d175 | jeu | ps5 | 7.0 EUR | https://www.vinted.be/items/9714775894-hitman-ps5
