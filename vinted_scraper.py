@@ -250,13 +250,40 @@ async def verify_listing(page, url, fallback_title=""):
             pass
 
         # Texte complet visible de l'annonce
-        try:
-            full_text = await detail.locator("body").inner_text(
-                timeout=7000
-            )
-        except Exception:
-            full_text = ""
+                # Texte pertinent de l'annonce uniquement.
+        # On évite le footer et une grande partie
+        # des annonces recommandées par Vinted.
+        description_parts = []
 
+        for selector in (
+            'meta[property="og:description"]',
+            'meta[name="description"]'
+        ):
+            try:
+                value = await detail.locator(
+                    selector
+                ).first.get_attribute("content")
+
+                if value:
+                    description_parts.append(value)
+            except Exception:
+                pass
+
+        try:
+            main_text = await detail.locator(
+                "main"
+            ).inner_text(timeout=7000)
+
+            if main_text:
+                description_parts.append(
+                    main_text[:5000]
+                )
+        except Exception:
+            pass
+
+        full_text = "\n".join(
+            description_parts
+        )[:7000]
         # Essaie de récupérer le pseudo vendeur
         seller = ""
 
