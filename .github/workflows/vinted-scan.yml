@@ -34,8 +34,8 @@ jobs:
 
       - name: Scan Vinted once
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: "https://ntfy.sh"
           HEADLESS: "1"
         run: python vinted_scraper.py --once --headless
 
