@@ -1,5 +1,13 @@
 {
-  "_mode_emploi": [
+  "_mode_emploi": [       
+    "tolerer_fautes: true = accepte une petite faute d'orthographe dans les mots positifs.",
+    "recherches_vinted = plusieurs recherches pour attraper les annonces mal orthographiées.",
+    "Utilise au moins une recherche courte : 3ds, ds lite, mario party, super mario, etc.",
+    "Les mots_exclus et blacklist.json restent stricts pour limiter les faux positifs.",
+    "prix_recherche_max = prix maximum de la recherche.",
+    "revente_prudente = prix de revente réaliste.",
+    "ratio_achat_max = part maximale de la revente acceptée à l'achat.",
+    "marge_minimum = bénéfice minimum estimé après frais."
     "actif: true = filtre utilisé ; false = filtre désactivé.",
     "prix_recherche_max = prix maximum affiché dans la recherche Vinted.",
     "revente_prudente = prix réaliste auquel tu penses pouvoir revendre rapidement.",
