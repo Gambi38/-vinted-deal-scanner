@@ -4,3 +4,8 @@
 2026-09-01T20:04:24 | 7ef2fdb425d630 | jeu | switch | ? EUR | https://www.vinted.be/items/9857461400-jeu-switch-super-mario-brosu-deluxe
 2026-09-01T20:04:38 | 0abcd130c6b4c0 | jeu | ps5 | ? EUR | https://www.vinted.be/items/9857522429-spider-man-2-playstation-5
 2026-09-01T20:04:48 | ac3b20355b0154 | jeu | switch | ? EUR | https://www.vinted.be/items/9857506706-zelda-tears-of-the-kingdom
+2026-09-01T20:29:55 | 74817c17acfab0 | jeu |  | ? EUR | https://www.vinted.be/items/9857665241-luigis-3
+2026-09-01T20:30:04 | 3aaec9a02b4bdb | jeu |  | ? EUR | https://www.vinted.be/items/9857819396-ghost-of-yotei
+2026-09-01T20:30:13 | a8e3c2823a763a | jeu |  | ? EUR | https://www.vinted.be/items/9857967431-zelda-skyward-sword-hd
+2026-09-01T20:30:20 | 89e4c6e132cc33 | jeu | ps5 | ? EUR | https://www.vinted.be/items/9858362606-elden-ring-ps5
+2026-09-01T20:30:29 | 4962ae950e3ad3 | jeu | switch | ? EUR | https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja
