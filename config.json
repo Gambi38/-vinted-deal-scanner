@@ -1,0 +1,175 @@
+{
+  "base_url": "https://www.vinted.be",
+  "poll_seconds": 300,
+  "delay_between_searches": 1.0,
+  "page_wait_ms": 1800,
+  "max_items_per_search": 40,
+  "shipping_estimate": 4.5,
+  "buyer_protection_estimate": {
+    "fixed": 0.7,
+    "pct": 0.05
+  },
+  "min_margin": 25,
+  "searches": [
+    {
+      "name": "Xbox Series S",
+      "query": "xbox series s",
+      "price_to": 125,
+      "rules": [
+        {
+          "label": "Series S console",
+          "must_contain": [
+            "xbox"
+          ],
+          "any_contain": [
+            "series s",
+            "serie s"
+          ],
+          "exclude": [
+            "manette",
+            "controller",
+            "boite",
+            "box only",
+            "hs",
+            "pièces",
+            "pour pieces"
+          ],
+          "resale_low": 155,
+          "resale_high": 175,
+          "min_margin": 25
+        }
+      ]
+    },
+    {
+      "name": "Xbox One X",
+      "query": "xbox one x",
+      "price_to": 80,
+      "rules": [
+        {
+          "label": "One X console",
+          "must_contain": [
+            "xbox"
+          ],
+          "any_contain": [
+            "one x"
+          ],
+          "exclude": [
+            "manette",
+            "controller",
+            "boite",
+            "hs",
+            "pièces",
+            "pour pieces"
+          ],
+          "resale_low": 110,
+          "resale_high": 130,
+          "min_margin": 20
+        }
+      ]
+    },
+    {
+      "name": "PS4 Pro",
+      "query": "ps4 pro",
+      "price_to": 80,
+      "rules": [
+        {
+          "label": "PS4 Pro console",
+          "any_contain": [
+            "ps4 pro",
+            "playstation 4 pro"
+          ],
+          "exclude": [
+            "manette",
+            "controller",
+            "boite",
+            "hs",
+            "pièces",
+            "pour pieces"
+          ],
+          "resale_low": 115,
+          "resale_high": 135,
+          "min_margin": 20
+        }
+      ]
+    },
+    {
+      "name": "Nintendo Switch",
+      "query": "nintendo switch",
+      "price_to": 125,
+      "rules": [
+        {
+          "label": "Switch console",
+          "must_contain": [
+            "switch"
+          ],
+          "exclude": [
+            "lite",
+            "jeu",
+            "game",
+            "manette",
+            "joy-con",
+            "joycon",
+            "housse",
+            "boite",
+            "dock seul",
+            "hs",
+            "pièces"
+          ],
+          "resale_low": 165,
+          "resale_high": 190,
+          "min_margin": 25
+        }
+      ]
+    },
+    {
+      "name": "Wacom Intuos Pro Medium",
+      "query": "wacom intuos pro medium",
+      "price_to": 75,
+      "rules": [
+        {
+          "label": "Intuos Pro Medium",
+          "must_contain": [
+            "wacom",
+            "intuos"
+          ],
+          "any_contain": [
+            "pro medium",
+            "pth-660",
+            "pth660"
+          ],
+          "exclude": [
+            "stylet seul",
+            "pen only",
+            "hs",
+            "pièces"
+          ],
+          "resale_low": 115,
+          "resale_high": 145,
+          "min_margin": 25
+        }
+      ]
+    },
+    {
+      "name": "Focusrite Scarlett 2i2",
+      "query": "focusrite scarlett 2i2",
+      "price_to": 55,
+      "rules": [
+        {
+          "label": "Scarlett 2i2",
+          "must_contain": [
+            "scarlett",
+            "2i2"
+          ],
+          "exclude": [
+            "hs",
+            "pièces",
+            "boite"
+          ],
+          "resale_low": 85,
+          "resale_high": 105,
+          "min_margin": 20
+        }
+      ]
+    }
+  ]
+}
