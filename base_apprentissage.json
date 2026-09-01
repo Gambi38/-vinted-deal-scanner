@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T21:12:36"
+      "mis_a_jour": "2026-09-01T21:18:29"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -748,9 +748,11 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
+      "prix_exemples": [
+        9.0
+      ],
+      "prix_cible_median": 9.0,
+      "prix_cible_max": 12.0,
       "prix_marche_bas": null,
       "prix_marche_haut": null,
       "liens_exemples": [
@@ -758,7 +760,16 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "Luigi’s 3 - J’ai déjà une annonce pour ce jeux \nL’autre annonce c’est juste la boîte à 1€ \nEt cette annonce c’est la boîte plus le jeux \nTrès bon état et très bon jeux\nLuigi’s 3 - J’ai déjà une annonce pour ce jeux \nL’autre annonce c’est juste la boîte à 1€ \nEt cette annonce c’est la boîte plus le jeux \nTrès bon état et très bon jeux",
-      "mis_a_jour": "2026-09-01T20:29:55"
+      "mis_a_jour": "2026-09-01T21:18:38",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_0220d_P85f9t3R59TXKKZ3qxb191y4/f800/1788286440.webp?s=b66ed4914e1849a2182ec952d49343b2cac9c240",
+          "embedding": "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",
+          "ahash": "ffffc3c3c3c38300",
+          "dhash": "9e6169e0c8e8e826"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_0220d_P85f9t3R59TXKKZ3qxb191y4/f800/1788286440.webp?s=b66ed4914e1849a2182ec952d49343b2cac9c240"
     },
     "3aaec9a02b4bdb": {
       "profil_id": "3aaec9a02b4bdb",
@@ -854,17 +865,28 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_exemples": [
+        20.0
+      ],
+      "prix_cible_median": 20.0,
+      "prix_cible_max": 23.6,
+      "prix_marche_bas": 45.0,
+      "prix_marche_haut": 50.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9857819396-ghost-of-yotei"
       ],
       "nombre_exemples": 1,
       "description_reference": "Ghost of Yotei - Ghost of Yotei en perfectas condiciones\nGhost of Yotei - Ghost of Yotei en perfectas condiciones",
-      "mis_a_jour": "2026-09-01T20:30:04"
+      "mis_a_jour": "2026-09-01T21:21:05",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_01ea7_ZNVmoueMwo2hSUEzrbpRPKva/f800/1788287210.webp?s=6a5a148c0770ca4536eba7979c52b83fec8f5107",
+          "embedding": "/yCGpNwW2p41qRghTaKfqJyntKgeIoyqfKAfqq6miCPUqzKprqbBrA6W3aJlmyOq4yT2JNgaO6OSoxukf6aKrdukRSOZoHofhCGyIccgihh4rrKpVanzpHCqzqOBrPGlJqwTnlehhZ6SoCqYqaIBrE2s8qd1I1CrlaYNrLCk96G7peagcyW2oWokl5iPmZMoTiJxJREjzyQiJSoaqyhIKUCmG6fSpZSbkasCqISlR6oiqpyrg6yCqies4awKpuero62NrK+le6S6FJ8jEKyxIXynO6ZNqBuleCWJop6oZaejp3CoIaWJqEik4qStKcUm8CMpKAYt6yqyKoYd6SGfn3CipJy9pbqlPhVZqJGhyaesqPKpxKoFpEGhYKgcpO6kF6yToCaqVqhnocqVUyp0oquqnaiSp96kBKUnqYiX5KGvqKKoO6isI9qkUySqqh+k9aAdqKOnm67FreiiO6lKJJepRKQ7pewk6qJvqqakQ52PqXKiUKTXIqmn2hxNG4WcpKS9mbSfGakupmGVEKV4IzWkKyQEpTOps6V0oVSYO6OEIrunTaINnmGh6aEXKpyo6aCwqb+oix8MKYygxaEUp+Gk65WsBawo1yJWpdmsx6nSqLoleSc6JBYhtZ8sofKmDiEFpcOidCGCKJAcXKVVl00JFg+PpV6lPSR1qIOdyp8RoHCplqeCqG2YOKh+KTCpsaSXqP6o4qeFpTModicJJVco+SO2J3wnrx4oJoQhzpwQKTYicyiBKNeoX5iPDMwhCSiUJFEjuClxKDwkPSenJKIjCZ8boiwkqSLXrUAZqSIpqx2iVyPCpFsUKaL8KHmlP6bBnOogYaomoLaoCaY8onWoQ6gHptCnL6yFqBanxB90kikkNaNcJL4Uq6vzqMgm0qUOKkuoNKKVmzMgLyRSoCghJyh4Jt2d/p+JJPgitSydJiIiu5MAH1okmSMaIPOoZShqpJWWRqgnrbChoKFYFuSpV6ZSoRSfuaGiINyd2am6p3KfmKLcqimYHqowpUGnsaCJIgKp4anio8EX/KoCDc6ldaywk7qZ+6AroCudlKSiJSUibqN1JUqoy6QdLYscoymyLQkoryhYKQcpxyhHKEQmBSDJpuIiYqJ4lbgoQiakKvQXbixdKIMkOCNuH9epZCBqJJ+paxVEqocp3CrBKX0gSyBaK0YfYSY6JP2glSh8mMegUiqEoiapHJ9dJ+6jAS2FKEkp2SJgpzslSB4UEPOmVyzLoM2SUKRnJkYtwSmPIIsgAKczqYImMCUNJkim6CH2JREhIShVmLakHyjNJQAkYijQE8uaRaVUIHcn1qNPomQhbyUDlhyoRSaip32lCSZvJziksCCjIAYbLyZEpjmeMpzRIiUjNKrTKEolpCfwp30no6YTFggqIKlyJx0hnZi6ouoqYyhoJu+sz6RAoUgnjSgzKJEg1y1pJJ+WpSELLMYdiyS4KgYk/SjmKqmdNY6kJV8pE58bLa0nR6W3JToCJyW6KNyeiaScLBKcQxj9JAkjKCerLgilCiqfJ1qi6yiLK48i8KVzocGqwp4/LI2n0h5zJdgkiie3E0mhiSC9HVYURyICJ2gkIKxpJn0qcRk7lusoJCiILA4lUKAVGwomG6bxLOQqJ6KkJcIijKZlHEoovqMcGxEjpinxpn+dxpP5KAMns6mfJkuboqgqGVAjKZyqJrQq9ZvHK3Mo8iC6JOmk0yTIKe0fVaX/J9whnKiIodMl2aORKjoqAaf4pzejgyu/mf6oYyXkJRcfGyVzJckotif8KGImVKNPJ6gov5xQFd4nxSCpocop9yGSolikdJzXIVwlYBteKmwqtKE0KaYfGCdPIl0sAiq/JpkcR6JXJIYhYyRmJ7cevhbrIbkbASZxngqR0CgBp+On0ypfneimqaa9KNWeLKn/Ieup1yQ7J3aYdqhGK/UJ1CSQJ7woJBy9Ik8ckapCKR2iiyL6orUZ3iRaJUAmkijfICKefypjpCMmkSONorgjzptuJhSf4qjnJushTZvPJn8iU6WOp54krSb1oxcp9icWKxmnO6UUIIwlMSmlJyYdTad3HduYkaTTLMKWG6M3LKUlsilUJteoPijnIasg/SXqpLajZyQTIZsbBydRJ8Iek5LeELQo2CMXJREouhqlp3emoSULISurnChtINcrjZPUnImWiqp+mvUbACEoLPGnryqdmCymM6nRLFwsEaSqKS4k/aR4JIwr3qQaK2eSBaAIJGGWliYeJNQjqZwKKrglgCR3JJAlSCVVJ+YpbqIQoJiZOykoKzkqlakNJv8qNhpiKAAr2R8HKcArGB7fJZeZwSkkHsEoAiGTI4+hYp/PpQ0oM42yJBumASaIJBMlN6XcJS8qqKqnKPCfDyKSLoGkt6RqJVKovqM6H1amHylqIWahhaCtJh4Xmh91nYampyPIohChihr5IBMkjaGRK20v/CTBKjslqC8wJpSk1KjPqzKlO6ahqH2Y7KdfngAgmKjPovuoSKhzqRWnyqqGrNuoK6ASqSCsH6yPorUMWabjqe+n8KztpyKiE6yKrECppqjmoZSrwhhKpvihBKgepj2l9yFqHZ2ljKRNJ2WpByL7JPMoZyi3pyEWMiQ+qeQkAiWiqe0g9Z8GqYWmWCTlqXSk0aT2kg+dlSOLJIUqLCYCIdWZXqU=",
+          "ahash": "7effffffe7000000",
+          "dhash": "2f35257171f0f159"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_01ea7_ZNVmoueMwo2hSUEzrbpRPKva/f800/1788287210.webp?s=6a5a148c0770ca4536eba7979c52b83fec8f5107"
     },
     "a8e3c2823a763a": {
       "profil_id": "a8e3c2823a763a",
@@ -965,14 +987,14 @@
       "prix_exemples": [],
       "prix_cible_median": null,
       "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 35.0,
+      "prix_marche_haut": 66.75,
       "liens_exemples": [
         "https://www.vinted.be/items/9857967431-zelda-skyward-sword-hd"
       ],
       "nombre_exemples": 1,
       "description_reference": "Zelda skyward sword hd - Neuf jamais joué\nZelda skyward sword hd - Neuf jamais joué",
-      "mis_a_jour": "2026-09-01T20:30:13"
+      "mis_a_jour": "2026-09-01T21:21:16"
     },
     "89e4c6e132cc33": {
       "profil_id": "89e4c6e132cc33",
@@ -1069,14 +1091,14 @@
       "prix_exemples": [],
       "prix_cible_median": null,
       "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 35.0,
+      "prix_marche_haut": 40.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858362606-elden-ring-ps5"
       ],
       "nombre_exemples": 1,
       "description_reference": "Elden Ring ps5 - Elden Ring ps5\nElden Ring ps5 - Elden Ring ps5",
-      "mis_a_jour": "2026-09-01T20:30:20"
+      "mis_a_jour": "2026-09-01T21:21:50"
     },
     "4962ae950e3ad3": {
       "profil_id": "4962ae950e3ad3",
@@ -1187,14 +1209,14 @@
       "prix_exemples": [],
       "prix_cible_median": null,
       "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_marche_bas": 32.0,
+      "prix_marche_haut": 35.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja"
       ],
       "nombre_exemples": 1,
       "description_reference": "Animal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.\nAnimal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.",
-      "mis_a_jour": "2026-09-01T20:30:29"
+      "mis_a_jour": "2026-09-01T21:22:21"
     },
     "d88643756307ec": {
       "profil_id": "d88643756307ec",
@@ -1295,8 +1317,8 @@
       ],
       "prix_cible_median": 13.0,
       "prix_cible_max": 16.0,
-      "prix_marche_bas": 10.0,
-      "prix_marche_haut": 15.0,
+      "prix_marche_bas": 30.0,
+      "prix_marche_haut": 30.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5"
       ],
@@ -1311,7 +1333,7 @@
         }
       ],
       "image_reference_url": "https://images1.vinted.net/t/03_0114e_eT2AqrEKoro3tPJ7J21AptYb/f800/1788290223.webp?s=d71cefb387ad9228d86c33956f2db02168932585",
-      "mis_a_jour": "2026-09-01T20:58:37"
+      "mis_a_jour": "2026-09-01T21:22:25"
     },
     "038d9d97308c3c": {
       "profil_id": "038d9d97308c3c",
@@ -1411,7 +1433,7 @@
       "prix_exemples": [],
       "prix_cible_median": null,
       "prix_cible_max": null,
-      "prix_marche_bas": 32.0,
+      "prix_marche_bas": 35.0,
       "prix_marche_haut": 35.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel"
@@ -1420,7 +1442,7 @@
       "description_reference": "",
       "empreintes_visuelles": [],
       "image_reference_url": "",
-      "mis_a_jour": "2026-09-01T20:58:56"
+      "mis_a_jour": "2026-09-01T21:22:30"
     },
     "f397cc55508dbb": {
       "profil_id": "f397cc55508dbb",
@@ -1736,12 +1758,164 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/02_01508_LDrmM6kQiFiJ5tNG6sLRve11/f800/1785566114.webp?s=5e78bb2170448e70c59892b6fc1addafcb4be879",
       "mis_a_jour": "2026-09-01T21:07:43"
+    },
+    "cbe522d9ce9006": {
+      "rejet_id": "cbe522d9ce9006",
+      "actif": true,
+      "titre_reference": "🎮 Leeg origineel Nintendo Switch doosje – Crash Bandicoot N. Sane Trilogy | Vinted",
+      "tokens_titre": [
+        "leeg",
+        "origineel",
+        "doosje",
+        "crash",
+        "bandicoot",
+        "sane",
+        "trilogy"
+      ],
+      "mots_description": [
+        "doosje",
+        "origineel",
+        "crash",
+        "bandicoot",
+        "sane",
+        "trilogy",
+        "geen",
+        "leeg",
+        "alleen",
+        "gamekaart",
+        "handleiding",
+        "originele",
+        "hoes",
+        "inlay",
+        "aanwezig",
+        "ideaal",
+        "vervanging",
+        "beschadigd",
+        "verloren",
+        "geschikt"
+      ],
+      "prix_reference": 6.0,
+      "liens": [
+        "https://www.vinted.be/items/9843204658-videogame-leeg-origineel-nintendo-switch-doosje-crash-bandicoot-n-sane-trilogy"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "🎮 Leeg origineel Nintendo Switch doosje – Crash Bandicoot N. Sane Trilogy - Origineel Nintendo Switch doosje van Crash Bandicoot N. Sane Trilogy.\n\n✅ Alleen het doosje (geen game, geen gamekaart, geen handleiding)\n✅ Originele hoes/inlay aanwezig\n✅ Ideaal als vervanging van een beschadigd of verloren doosje\n✅ Ook geschikt voor verzamelaars\n👌 Nette staat.\n\nLet op: dit betreft uitsluitend het lege doosje.\n!! Meerdere doosjes beschikbaar op mijn profiel !!\n\n🦋 Gegarandeerd: zorgvuldig verpakt en veilig verzonden!\n📩 Vragen? Stuur gerust een berichtje!\n🔎 Op zoek naar meer moois?\n#hansiepansiek_speelgoed_anderen\n\n#Nintendo #NintendoSwitch #CrashBandicoot #NSaneTrilogy #Activision #Switch #SwitchGame #GameCase #LeegDoosje #GameBox #NintendoGames #Gaming #Videogames #Collector #Verzamelaar #PlatformGame #RetroGaming #Vinted\n🎮 Leeg origineel Nintendo Switch doosje – Crash Bandicoot N. Sane Trilogy - Origineel Nintendo Switch doosje van Crash Bandicoot N. Sane Trilogy.\n\n✅ Alleen het doosje (geen game, geen gamekaart, geen handleiding)\n✅ Originele hoes/inlay aanwezig\n✅ Ideaal als vervanging van een beschadigd of verloren doosje\n✅ Ook geschikt voor verzamelaars\n👌 Nette staat.\n\nLet op: dit betreft uitsluitend het lege doosje.\n!! Meerdere doosjes beschikbaar op mijn profiel !!\n\n🦋 Gegarandeerd: zorgvuldig verpakt en veilig verzonden!\n📩 Vragen? Stuur gerust een berichtje!\n🔎 Op zoek naar meer mooi",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/01_00dd0_wz1bvkzdhRzCdsD9wzKS1pCm/f800/1788184622.webp?s=8b385be86ed4eb1c9b3f89a3fd0615b6b0a1cb11",
+          "embedding": "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",
+          "ahash": "ffff030303030303",
+          "dhash": "074149c9c8f93900"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/01_00dd0_wz1bvkzdhRzCdsD9wzKS1pCm/f800/1788184622.webp?s=8b385be86ed4eb1c9b3f89a3fd0615b6b0a1cb11",
+      "mis_a_jour": "2026-09-01T21:17:53"
+    },
+    "9152ef3de9f6c9": {
+      "rejet_id": "9152ef3de9f6c9",
+      "actif": true,
+      "titre_reference": "eeg origineel Nintendo Switch doosje – Luigi's Mansion 3 | Vinted",
+      "tokens_titre": [
+        "eeg",
+        "origineel",
+        "doosje",
+        "luigi",
+        "mansion"
+      ],
+      "mots_description": [
+        "doosje",
+        "luigi",
+        "origineel",
+        "mansion",
+        "geen",
+        "alleen",
+        "gamekaart",
+        "handleiding",
+        "originele",
+        "hoes",
+        "inlay",
+        "aanwezig",
+        "ideaal",
+        "vervanging",
+        "beschadigd",
+        "verloren",
+        "interessant",
+        "voor",
+        "verzamelaars",
+        "fans"
+      ],
+      "prix_reference": 7.0,
+      "liens": [
+        "https://www.vinted.be/items/9430589965-eeg-origineel-nintendo-switch-doosje-luigis-mansion-3"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "eeg origineel Nintendo Switch doosje – Luigi's Mansion 3 - Origineel Nintendo Switch doosje van Luigi's Mansion 3.\n\n✅ Alleen het doosje (geen game, geen gamekaart, geen handleiding)\n✅ Originele hoes/inlay aanwezig\n✅ Ideaal als vervanging van een beschadigd of verloren doosje\n✅ Ook interessant voor verzamelaars en Nintendo-fans\n👌 Nette staat.\n\nLet op: dit betreft uitsluitend het lege doosje.\n!! Meerdere doosjes beschikbaar op mijn profiel !!\n\n🦋 Gegarandeerd: zorgvuldig verpakt en veilig verzonden!\n📩 Vragen? Stuur gerust een berichtje!\n📦 snelle verzending vanuit België \n🔎 Op zoek naar meer moois?\n#hansiepansiek_speelgoed_anderen\n\n#Nintendo #NintendoSwitch #LuigisMansion3 #LuigisMansion #Luigi #SuperMario #NintendoGames #Switch #SwitchGame #GameCase #LeegDoosje #GameBox #Gaming #Videogames #NintendoCollector #Collector #Verzamelaar #Vinted\neeg origineel Nintendo Switch doosje – Luigi's Mansion 3 - Origineel Nintendo Switch doosje van Luigi's Mansion 3.\n\n✅ Alleen het doosje (geen game, geen gamekaart, geen handleiding)\n✅ Originele hoes/inlay aanwezig\n✅ Ideaal als vervanging van een beschadigd of verloren doosje\n✅ Ook interessant voor verzamelaars en Nintendo-fans\n👌 Nette staat.\n\nLet op: dit betreft uitsluitend het lege doosje.\n!! Meerdere doosjes beschikbaar op mijn profiel !!\n\n🦋 Gegarandeerd: zorgvuldig verpakt en veilig verzonden!\n📩 Vragen? Stuur gerust een berichtje!\n📦 snelle ve",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_01320_yehYAUbW1a2PdCZPgeLKQgZT/f800/1784401793.webp?s=a03b4c362f9aa9b227de0cfef270c122bfe8e556",
+          "embedding": "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",
+          "ahash": "ffffc38383030301",
+          "dhash": "0f6969c149591904"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_01320_yehYAUbW1a2PdCZPgeLKQgZT/f800/1784401793.webp?s=a03b4c362f9aa9b227de0cfef270c122bfe8e556",
+      "mis_a_jour": "2026-09-01T21:17:59"
+    },
+    "f07c4d0844b7a0": {
+      "rejet_id": "f07c4d0844b7a0",
+      "actif": true,
+      "titre_reference": "Nintendo Switch V2 – Console Seule | Vinted",
+      "tokens_titre": [
+        "v2",
+        "seule"
+      ],
+      "mots_description": [
+        "seule",
+        "batterie",
+        "envoi",
+        "modele",
+        "ameliore",
+        "meilleure",
+        "autonomie",
+        "vendue",
+        "sans",
+        "dock",
+        "accessoires",
+        "aucune",
+        "rayure",
+        "majeure",
+        "ecran",
+        "testee",
+        "avant",
+        "fonctionne",
+        "parfaitement",
+        "rapide"
+      ],
+      "prix_reference": 69.95,
+      "liens": [
+        "https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Nintendo Switch V2 – Console Seule - Nintendo Switch V2 – Console Seule – Très bon état\n\n✅ Console Nintendo Switch V2 (modèle amélioré, meilleure autonomie de batterie)\n✅ Vendue seule, sans Joy-Con, dock ni accessoires\n✅ Très bon état, aucune rayure majeure sur l'écran\n✅ Testée avant envoi, fonctionne parfaitement\n✅ Batterie en bon état\n\n📦 Envoi rapide et sécurisé\n📆 Expédition sous 3 jours ouvrés\n🔁 Retour gratuit\n🕑 2 semaines de garantie ou remboursement ! 💰\n\n❓ Pour toute question, je reste disponible\nNintendo Switch V2 – Console Seule - Nintendo Switch V2 – Console Seule – Très bon état\n\n✅ Console Nintendo Switch V2 (modèle amélioré, meilleure autonomie de batterie)\n✅ Vendue seule, sans Joy-Con, dock ni accessoires\n✅ Très bon état, aucune rayure majeure sur l'écran\n✅ Testée avant envoi, fonctionne parfaitement\n✅ Batterie en bon état\n\n📦 Envoi rapide et sécurisé\n📆 Expédition sous 3 jours ouvrés\n🔁 Retour gratuit\n🕑 2 semaines de garantie ou remboursement ! 💰\n\n❓ Pour toute question, je reste disponible",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_006eb_DJuswFXHZwEEKdJo3EK2bUni/f800/r2/1788017545.webp?s=7e073261514c280c48b85d1601829033e1df43e2",
+          "embedding": "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",
+          "ahash": "e000f8fcfef0e0e0",
+          "dhash": "bb7fde9e9fdefcfc"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_006eb_DJuswFXHZwEEKdJo3EK2bUni/f800/r2/1788017545.webp?s=7e073261514c280c48b85d1601829033e1df43e2",
+      "mis_a_jour": "2026-09-01T21:18:06"
     }
   },
   "liens_rejetes_classes": [
     "https://www.vinted.be/items/9859197529-caja-para-guardar-juegos",
     "https://www.vinted.be/items/9851375887-boite-vide-mario-and-sonic-aux-jeux-olympiques-tokyo-2020",
     "https://www.vinted.be/items/9615873222-gba-fr-pokemon-emeraude",
-    "https://www.vinted.be/items/9542930655-pokemon-cristal-de-jade-gba-fr"
+    "https://www.vinted.be/items/9542930655-pokemon-cristal-de-jade-gba-fr",
+    "https://www.vinted.be/items/9843204658-videogame-leeg-origineel-nintendo-switch-doosje-crash-bandicoot-n-sane-trilogy",
+    "https://www.vinted.be/items/9430589965-eeg-origineel-nintendo-switch-doosje-luigis-mansion-3",
+    "https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule"
   ]
 }
