@@ -317,12 +317,6 @@ async def verify_listing(page, url, fallback_title=""):
             "seller": seller,
             "image_url": image_url
         }
-            "ok": True,
-            "title": title,
-            "text": full_text[:12000],
-            "seller": seller
-        }
-
     except PlaywrightTimeoutError:
         return {
             "ok": False,
