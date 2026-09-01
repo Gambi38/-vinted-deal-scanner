@@ -1,0 +1,2 @@
+# -vinted-deal-scanner
+    README
