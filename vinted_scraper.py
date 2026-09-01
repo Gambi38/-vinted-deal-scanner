@@ -89,7 +89,7 @@ def title_keyword_hits(text, words):
         if not nw:
             continue
 
-        pattern = rf"(?<!\\w){re.escape(nw)}(?!\\w)"
+        pattern = rf"(?<!\w){re.escape(nw)}(?!\w)"
         if re.search(pattern, t):
             out.append(w)
 
