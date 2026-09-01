@@ -1,6 +1,5 @@
 {
   "_mode_emploi": [
-    "Tu peux ajouter un nouvel article en copiant un bloc dans articles_a_surveille.",
     "actif: true = filtre utilisé ; false = filtre désactivé.",
     "prix_recherche_max = prix maximum affiché dans la recherche Vinted.",
     "revente_prudente = prix réaliste auquel tu penses pouvoir revendre rapidement.",
