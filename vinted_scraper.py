@@ -466,7 +466,87 @@ async def scan_search(page, search, cfg, blacklist, seen_ids):
 
         if roi_low < min_roi:
             continue
+        # DOUBLE VERIFICATION DE L'ANNONCE
+        # On ouvre uniquement les candidats déjà rentables.
+        detail = await verify_listing(
+            page,
+            c["url"],
+            title
+        )
 
+        # Si Vinted empêche la vérification,
+        # on préfère ne pas envoyer une fausse bonne affaire.
+        if not detail.get("ok"):
+            print(
+                f"  ? VERIFICATION IMPOSSIBLE | "
+                f"{title[:65]} | {c['url']}"
+            )
+            continue
+
+        verified_title = detail.get("title") or title
+        verified_text = detail.get("text") or text
+        seller = detail.get("seller", "").strip()
+
+        # Vérification blacklist sur le contenu complet
+        deep_blocked, deep_group, deep_hits, deep_risks = (
+            blacklist_check(
+                verified_title,
+                verified_text,
+                blacklist
+            )
+        )
+
+        if deep_blocked:
+            print(
+                f"  X REJET APRES VERIFICATION "
+                f"[{deep_group}] "
+                f"{verified_title[:65]} | "
+                f"{deep_hits}"
+            )
+            continue
+
+        # Vérification du vendeur blacklisté
+        seller_blacklist = [
+            norm(x)
+            for x in blacklist.get(
+                "seller_blacklist",
+                []
+            )
+        ]
+
+        if seller and norm(seller) in seller_blacklist:
+            print(
+                f"  X VENDEUR BLACKLISTE | "
+                f"{seller} | {c['url']}"
+            )
+            continue
+
+        # Le produit doit encore correspondre
+        # au modèle recherché une fois la vraie annonce ouverte.
+        if not rule_match(
+            matched_rule,
+            verified_title,
+            verified_text
+        ):
+            print(
+                f"  X MAUVAIS PRODUIT | "
+                f"{verified_title[:70]}"
+            )
+            continue
+
+        # On remplace les données approximatives de la carte
+        # par les données vérifiées de l'annonce.
+        title = verified_title
+        text = verified_text
+
+        # On conserve aussi les avertissements trouvés
+        # dans la description complète.
+        risks = list(
+            dict.fromkeys(
+                list(risks) + list(deep_risks)
+            )
+        )
+        
         risk_messages = list(risks)
 
         abnormal = suspicious_price(
