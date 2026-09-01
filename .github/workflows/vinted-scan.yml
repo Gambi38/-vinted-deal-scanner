@@ -40,8 +40,7 @@ jobs:
           if [ ! -f alertes.csv ] && [ -f alerts.csv ]; then
             cp alerts.csv alertes.csv
           fi
-
-          python -m py_compile vinted_tarayici.py fusion_donnees.py
+          python -m py_compile vinted_tarayici.py vinted_v70.py fusion_donnees.py
           python -m json.tool config.json > /dev/null
           python -m json.tool blacklist.json > /dev/null
           python -m json.tool filtres.json > /dev/null
