@@ -1,46 +1,58 @@
-name: Vinted Tarayici
-
-"on":
-  workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
-
-permissions:
-  contents: write
-
-concurrency:
-  group: vinted-tarayici
-  cancel-in-progress: false
-
-jobs:
-  scanner:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: conditions.txt
-
-      - name: Installer
+      - name: Sauvegarder
+        if: always()
         run: |
-          pip install -r conditions.txt
-          python -m playwright install --with-deps chromium
+          git config user.name "vinted-tarayici-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Preparer
-        run: |
+          test -f annonces_vues.json || echo '[]' > annonces_vues.json
+          cp annonces_vues.json /tmp/vues.json
+
+          if [ -f alertes.csv ]; then
+            cp alertes.csv /tmp/alertes.csv
+          else
+            : > /tmp/alertes.csv
+          fi
+
+          for f in base_apprentissage.json exemples_classes.txt historique_annonces.jsonl; do
+            if [ -f "$f" ]; then
+              cp "$f" "/tmp/$f"
+            fi
+          done
+
+          git fetch origin main
+          git reset --hard origin/main
+
           if [ ! -f annonces_vues.json ]; then
-            if [ -f seen.json ]; then cp seen.json annonces_vues.json; else echo '[]' > annonces_vues.json; fi
+            if [ -f seen.json ]; then
+              cp seen.json annonces_vues.json
+            else
+              echo '[]' > annonces_vues.json
+            fi
           fi
 
-          if [ ! -f alertes.csv ] && [ -f alerts.csv ]; then
-            cp alerts.csv alertes.csv
+          python fusion_donnees.py \
+            /tmp/vues.json \
+            /tmp/alertes.csv \
+            annonces_vues.json \
+            alertes.csv
+
+          for f in base_apprentissage.json exemples_classes.txt historique_annonces.jsonl; do
+            if [ -f "/tmp/$f" ]; then
+              cp "/tmp/$f" "$f"
+            fi
+          done
+
+          git add annonces_vues.json
+          [ ! -f alertes.csv ] || git add alertes.csv
+          [ ! -f base_apprentissage.json ] || git add base_apprentissage.json
+          [ ! -f exemples_classes.txt ] || git add exemples_classes.txt
+          [ ! -f historique_annonces.jsonl ] || git add historique_annonces.jsonl
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Mise a jour apprentissage Vinted [skip ci]"
+            git push origin HEAD:main
           fi
-          python -m py_compile vinted_tarayici.py vinted_v70.py fusion_donnees.py
+      python -m py_compile vinted_tarayici.py vinted_v70.py fusion_donnees.py
           python -m json.tool config.json > /dev/null
           python -m json.tool blacklist.json > /dev/null
           python -m json.tool filtres.json > /dev/null
