@@ -63,5 +63,6 @@ jobs:
           git add seen.json alerts.csv
           if ! git diff --cached --quiet; then
             git commit -m "Update scanner state [skip ci]"
-            git push
+            git pull --rebase origin main
+git push
           fi
