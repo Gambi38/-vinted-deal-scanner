@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
-import asyncio
-import csv
-import json
-import re
-import sys
-import time
-import os
-import urllib.request
-import urllib.parse
+import asyncio, csv, json, os, re, sys, unicodedata, urllib.parse, urllib.request
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote_plus, urljoin
-
+from urllib.parse import quote_plus, unquote
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
+BLACKLIST_PATH = ROOT / "blacklist.json"
 SEEN_PATH = ROOT / "seen.json"
 ALERTS_CSV = ROOT / "alerts.csv"
 PROFILE_DIR = ROOT / ".vinted_profile"
 
 PRICE_RE = re.compile(r"(?:(\d{1,4}(?:[.,]\d{1,2})?)\s*€|€\s*(\d{1,4}(?:[.,]\d{1,2})?))")
 ITEM_ID_RE = re.compile(r"/items/(\d+)")
+SLUG_RE = re.compile(r"/items/\d+-([^/?#]+)")
 
 def load_json(path, default):
     if not path.exists():
@@ -36,7 +29,9 @@ def save_json(path, data):
     tmp.replace(path)
 
 def norm(s):
-    return re.sub(r"\s+", " ", (s or "").lower()).strip()
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", s.lower()).strip()
 
 def parse_price(text):
     vals = []
@@ -50,96 +45,108 @@ def parse_price(text):
 
 def fee_estimate(price, cfg):
     bp = cfg.get("buyer_protection_estimate", {})
-    fixed = float(bp.get("fixed", 0.70))
-    pct = float(bp.get("pct", 0.05))
-    shipping = float(cfg.get("shipping_estimate", 4.50))
-    return fixed + pct * price + shipping
+    return (
+        float(bp.get("fixed", 0.70))
+        + float(bp.get("pct", 0.05)) * price
+        + float(cfg.get("shipping_estimate", 4.50))
+    )
 
-def rule_match(rule, text):
+def keyword_hits(text, words):
     t = norm(text)
+    return [w for w in words if norm(w) and norm(w) in t]
+
+def blacklist_check(title, text, blacklist):
+    combined = f"{title} {text}"
+    for group in ("hard_blacklist", "fake_blacklist", "accessory_blacklist"):
+        hits = keyword_hits(combined, blacklist.get(group, []))
+        if hits:
+            return True, group, hits[:3], []
+    risks = keyword_hits(combined, blacklist.get("suspicious_words", []))
+    return False, "", [], risks[:3]
+
+def rule_match(rule, title, text):
+    title_n = norm(title)
+    full_n = norm(f"{title} {text}")
     must = [norm(x) for x in rule.get("must_contain", [])]
     any_kw = [norm(x) for x in rule.get("any_contain", [])]
-    exc = [norm(x) for x in rule.get("exclude", [])]
-    if must and not all(x in t for x in must):
+    hardware = [norm(x) for x in rule.get("hardware_any", [])]
+    excludes = [norm(x) for x in rule.get("exclude", [])]
+
+    if must and not all(x in title_n for x in must):
         return False
-    if any_kw and not any(x in t for x in any_kw):
+    if any_kw and not any(x in title_n for x in any_kw):
         return False
-    if exc and any(x in t for x in exc):
+    if hardware and not any(x in full_n for x in hardware):
+        return False
+    if excludes and any(x in full_n for x in excludes):
         return False
     return True
 
-def score_candidate(rule, listing_price, cfg):
-    extras = fee_estimate(listing_price, cfg)
-    total = listing_price + extras
-    resale_low = rule.get("resale_low")
-    resale_high = rule.get("resale_high")
-    if resale_low is None:
-        return {
-            "total_buy": round(total, 2),
-            "margin_low": None,
-            "margin_high": None,
-            "resale_low": None,
-            "resale_high": None,
-        }
-    low = float(resale_low)
-    high = float(resale_high or resale_low)
-    return {
-        "total_buy": round(total, 2),
-        "margin_low": round(low - total, 2),
-        "margin_high": round(high - total, 2),
-        "resale_low": low,
-        "resale_high": high,
-    }
+def score_candidate(rule, price, cfg):
+    total = price + fee_estimate(price, cfg)
+    low = rule.get("resale_low")
+    high = rule.get("resale_high")
+    if low is None:
+        return round(total, 2), None, None, None, None, None
+    low = float(low)
+    high = float(high or low)
+    margin_low = low - total
+    margin_high = high - total
+    roi = margin_low / total * 100 if total > 0 else 0
+    return round(total, 2), low, high, round(margin_low, 2), round(margin_high, 2), round(roi, 1)
 
+def clean_title(value):
+    value = re.sub(r"^(image|photo)\s+(de|of)\s+", "", (value or "").strip(), flags=re.I)
+    value = re.sub(r"\s+", " ", value)
+    if not 3 <= len(value) <= 220 or "€" in value:
+        return ""
+    return value
 
-
+def title_from_card(card):
+    for key in ("img_alt", "aria_label", "anchor_title", "anchor_text"):
+        value = clean_title(card.get(key, ""))
+        if value:
+            return value
+    m = SLUG_RE.search(card.get("href", ""))
+    return unquote(m.group(1)).replace("-", " ") if m else "Annonce Vinted"
 
 def ntfy_send(row):
-    """Send a push notification through ntfy."""
     topic = os.getenv("NTFY_TOPIC", "").strip()
     if not topic:
         return False
+    url = f"{os.getenv('NTFY_SERVER','https://ntfy.sh').rstrip('/')}/{urllib.parse.quote(topic, safe='')}"
+    title = "Deal Vinted"
+    if row["risk"]:
+        title = "Deal Vinted - A VERIFIER"
+    elif row["margin_low"] >= 45:
+        title = "Deal Vinted - TRES BON"
 
-    server = os.getenv("NTFY_SERVER", "https://ntfy.sh").strip().rstrip("/")
-    url = f"{server}/{urllib.parse.quote(topic, safe='')}"
-
-    title = "🔥 Deal Vinted"
-    if row["margin_low"] is None:
-        title = "🔎 Annonce Vinted à vérifier"
-
-    if row["margin_low"] is None:
-        body = (
-            f"{row.get('title', 'Annonce Vinted')[:160]}\n"
-            f"Prix: {row['listing_price']:.2f} €\n"
-            f"Coût estimé: {row['total_buy_est']:.2f} €"
-        )
-    else:
-        body = (
-            f"{row.get('title', 'Annonce Vinted')[:160]}\n"
-            f"Prix: {row['listing_price']:.2f} €\n"
-            f"Coût estimé: {row['total_buy_est']:.2f} €\n"
-            f"Revente: {row['resale_low']:.0f}–{row['resale_high']:.0f} €\n"
-            f"Marge: +{row['margin_low']:.2f} à +{row['margin_high']:.2f} €"
-        )
+    body = (
+        f"{row['title'][:160]}\n"
+        f"Prix: {row['listing_price']:.2f} EUR\n"
+        f"Cout estime: {row['total_buy_est']:.2f} EUR\n"
+        f"Revente prudente: {row['resale_low']:.0f}-{row['resale_high']:.0f} EUR\n"
+        f"Marge: +{row['margin_low']:.2f} a +{row['margin_high']:.2f} EUR\n"
+        f"ROI mini: {row['roi_low']:.0f}%\n"
+        f"Demande: {row['demand_score']}/5"
+    )
+    if row["risk"]:
+        body += f"\nRisque: {row['risk']}"
 
     headers = {
         "Title": title,
-        "Priority": "high" if row["margin_low"] is not None and row["margin_low"] >= 40 else "default",
+        "Priority": "high" if row["margin_low"] >= 40 else "default",
         "Tags": "moneybag,shopping_cart",
         "Click": row["url"],
         "Actions": f"view, Ouvrir Vinted, {row['url']}",
     }
-
-    auth_token = os.getenv("NTFY_ACCESS_TOKEN", "").strip()
-    if auth_token:
-        headers["Authorization"] = f"Bearer {auth_token}"
 
     try:
         req = urllib.request.Request(
             url,
             data=body.encode("utf-8"),
             method="POST",
-            headers=headers,
+            headers=headers
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             return 200 <= resp.status < 300
@@ -148,177 +155,447 @@ def ntfy_send(row):
         return False
 
 def append_alert(row):
+    fields = [
+        "timestamp","search","title","listing_price","total_buy_est",
+        "resale_low","resale_high","margin_low","margin_high","url","item_id"
+    ]
     new = not ALERTS_CSV.exists()
     with ALERTS_CSV.open("a", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=[
-            "timestamp","search","title","listing_price","total_buy_est",
-            "resale_low","resale_high","margin_low","margin_high","url","item_id"
-        ])
+        w = csv.DictWriter(f, fieldnames=fields)
         if new:
-            w.writeheader()
-        w.writerow(row)
+            w.writeheader()        w.writerow({k: row.get(k, "") for k in fields})
+
 
 async def extract_cards(page):
-    # We intentionally use broad selectors because Vinted changes CSS class names often.
     data = await page.locator('a[href*="/items/"]').evaluate_all("""
     els => els.map(a => {
-      const href = a.href;
       let node = a;
       let text = (a.innerText || '').trim();
-      for (let i=0; i<5 && node; i++, node=node.parentElement) {
+
+      for (let i = 0; i < 5 && node; i++, node = node.parentElement) {
         const t = (node.innerText || '').trim();
         if (t.length > text.length && t.length < 1200) text = t;
       }
-      return {href, text};
+
+      const img = a.querySelector('img');
+
+      return {
+        href: a.href || '',
+        text: text,
+        anchor_text: (a.innerText || '').trim(),
+        aria_label: a.getAttribute('aria-label') || '',
+        anchor_title: a.getAttribute('title') || '',
+        img_alt: img ? (img.getAttribute('alt') || '') : ''
+      };
     })
     """)
-    out, seen = [], set()
+
+    out = []
+    already = set()
+
     for x in data:
-        href = x.get("href","")
+        href = x.get("href", "")
         m = ITEM_ID_RE.search(href)
+
         if not m:
             continue
+
         item_id = m.group(1)
-        if item_id in seen:
+
+        if item_id in already:
             continue
-        seen.add(item_id)
-        out.append({"item_id": item_id, "url": href.split("?")[0], "text": x.get("text","")})
+
+        already.add(item_id)
+
+        x["item_id"] = item_id
+        x["url"] = href.split("?")[0]
+        x["title"] = title_from_card(x)
+
+        out.append(x)
+
     return out
 
-async def scan_search(page, search, cfg, seen_ids):
+
+def suspicious_price(rule, price):
+    resale_low = rule.get("resale_low")
+
+    if resale_low is None:
+        return ""
+
+    resale_low = float(resale_low)
+
+    # Exemple :
+    # console normalement revendable 180 EUR,
+    # annonce à 35 EUR => on ne l'ignore pas,
+    # mais on la classe "à vérifier".
+    threshold = float(rule.get("suspicious_price_ratio", 0.38))
+
+    if price <= resale_low * threshold:
+        return "prix anormalement bas"
+
+    return ""
+
+
+async def scan_search(page, search, cfg, blacklist, seen_ids):
     base = cfg.get("base_url", "https://www.vinted.be").rstrip("/")
     query = search["query"]
     price_to = search.get("price_to")
-    url = f"{base}/catalog?search_text={quote_plus(query)}&order=newest_first"
+
+    url = (
+        f"{base}/catalog?"
+        f"search_text={quote_plus(query)}"
+        f"&order=newest_first"
+    )
+
     if price_to is not None:
         url += f"&price_to={float(price_to):g}"
 
-    print(f"\n[SCAN] {search['name']}  ->  {url}")
+    print(f"\n[SCAN] {search['name']} -> {url}")
+
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        await page.wait_for_timeout(int(cfg.get("page_wait_ms", 2500)))
-        await page.locator('a[href*="/items/"]').first.wait_for(timeout=12000)
+        await page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=45000
+        )
+
+        await page.wait_for_timeout(
+            int(cfg.get("page_wait_ms", 1800))
+        )
+
+        await page.locator(
+            'a[href*="/items/"]'
+        ).first.wait_for(timeout=12000)
+
     except PlaywrightTimeoutError:
-        print("  ! Aucun résultat visible / validation Vinted possible.")
+        print("  ! Aucun résultat visible / contrôle Vinted possible.")
         return []
 
     cards = await extract_cards(page)
+
     new_alerts = []
 
-    for c in cards[: int(cfg.get("max_items_per_search", 60))]:
+    max_items = int(
+        cfg.get("max_items_per_search", 40)
+    )
+
+    global_min_roi = float(
+        cfg.get("min_roi_pct", 20)
+    )
+
+    global_min_demand = int(
+        cfg.get("min_demand_score", 0)
+    )
+
+    for c in cards[:max_items]:
+
         if c["item_id"] in seen_ids:
             continue
 
-        text = c["text"]
-        p = parse_price(text)
-        if p is None:
+        title = c["title"]
+        text = c.get("text", "")
+
+        price = parse_price(text)
+
+        if price is None:
             continue
 
-        # Search-level ceiling first.
-        if search.get("price_to") is not None and p > float(search["price_to"]) * 1.05:
+        # Protection contre une mauvaise extraction
+        # qui récupérerait un autre prix présent sur la carte.
+        if (
+            price_to is not None
+            and price > float(price_to) * 1.05
+        ):
+            continue
+
+        blocked, blacklist_group, blacklist_hits, risks = (
+            blacklist_check(
+                title,
+                text,
+                blacklist
+            )
+        )
+
+        if blocked:
+            print(
+                f"  X BLACKLIST [{blacklist_group}] "
+                f"{title[:70]} | {blacklist_hits}"
+            )
             continue
 
         matched_rule = None
+
         for rule in search.get("rules", []):
-            if rule_match(rule, text):
+            if rule_match(rule, title, text):
                 matched_rule = rule
                 break
 
         if matched_rule is None:
-            if search.get("manual_review", False):
-                matched_rule = {
-                    "label": "REVUE MANUELLE",
-                    "resale_low": None,
-                    "resale_high": None,
-                }
-            else:
-                continue
-
-        s = score_candidate(matched_rule, p, cfg)
-        min_margin = float(matched_rule.get("min_margin", cfg.get("min_margin", 25)))
-        if s["margin_low"] is not None and s["margin_low"] < min_margin:
             continue
 
-        title = norm(text)[:140]
+        (
+            total,
+            resale_low,
+            resale_high,
+            margin_low,
+            margin_high,
+            roi_low
+        ) = score_candidate(
+            matched_rule,
+            price,
+            cfg
+        )
+
+        if margin_low is None:
+            continue
+
+        min_margin = float(
+            matched_rule.get(
+                "min_margin",
+                cfg.get("min_margin", 25)
+            )
+        )
+
+        min_roi = float(
+            matched_rule.get(
+                "min_roi_pct",
+                global_min_roi
+            )
+        )
+
+        demand_score = int(
+            matched_rule.get(
+                "demand_score",
+                3
+            )
+        )
+
+        if demand_score < global_min_demand:
+            continue
+
+        if margin_low < min_margin:
+            continue
+
+        if roi_low < min_roi:
+            continue
+
+        risk_messages = list(risks)
+
+        abnormal = suspicious_price(
+            matched_rule,
+            price
+        )
+
+        if abnormal:
+            risk_messages.append(abnormal)
+
+        risk = ", ".join(
+            dict.fromkeys(risk_messages)
+        )
+
         row = {
-            "timestamp": datetime.now().isoformat(timespec="seconds"),
-            "search": search["name"] + " / " + matched_rule.get("label",""),
+            "timestamp": datetime.now().isoformat(
+                timespec="seconds"
+            ),
+            "search": (
+                search["name"]
+                + " / "
+                + matched_rule.get("label", "")
+            ),
             "title": title,
-            "listing_price": round(p,2),
-            "total_buy_est": s["total_buy"],
-            "resale_low": s["resale_low"],
-            "resale_high": s["resale_high"],
-            "margin_low": s["margin_low"],
-            "margin_high": s["margin_high"],
+            "listing_price": round(price, 2),
+            "total_buy_est": total,
+            "resale_low": resale_low,
+            "resale_high": resale_high,
+            "margin_low": margin_low,
+            "margin_high": margin_high,
+            "roi_low": roi_low,
+            "demand_score": demand_score,
+            "risk": risk,
             "url": c["url"],
-            "item_id": c["item_id"],
+            "item_id": c["item_id"]
         }
+
         append_alert(row)
+
         new_alerts.append(row)
+
         ntfy_send(row)
 
-        if s["margin_low"] is None:
-            print(f"  ? REVUE | {p:.2f} € | {c['url']}")
-        else:
-            print(
-                f"  ★ DEAL | annonce {p:.2f} € | coût ~{s['total_buy']:.2f} € | "
-                f"revente {s['resale_low']:.0f}-{s['resale_high']:.0f} € | "
-                f"marge {s['margin_low']:.2f}-{s['margin_high']:.2f} €\n"
-                f"          {c['url']}"
-            )
+        status = (
+            "A VERIFIER"
+            if risk
+            else "BON PLAN"
+        )
 
-    # Only persist IDs that actually generated an alert.
-    # This keeps GitHub history small while preventing duplicate Telegram alerts.
+        print(
+            f"  ★ {status} | "
+            f"{title[:65]} | "
+            f"{price:.2f} EUR | "
+            f"marge +{margin_low:.2f} EUR | "
+            f"ROI {roi_low:.0f}% | "
+            f"demande {demand_score}/5"
+        )
+
+        print(
+            f"    {c['url']}"
+        )
+
+    # On mémorise seulement les annonces
+    # qui ont réellement déclenché une alerte.
     for row in new_alerts:
-        seen_ids.add(row["item_id"])
+        seen_ids.add(
+            row["item_id"]
+        )
+
     return new_alerts
 
+
 async def main():
-    cfg = load_json(CONFIG_PATH, {})
+    cfg = load_json(
+        CONFIG_PATH,
+        {}
+    )
+
+    blacklist = load_json(
+        BLACKLIST_PATH,
+        {}
+    )
+
     if not cfg:
         print("config.json introuvable.")
         sys.exit(1)
 
-    seen_ids = set(load_json(SEEN_PATH, []))
-    one_shot = "--once" in sys.argv
-    headless = "--headless" in sys.argv
+    if not blacklist:
+        print(
+            "ATTENTION: blacklist.json "
+            "introuvable ou vide."
+        )
 
-    print("Vinted Deal Scanner")
-    print("Ctrl+C pour arrêter.")
-    print("Les coûts/frais sont des ESTIMATIONS configurables dans config.json.")
+    seen_ids = set(
+        load_json(
+            SEEN_PATH,
+            []
+        )
+    )
+
+    one_shot = "--once" in sys.argv
+    headless_arg = "--headless" in sys.argv
+
+    print("Vinted Deal Scanner V2")
+    print(
+        "Mode anti faux-positifs + "
+        "marge + ROI + demande + blacklist."
+    )
 
     async with async_playwright() as p:
-        # In Docker/server mode, HEADLESS=1 is used automatically.
-        env_headless = os.getenv("HEADLESS", "").strip().lower() in {"1", "true", "yes", "on"}
-        effective_headless = headless or env_headless
+
+        env_headless = (
+            os.getenv(
+                "HEADLESS",
+                ""
+            ).strip().lower()
+            in {
+                "1",
+                "true",
+                "yes",
+                "on"
+            }
+        )
+
+        effective_headless = (
+            headless_arg
+            or env_headless
+        )
+
         context = await p.chromium.launch_persistent_context(
             user_data_dir=str(PROFILE_DIR),
             headless=effective_headless,
-            viewport={"width": 1280, "height": 900},
+            viewport={
+                "width": 1280,
+                "height": 900
+            },
             locale="fr-BE",
-            args=["--no-sandbox", "--disable-dev-shm-usage"],
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage"
+            ]
         )
-        page = context.pages[0] if context.pages else await context.new_page()
+
+        page = (
+            context.pages[0]
+            if context.pages
+            else await context.new_page()
+        )
 
         while True:
-            cycle_alerts = 0
-            for search in cfg.get("searches", []):
-                try:
-                    alerts = await scan_search(page, search, cfg, seen_ids)
-                    cycle_alerts += len(alerts)
-                    save_json(SEEN_PATH, sorted(seen_ids))
-                    await asyncio.sleep(float(cfg.get("delay_between_searches", 3)))
-                except Exception as e:
-                    print(f"  ! Erreur sur {search.get('name')}: {e}")
 
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Cycle terminé — {cycle_alerts} nouveau(x) deal(s).")
-            save_json(SEEN_PATH, sorted(seen_ids))
+            cycle_alerts = 0
+
+            for search in cfg.get(
+                "searches",
+                []
+            ):
+                try:
+                    alerts = await scan_search(
+                        page,
+                        search,
+                        cfg,
+                        blacklist,
+                        seen_ids
+                    )
+
+                    cycle_alerts += len(
+                        alerts
+                    )
+
+                    save_json(
+                        SEEN_PATH,
+                        sorted(seen_ids)
+                    )
+
+                    await asyncio.sleep(
+                        float(
+                            cfg.get(
+                                "delay_between_searches",
+                                1
+                            )
+                        )
+                    )
+
+                except Exception as e:
+                    print(
+                        f"  ! Erreur "
+                        f"{search.get('name')}: "
+                        f"{e}"
+                    )
+
+            print(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] "
+                f"Cycle terminé — "
+                f"{cycle_alerts} nouveau(x) "
+                f"bon(s) plan(s)."
+            )
+
+            save_json(
+                SEEN_PATH,
+                sorted(seen_ids)
+            )
 
             if one_shot:
                 break
-            await asyncio.sleep(float(cfg.get("poll_seconds", 90)))
+
+            await asyncio.sleep(
+                float(
+                    cfg.get(
+                        "poll_seconds",
+                        300
+                    )
+                )
+            )
 
         await context.close()
+
 
 if __name__ == "__main__":
     try:
