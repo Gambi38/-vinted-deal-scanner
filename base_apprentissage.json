@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T22:12:29"
+      "mis_a_jour": "2026-09-01T22:17:15"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -2966,6 +2966,95 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/06_0248e_DUs2cFGfYrFhmYH9uaBfEvbM/f800/1788299006.webp?s=445f4354857170b4aba67b06afcc6fa524bca4f8",
       "mis_a_jour": "2026-09-01T22:13:27"
+    },
+    "f16d8cc5b2ebd2": {
+      "profil_id": "f16d8cc5b2ebd2",
+      "actif": true,
+      "type_produit": "console",
+      "categorie": "CONSOLE",
+      "plateforme": "",
+      "modele": "nintendo switch",
+      "titre_reference": "Nintendo switch v1 noir | Vinted",
+      "requete": "nintendo switch",
+      "mots_obligatoires": [
+        "switch"
+      ],
+      "mots_secondaires": [],
+      "mots_description": [
+        "noir",
+        "vends",
+        "cette",
+        "noire",
+        "deux",
+        "bleu",
+        "rouge",
+        "station",
+        "accueil",
+        "prete",
+        "jouer"
+      ],
+      "mots_exclus": [
+        "ricambi",
+        "ricambio",
+        "pezzi di ricambio",
+        "pour pièces",
+        "pour pieces",
+        "pièces détachées",
+        "pieces detachees",
+        "spare parts",
+        "for parts",
+        "parts only",
+        "carte r4",
+        "r4 card",
+        "flashcard",
+        "flash card",
+        "tarjeta",
+        "409 juegos",
+        "208 juegos",
+        "500 juegos",
+        "jeux intégrés",
+        "jeux integres",
+        "multicart",
+        "multi cart",
+        "motherboard",
+        "carte mère",
+        "carte mere",
+        "port ds",
+        "port cartouche",
+        "lecteur cartouche",
+        "écran seul",
+        "ecran seul",
+        "screen only",
+        "coque seule",
+        "shell only",
+        "chassis seul"
+      ],
+      "aliases_console": [
+        "nintendo switch",
+        "switch"
+      ],
+      "prix_exemples": [
+        69.0
+      ],
+      "prix_cible_median": 69.0,
+      "prix_cible_max": 81.42,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Nintendo switch v1 noir - Je vends cette Nintendo Switch V1 noire avec ses deux Joy-Con (bleu et rouge) et sa station d'accueil.\nConsole complète et prête à jouer\nNintendo switch v1 noir - Je vends cette Nintendo Switch V1 noire avec ses deux Joy-Con (bleu et rouge) et sa station d'accueil.\nConsole complète et prête à jouer",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/01_014e3_F1qPXtRBUtaqycUSK25vp3yX/f800/1787171694.webp?s=4025d57d934267af27eaa6c90990c7cf4848d962",
+          "embedding": "",
+          "ahash": "870703031f3f67c7",
+          "dhash": "f3f1f1f1ce8c32f3"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/01_014e3_F1qPXtRBUtaqycUSK25vp3yX/f800/1787171694.webp?s=4025d57d934267af27eaa6c90990c7cf4848d962",
+      "mis_a_jour": "2026-09-01T22:18:51"
     }
   },
   "liens_classes": [
@@ -2994,7 +3083,8 @@
     "https://www.vinted.be/items/9732991966-es-ist-sehr-gut-ich-hab-es-ein-paar-mal-benutzt",
     "https://www.vinted.be/items/9745183583-gravity-rush-2",
     "https://www.vinted.be/items/9755628921-ps-vita-noir",
-    "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate"
+    "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate",
+    "https://www.vinted.be/items/9714521827-nintendo-switch-v1-noir"
   ],
   "historique_importe": [],
   "profils_negatifs": {
