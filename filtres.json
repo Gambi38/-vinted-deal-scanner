@@ -1,0 +1,258 @@
+{
+  "_mode_emploi": [
+    "Ce fichier sert aux filtres manuels détaillés.",
+    "Pour apprendre au bot avec de simples liens, utilise exemples.txt : un lien par ligne.",
+    "config.json reste la grande base de produits ; filtres.json ne la remplace pas."
+  ],
+  "mots_a_exclure": [
+    "boite vide",
+    "boîte vide",
+    "empty box",
+    "box only",
+    "cristalbox",
+    "hub usb-c",
+    "usb-c hub",
+    "manette seule",
+    "controller only",
+    "joy-con seul",
+    "joycon seul"
+  ],
+  "mots_a_exclure_du_titre": [
+    "boite vide",
+    "boîte vide",
+    "empty box",
+    "box only",
+    "cristalbox",
+    "hub usb-c",
+    "usb-c hub"
+  ],
+  "articles_a_surveille": [
+    {
+      "actif": true,
+      "prioritaire": true,
+      "nom": "Nintendo 3DS",
+      "categorie": "CONSOLE",
+      "recherches_vinted": [
+        "3ds",
+        "nintendo 3ds",
+        "nintedo 3ds"
+      ],
+      "prix_recherche_max": 55,
+      "marque": "Nintendo",
+      "modele": "3DS",
+      "mots_obligatoires": [
+        "3ds"
+      ],
+      "un_des_mots": [],
+      "indices_materiel": [
+        "console",
+        "fonctionne",
+        "fonctionnel",
+        "working",
+        "tested",
+        "testé",
+        "s'allume",
+        "s allume"
+      ],
+      "titres_exacts": [
+        "Nintendo 3DS",
+        "3DS"
+      ],
+      "mots_exclus": [
+        "3ds xl",
+        "new 3ds",
+        "boite vide",
+        "boîte vide",
+        "coque",
+        "écran seul",
+        "ecran seul",
+        "chargeur seul",
+        "jeu 3ds"
+      ],
+      "revente_prudente": 90,
+      "revente_haute": 115,
+      "ratio_achat_max": 0.45,
+      "marge_minimum": 20,
+      "roi_minimum": 35,
+      "score_demande": 5,
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
+    },
+    {
+      "actif": true,
+      "prioritaire": true,
+      "nom": "Nintendo DS Lite",
+      "categorie": "CONSOLE",
+      "recherches_vinted": [
+        "ds lite",
+        "nintendo ds lite",
+        "ds litte"
+      ],
+      "prix_recherche_max": 28,
+      "marque": "Nintendo",
+      "modele": "DS Lite",
+      "mots_obligatoires": [
+        "ds",
+        "lite"
+      ],
+      "un_des_mots": [],
+      "indices_materiel": [
+        "console",
+        "fonctionne",
+        "fonctionnel",
+        "working",
+        "tested",
+        "testé",
+        "s'allume",
+        "s allume"
+      ],
+      "titres_exacts": [
+        "Nintendo DS Lite",
+        "DS Lite",
+        "DS Lite rouge"
+      ],
+      "mots_exclus": [
+        "boite vide",
+        "boîte vide",
+        "coque",
+        "écran seul",
+        "ecran seul",
+        "chargeur seul",
+        "jeu ds"
+      ],
+      "revente_prudente": 50,
+      "revente_haute": 65,
+      "ratio_achat_max": 0.5,
+      "marge_minimum": 12,
+      "roi_minimum": 35,
+      "score_demande": 4,
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
+    },
+    {
+      "actif": true,
+      "prioritaire": true,
+      "nom": "Super Mario Party Switch",
+      "categorie": "JEU_SWITCH",
+      "recherches_vinted": [
+        "super mario party",
+        "mario party",
+        "mario parti"
+      ],
+      "prix_recherche_max": 14,
+      "marque": "Nintendo",
+      "modele": "Super Mario Party",
+      "mots_obligatoires": [
+        "mario",
+        "party"
+      ],
+      "un_des_mots": [
+        "super mario party",
+        "mario party"
+      ],
+      "mots_plateforme": [
+        "switch",
+        "nintendo switch"
+      ],
+      "mots_exclus": [
+        "boite vide",
+        "boîte vide",
+        "case only",
+        "steelbook",
+        "poster",
+        "figurine",
+        "goodies",
+        "sans jeu"
+      ],
+      "revente_prudente": 25,
+      "revente_haute": 30,
+      "ratio_achat_max": 0.55,
+      "marge_minimum": 5,
+      "roi_minimum": 25,
+      "score_demande": 5,
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
+    },
+    {
+      "actif": true,
+      "prioritaire": true,
+      "nom": "New Super Mario Bros U Deluxe",
+      "categorie": "JEU_SWITCH",
+      "recherches_vinted": [
+        "super mario bros u deluxe",
+        "mario bros u deluxe",
+        "mario brosu deluxe",
+        "mario u deluxe"
+      ],
+      "prix_recherche_max": 16,
+      "marque": "Nintendo",
+      "modele": "New Super Mario Bros U Deluxe",
+      "mots_obligatoires": [
+        "mario",
+        "deluxe"
+      ],
+      "un_des_mots": [
+        "bros u",
+        "brosu",
+        "mario u",
+        "super mario bros"
+      ],
+      "mots_plateforme": [
+        "switch",
+        "nintendo switch"
+      ],
+      "mots_exclus": [
+        "boite vide",
+        "boîte vide",
+        "case only",
+        "steelbook",
+        "poster",
+        "figurine",
+        "goodies",
+        "sans jeu",
+        "wii u"
+      ],
+      "revente_prudente": 30,
+      "revente_haute": 35,
+      "ratio_achat_max": 0.5,
+      "marge_minimum": 8,
+      "roi_minimum": 30,
+      "score_demande": 5,
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
+    }
+  ],
+  "_modele_a_copier": {
+    "actif": false,
+    "prioritaire": true,
+    "nom": "NOM DE TON ARTICLE",
+    "categorie": "JEU_SWITCH",
+    "recherches_vinted": [
+      "recherche principale",
+      "variante ou faute fréquente"
+    ],
+    "prix_recherche_max": 30,
+    "marque": "",
+    "modele": "",
+    "mots_obligatoires": [
+      "mot important"
+    ],
+    "un_des_mots": [],
+    "mots_plateforme": [],
+    "indices_materiel": [],
+    "titres_exacts": [],
+    "mots_exclus": [
+      "boite vide",
+      "boîte vide",
+      "accessoire"
+    ],
+    "revente_prudente": 60,
+    "revente_haute": 75,
+    "ratio_achat_max": 0.4,
+    "marge_minimum": 15,
+    "roi_minimum": 30,
+    "score_demande": 4,
+    "nombre_annonces_a_lire": 40,
+    "tolerer_fautes": true
+  }
+}
