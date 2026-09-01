@@ -164,7 +164,7 @@ def append_alert(row):
         w = csv.DictWriter(f, fieldnames=fields)
         if new:
             w.writeheader() 
-            w.writerow({k: row.get(k, "") for k in fields})
+        w.writerow({k: row.get(k, "") for k in fields})
 
 
 async def extract_cards(page):
