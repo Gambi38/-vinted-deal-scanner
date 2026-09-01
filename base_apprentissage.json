@@ -4335,5 +4335,55 @@
       "9859970410"
     ],
     "dernier_flash": "2026-09-01T23:16:33"
+  },
+  "v8": {
+    "tracked": {},
+    "fast_sales": [],
+    "fast_disappearances": [],
+    "positive_examples": [
+      {
+        "url": "https://www.vinted.be/items/9856997431-nintendo-3ds",
+        "title": "",
+        "description": "",
+        "price": null,
+        "image_url": "",
+        "image_hash": "",
+        "negative": false,
+        "learned_at": "2026-09-01T23:32:59"
+      },
+      {
+        "url": "https://www.vinted.be/items/9856944285-ds-lite-rouge",
+        "title": "Ds lite rouge",
+        "description": "Ds lite rouge - Sans jeux ni chargeur vendu fonctionnel aucun retour accepté demande moi tout ce qu'il vous faux avant l'achat merci\nJe peux changer la catégorie pour coûter moins cher les frais d'envoi\nDs lite rouge - Sans jeux ni chargeur vendu fonctionnel aucun retour accepté demande moi tout ce qu'il vous faux avant l'achat merci\nJe peux changer la catégorie pour coûter moins cher les frais d'envoi",
+        "price": null,
+        "image_url": "https://images1.vinted.net/t/05_02596_sYKhHsDcos9SjHasHmASb27W/f800/1788282971.webp?s=975dbc796018bcf71b0b539b042d451b6d1834e7",
+        "image_hash": "6cedccccccccf070",
+        "negative": false,
+        "learned_at": "2026-09-01T23:33:02"
+      }
+    ],
+    "negative_examples": [
+      {
+        "url": "https://www.vinted.be/items/9615873222-gba-fr-pokemon-emeraude",
+        "title": "GBA FR + Pokémon Émeraude",
+        "description": "GBA FR + Pokémon Émeraude - La version définitive, Émeraude. Pokémon Émeraude + reprend tout ce qui constituait la meilleure mouture GBA Pokémon et pousse le concept plus loin — Pokédex élargi, équilibrage optimisé, ainsi qu'une aventure Hoenn bonifiée pour les joueurs refusant de se contenter du minimum. Tout ce qu'Émeraude était, en mieux.\n\nToute la substance d'Émeraude est préservée : les deux factions Team Aqua et Team Magma, les Fronts de Combat, Rayquaza au Pilier du Ciel, la Ligue de Hoenn. En plus : un Pokédex étendu aux générations supérieures, des améliorations de l'interface de jeu, des zones bonus et du contenu post-jeu enrichi qui donnent une vraie raison de continuer après avoir battu la Ligue.\n\nLa version idéale pour découvrir Hoenn pour la première fois — ou pour y revenir avec du contenu inédit et un défi renouvelé.\n\n✅ Émeraude intégral + contenu additionnel et post-jeu enrichi\n✅ Pokédex élargi aux générations supérieures\n✅ Équilibrage et améliorations de l'interface de jeu\n✅ Fronts de Combat développés avec plus de défis\n✅ Rayquaza, Kyogre, Groudon et légendaires accessibles\n✅ Version entièrement en français\n\n🇫🇷 Cartouche française haute qualité — traduction complète, jouez dans votre langue sans compromis 📦 Boîte artisanale 100% française\n───────────────────────────────────────────────────────\nCompatible avec : GBA • GBA SP • GBA Micro • DS / DS Lite • GameCube (Game Boy Player)\n───────────────────────────────────────────────────────\n🎮 Console GBA personnalisée disponible\n🎁 Pack disponible : jeu + console GBA à prix réduit — contactez-moi pour un bundle !\nGBA FR + Pokémon Émeraude - La version définitive, Émeraude. Pokémon Émeraude + reprend tout ce qui constituait la meilleure mouture GBA Pokémon et pousse le concept plus loin — Pokédex élargi, équil",
+        "price": null,
+        "image_url": "https://images1.vinted.net/t/02_00243_26RjrcNWrKCJ6V3ekyGvKvMC/f800/1786281865.webp?s=9306c5de3ace74d3f4f7979b5979e1b347fe9b20",
+        "image_hash": "abe78791d4cea4f9",
+        "negative": true,
+        "learned_at": "2026-09-01T23:33:05"
+      },
+      {
+        "url": "https://www.vinted.be/items/9859197529-caja-para-guardar-juegos",
+        "title": "caja para guardar juegos",
+        "description": "caja para guardar juegos - caja de nintendo en buen estado para guardar hasta 4 juegos\ncaja para guardar juegos - caja de nintendo en buen estado para guardar hasta 4 juegos",
+        "price": null,
+        "image_url": "https://images1.vinted.net/t/02_010b4_kqReFoiSbzENZgmcybQVZv8a/f800/1788295170.webp?s=fa66523d841975c72e4eaad29635abf73a0e5cc2",
+        "image_hash": "3fc1d8d8c0c0f107",
+        "negative": true,
+        "learned_at": "2026-09-01T23:33:08"
+      }
+    ],
+    "title_stats": {}
   }
 }
