@@ -18,3 +18,8 @@
 2026-09-01T21:45:30 | d3014775645029 | jeu | switch | 12.0 EUR | https://www.vinted.be/items/9859360884-hogwarts-legacy
 2026-09-01T21:45:44 | db95a98bbe74c6 | jeu | switch | 8.0 EUR | https://www.vinted.be/items/9859246247-spiel-fur-nintendo-switch-it-takes-two
 2026-09-01T21:45:54 | e35de96d684ca9 | jeu | switch | 19.0 EUR | https://www.vinted.be/items/9855941241-mario-odyssey-switch
+2026-09-01T21:58:37 | 99b538dc37cd38 | jeu | ps4 | 7.0 EUR | https://www.vinted.be/items/9714174214-sleeping-dogs-ps4
+2026-09-01T21:58:49 | 892b9c4f645e3e | jeu |  | 25.0 EUR | https://www.vinted.be/items/9714905425-ufc-6
+2026-09-01T21:59:02 | 7ca6220e8e54a8 | jeu |  | 30.0 EUR | https://www.vinted.be/items/9732991966-es-ist-sehr-gut-ich-hab-es-ein-paar-mal-benutzt
+2026-09-01T21:59:19 | b27b63c7d8139e | jeu |  | ? EUR | https://www.vinted.be/items/9745183583-gravity-rush-2
+2026-09-01T21:59:33 | dbfc73cb8fc82a | console |  | 70.0 EUR | https://www.vinted.be/items/9755628921-ps-vita-noir
