@@ -1,175 +1,283 @@
 {
   "base_url": "https://www.vinted.be",
+
   "poll_seconds": 300,
-  "delay_between_searches": 1.0,
-  "page_wait_ms": 1800,
-  "max_items_per_search": 40,
+  "delay_between_searches": 1.2,
+  "page_wait_ms": 2000,
+  "max_items_per_search": 50,
+
   "shipping_estimate": 4.5,
+
   "buyer_protection_estimate": {
     "fixed": 0.7,
     "pct": 0.05
   },
-  "min_margin": 25,
+
+  "min_margin": 30,
+  "min_roi_pct": 20,
+  "min_demand_score": 4,
+
   "searches": [
+
+    {
+      "name": "PS5 Slim Disc",
+      "query": "ps5 slim disc",
+      "price_to": 300,
+
+      "rules": [
+        {
+          "label": "PS5 Slim Disc console",
+
+          "must_contain": [
+            "ps5",
+            "slim"
+          ],
+
+          "any_contain": [
+            "disc",
+            "disque",
+            "lecteur"
+          ],
+
+          "exclude": [
+            "digital",
+            "digitale",
+            "jeu",
+            "game",
+            "manette seule",
+            "controller only",
+            "facade",
+            "façade",
+            "cover",
+            "coque",
+            "support",
+            "socle seul"
+          ],
+
+          "resale_low": 370,
+          "resale_high": 420,
+
+          "min_margin": 45,
+          "min_roi_pct": 15,
+
+          "demand_score": 5,
+          "suspicious_price_ratio": 0.40
+        }
+      ]
+    },
+
+    {
+      "name": "PS5 Disc",
+      "query": "ps5 lecteur disque",
+      "price_to": 250,
+
+      "rules": [
+        {
+          "label": "PS5 Disc console",
+
+          "must_contain": [
+            "ps5"
+          ],
+
+          "any_contain": [
+            "disc",
+            "disque",
+            "lecteur"
+          ],
+
+          "exclude": [
+            "slim",
+            "digital",
+            "jeu",
+            "game",
+            "manette seule",
+            "controller only",
+            "facade",
+            "façade",
+            "cover",
+            "support"
+          ],
+
+          "resale_low": 330,
+          "resale_high": 380,
+
+          "min_margin": 40,
+          "min_roi_pct": 15,
+
+          "demand_score": 5,
+          "suspicious_price_ratio": 0.38
+        }
+      ]
+    },
+
+    {
+      "name": "Nintendo Switch OLED",
+      "query": "nintendo switch oled",
+      "price_to": 145,
+
+      "rules": [
+        {
+          "label": "Switch OLED console",
+
+          "must_contain": [
+            "switch",
+            "oled"
+          ],
+
+          "exclude": [
+            "switch lite",
+            "jeu",
+            "jeux",
+            "game",
+            "games",
+            "carte pokemon",
+            "housse seule",
+            "coque seule",
+            "dock seul",
+            "joycon seul",
+            "joy-con seul",
+            "ecran seul",
+            "écran seul",
+            "protection ecran",
+            "screen protector"
+          ],
+
+          "resale_low": 190,
+          "resale_high": 220,
+
+          "min_margin": 30,
+          "min_roi_pct": 20,
+
+          "demand_score": 5,
+          "suspicious_price_ratio": 0.40
+        }
+      ]
+    },
+
     {
       "name": "Xbox Series S",
       "query": "xbox series s",
-      "price_to": 125,
+      "price_to": 120,
+
       "rules": [
         {
-          "label": "Series S console",
+          "label": "Xbox Series S console",
+
           "must_contain": [
-            "xbox"
+            "xbox",
+            "series s"
           ],
-          "any_contain": [
-            "series s",
-            "serie s"
-          ],
+
           "exclude": [
-            "manette",
-            "controller",
-            "boite",
-            "box only",
-            "hs",
-            "pièces",
-            "pour pieces"
-          ],
-          "resale_low": 155,
-          "resale_high": 175,
-          "min_margin": 25
-        }
-      ]
-    },
-    {
-      "name": "Xbox One X",
-      "query": "xbox one x",
-      "price_to": 80,
-      "rules": [
-        {
-          "label": "One X console",
-          "must_contain": [
-            "xbox"
-          ],
-          "any_contain": [
-            "one x"
-          ],
-          "exclude": [
-            "manette",
-            "controller",
-            "boite",
-            "hs",
-            "pièces",
-            "pour pieces"
-          ],
-          "resale_low": 110,
-          "resale_high": 130,
-          "min_margin": 20
-        }
-      ]
-    },
-    {
-      "name": "PS4 Pro",
-      "query": "ps4 pro",
-      "price_to": 80,
-      "rules": [
-        {
-          "label": "PS4 Pro console",
-          "any_contain": [
-            "ps4 pro",
-            "playstation 4 pro"
-          ],
-          "exclude": [
-            "manette",
-            "controller",
-            "boite",
-            "hs",
-            "pièces",
-            "pour pieces"
-          ],
-          "resale_low": 115,
-          "resale_high": 135,
-          "min_margin": 20
-        }
-      ]
-    },
-    {
-      "name": "Nintendo Switch",
-      "query": "nintendo switch",
-      "price_to": 125,
-      "rules": [
-        {
-          "label": "Switch console",
-          "must_contain": [
-            "switch"
-          ],
-          "exclude": [
-            "lite",
             "jeu",
+            "jeux",
             "game",
-            "manette",
-            "joy-con",
-            "joycon",
-            "housse",
-            "boite",
-            "dock seul",
-            "hs",
-            "pièces"
+            "games",
+            "boite seule",
+            "box only",
+            "coque",
+            "skin",
+            "support",
+            "casque",
+            "cable seul",
+            "câble seul"
           ],
-          "resale_low": 165,
-          "resale_high": 190,
-          "min_margin": 25
+
+          "resale_low": 175,
+          "resale_high": 205,
+
+          "min_margin": 35,
+          "min_roi_pct": 25,
+
+          "demand_score": 4,
+          "suspicious_price_ratio": 0.38
         }
       ]
     },
+
     {
-      "name": "Wacom Intuos Pro Medium",
-      "query": "wacom intuos pro medium",
-      "price_to": 75,
+      "name": "Steam Deck LCD 256",
+      "query": "steam deck 256gb",
+      "price_to": 200,
+
       "rules": [
         {
-          "label": "Intuos Pro Medium",
+          "label": "Steam Deck LCD 256GB",
+
           "must_contain": [
-            "wacom",
-            "intuos"
+            "steam",
+            "deck"
           ],
+
           "any_contain": [
-            "pro medium",
-            "pth-660",
-            "pth660"
+            "256",
+            "256gb",
+            "256 gb"
           ],
+
           "exclude": [
-            "stylet seul",
-            "pen only",
-            "hs",
-            "pièces"
+            "oled",
+            "64gb",
+            "64 gb",
+            "512gb",
+            "512 gb",
+            "dock seul",
+            "case only",
+            "housse seule",
+            "chargeur seul"
           ],
-          "resale_low": 115,
-          "resale_high": 145,
-          "min_margin": 25
+
+          "resale_low": 270,
+          "resale_high": 320,
+
+          "min_margin": 45,
+          "min_roi_pct": 20,
+
+          "demand_score": 4,
+          "suspicious_price_ratio": 0.42
         }
       ]
     },
+
     {
-      "name": "Focusrite Scarlett 2i2",
-      "query": "focusrite scarlett 2i2",
-      "price_to": 55,
+      "name": "Logitech G29",
+      "query": "logitech g29",
+      "price_to": 75,
+
       "rules": [
         {
-          "label": "Scarlett 2i2",
+          "label": "Logitech G29 complet",
+
           "must_contain": [
-            "scarlett",
-            "2i2"
+            "g29"
           ],
+
+          "any_contain": [
+            "logitech",
+            "volant"
+          ],
+
           "exclude": [
-            "hs",
-            "pièces",
-            "boite"
+            "support g29",
+            "support seul",
+            "shifter seul",
+            "levier seul",
+            "pedales seules",
+            "pédales seules",
+            "volant seul"
           ],
-          "resale_low": 85,
-          "resale_high": 105,
-          "min_margin": 20
+
+          "resale_low": 120,
+          "resale_high": 145,
+
+          "min_margin": 30,
+          "min_roi_pct": 30,
+
+          "demand_score": 4,
+          "suspicious_price_ratio": 0.35
         }
       ]
     }
+
   ]
 }
