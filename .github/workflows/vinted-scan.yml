@@ -44,4 +44,88 @@ jobs:
             cp alerts.csv alertes.csv
           fi
 
-          test -f annonces_vues.json || printf '[]\n'
+          test -f annonces_vues.json || printf '[]\n' > annonces_vues.json
+
+          if [ ! -f alertes.csv ]; then
+            printf 'timestamp,category,search,brand,model,size,opportunity_score,title,listing_price,total_buy_est,resale_low,resale_high,margin_low,margin_high,roi_low,reason,url,item_id\n' > alertes.csv
+          fi
+
+      - name: Verifier les fichiers
+        run: |
+          python -m py_compile vinted_tarayici.py fusion_donnees.py
+          python -m json.tool config.json > /dev/null
+          python -m json.tool blacklist.json > /dev/null
+          python -m json.tool filtres.json > /dev/null
+          test -f exemples.txt
+
+      - name: Tester les notifications
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          test -n "$NTFY_TOPIC"
+          curl -fsS \
+            -H "Title: Vinted Tarayici" \
+            -H "Priority: high" \
+            -d "Vinted Tarayici demarre correctement." \
+            "https://ntfy.sh/$NTFY_TOPIC"
+
+      - name: Scanner Vinted
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: "https://ntfy.sh"
+          HEADLESS: "1"
+        run: |
+          python -u vinted_tarayici.py --once --headless
+
+      - name: Sauvegarder les resultats
+        if: always()
+        run: |
+          git config user.name "vinted-tarayici-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          test -f annonces_vues.json || printf '[]\n' > annonces_vues.json
+
+          if [ ! -f alertes.csv ]; then
+            printf 'timestamp,category,search,brand,model,size,opportunity_score,title,listing_price,total_buy_est,resale_low,resale_high,margin_low,margin_high,roi_low,reason,url,item_id\n' > alertes.csv
+          fi
+
+          cp annonces_vues.json /tmp/annonces-vues-local.json
+          cp alertes.csv /tmp/alertes-local.csv
+
+          sauvegarde=0
+
+          for tentative in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            test -f annonces_vues.json || printf '[]\n' > annonces_vues.json
+
+            if [ ! -f alertes.csv ]; then
+              printf 'timestamp,category,search,brand,model,size,opportunity_score,title,listing_price,total_buy_est,resale_low,resale_high,margin_low,margin_high,roi_low,reason,url,item_id\n' > alertes.csv
+            fi
+
+            python fusion_donnees.py \
+              /tmp/annonces-vues-local.json \
+              /tmp/alertes-local.csv \
+              annonces_vues.json \
+              alertes.csv
+
+            git add annonces_vues.json alertes.csv
+
+            if git diff --cached --quiet; then
+              sauvegarde=1
+              break
+            fi
+
+            git commit -m "Mise a jour du scanner [skip ci]"
+
+            if git push origin HEAD:main; then
+              sauvegarde=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          test "$sauvegarde" = "1"
