@@ -140,7 +140,8 @@ def ntfy_send(row):
         "Click": row["url"],
         "Actions": f"view, Ouvrir Vinted, {row['url']}",
     }
-
+    if row.get("image_url"):
+        headers["Attach"] = row["image_url"]
     try:
         req = urllib.request.Request(
             url,
@@ -298,8 +299,24 @@ async def verify_listing(page, url, fallback_title=""):
                 ).strip()
         except Exception:
             pass
+        image_url = ""
 
+        try:
+            image_url = (
+                await detail.locator(
+                    'meta[property="og:image"]'
+                ).get_attribute("content")
+                or ""
+            )
+        except Exception:
+            pass
         return {
+            "ok": True,
+            "title": title,
+            "text": full_text[:12000],
+            "seller": seller,
+            "image_url": image_url
+        }
             "ok": True,
             "title": title,
             "text": full_text[:12000],
@@ -598,6 +615,7 @@ async def scan_search(page, search, cfg, blacklist, seen_ids):
                 + matched_rule.get("label", "")
             ),
             "title": title,
+            "image_url": detail.get("image_url", ""),
             "listing_price": round(price, 2),
             "total_buy_est": total,
             "resale_low": resale_low,
