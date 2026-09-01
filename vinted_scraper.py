@@ -216,6 +216,93 @@ async def extract_cards(page):
 
     return out
 
+async def verify_listing(page, url, fallback_title=""):
+    """
+    Ouvre uniquement une annonce déjà jugée intéressante
+    pour vérifier son titre, son texte complet et le vendeur.
+    """
+    detail = None
+
+    try:
+        detail = await page.context.new_page()
+
+        await detail.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=30000
+        )
+
+        await detail.wait_for_timeout(1200)
+
+        # Titre de la page / annonce
+        title = fallback_title
+
+        try:
+            og_title = await detail.locator(
+                'meta[property="og:title"]'
+            ).get_attribute("content")
+
+            cleaned = clean_title(og_title or "")
+
+            if cleaned:
+                title = cleaned
+        except Exception:
+            pass
+
+        # Texte complet visible de l'annonce
+        try:
+            full_text = await detail.locator("body").inner_text(
+                timeout=7000
+            )
+        except Exception:
+            full_text = ""
+
+        # Essaie de récupérer le pseudo vendeur
+        seller = ""
+
+        try:
+            seller_links = detail.locator(
+                'a[href*="/member/"]'
+            )
+
+            if await seller_links.count() > 0:
+                seller = (
+                    await seller_links.first.inner_text()
+                ).strip()
+        except Exception:
+            pass
+
+        return {
+            "ok": True,
+            "title": title,
+            "text": full_text[:12000],
+            "seller": seller
+        }
+
+    except PlaywrightTimeoutError:
+        return {
+            "ok": False,
+            "title": fallback_title,
+            "text": "",
+            "seller": "",
+            "error": "timeout annonce"
+        }
+
+    except Exception as e:
+        return {
+            "ok": False,
+            "title": fallback_title,
+            "text": "",
+            "seller": "",
+            "error": str(e)[:100]
+        }
+
+    finally:
+        if detail:
+            try:
+                await detail.close()
+            except Exception:
+                pass
 
 def suspicious_price(rule, price):
     resale_low = rule.get("resale_low")
