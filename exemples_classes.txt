@@ -9,3 +9,6 @@
 2026-09-01T20:30:13 | a8e3c2823a763a | jeu |  | ? EUR | https://www.vinted.be/items/9857967431-zelda-skyward-sword-hd
 2026-09-01T20:30:20 | 89e4c6e132cc33 | jeu | ps5 | ? EUR | https://www.vinted.be/items/9858362606-elden-ring-ps5
 2026-09-01T20:30:29 | 4962ae950e3ad3 | jeu | switch | ? EUR | https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja
+2026-09-01T20:58:33 | d88643756307ec | jeu | ps5 | 13.0 EUR | https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5
+2026-09-01T20:58:51 | 038d9d97308c3c | jeu |  | ? EUR | https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel
+2026-09-01T20:59:06 | f397cc55508dbb | jeu | switch | 12.0 EUR | https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch

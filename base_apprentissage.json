@@ -65,17 +65,28 @@
         "nintendo 3ds",
         "3ds"
       ],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_exemples": [
+        30.0
+      ],
+      "prix_cible_median": 30.0,
+      "prix_cible_max": 35.4,
+      "prix_marche_bas": 152.0,
+      "prix_marche_haut": 189.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9856997431-nintendo-3ds"
       ],
       "nombre_exemples": 1,
       "description_reference": "Nintendo 3DS - Console portable Nintendo 3 DS fonctionnel sans le stylet , avec chargeur. État passable ,grosse trace d’usure\nNintendo 3DS - Console portable Nintendo 3 DS fonctionnel sans le stylet , avec chargeur. État passable ,grosse trace d’usure",
-      "mis_a_jour": "2026-09-01T20:03:59"
+      "mis_a_jour": "2026-09-01T20:59:13",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_00b9e_sykP8VbfeZxCyHUts6jodGdE/f800/1788283220.webp?s=f13c9ace1407658c1b7b8a92375354c6f5a9f19d",
+          "embedding": "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",
+          "ahash": "ffe1090101113f3f",
+          "dhash": "7ff09694d49cb000"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_00b9e_sykP8VbfeZxCyHUts6jodGdE/f800/1788283220.webp?s=f13c9ace1407658c1b7b8a92375354c6f5a9f19d"
     },
     "3379249ecbcc61": {
       "profil_id": "3379249ecbcc61",
@@ -157,17 +168,28 @@
         "nintendo ds lite",
         "ds lite"
       ],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_exemples": [
+        35.0
+      ],
+      "prix_cible_median": 35.0,
+      "prix_cible_max": 41.3,
+      "prix_marche_bas": 51.96,
+      "prix_marche_haut": 60.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9856944285-ds-lite-rouge"
       ],
       "nombre_exemples": 1,
       "description_reference": "Ds lite rouge - Sans jeux ni chargeur vendu fonctionnel aucun retour accepté demande moi tout ce qu'il vous faux avant l'achat merci\nJe peux changer la catégorie pour coûter moins cher les frais d'envoi\nDs lite rouge - Sans jeux ni chargeur vendu fonctionnel aucun retour accepté demande moi tout ce qu'il vous faux avant l'achat merci\nJe peux changer la catégorie pour coûter moins cher les frais d'envoi",
-      "mis_a_jour": "2026-09-01T20:04:07"
+      "mis_a_jour": "2026-09-01T20:59:24",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_02596_sYKhHsDcos9SjHasHmASb27W/f800/1788282971.webp?s=975dbc796018bcf71b0b539b042d451b6d1834e7",
+          "embedding": "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",
+          "ahash": "ffffc18989190307",
+          "dhash": "6cedccccccccf070"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_02596_sYKhHsDcos9SjHasHmASb27W/f800/1788282971.webp?s=975dbc796018bcf71b0b539b042d451b6d1834e7"
     },
     "59657660bcfc09": {
       "profil_id": "59657660bcfc09",
@@ -264,17 +286,28 @@
         "sticker"
       ],
       "aliases_console": [],
-      "prix_exemples": [],
-      "prix_cible_median": null,
-      "prix_cible_max": null,
-      "prix_marche_bas": null,
-      "prix_marche_haut": null,
+      "prix_exemples": [
+        15.0
+      ],
+      "prix_cible_median": 15.0,
+      "prix_cible_max": 18.0,
+      "prix_marche_bas": 26.99,
+      "prix_marche_haut": 30.0,
       "liens_exemples": [
         "https://www.vinted.be/items/9856513452-super-mario-party"
       ],
       "nombre_exemples": 1,
       "description_reference": "Super Mario party - Super Mario party game voor de Nintendo switch\nSuper Mario party - Super Mario party game voor de Nintendo switch",
-      "mis_a_jour": "2026-09-01T20:04:16"
+      "mis_a_jour": "2026-09-01T20:59:30",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/06_00b21_asc7amgYDssq5s9N1tTjsw9W/f800/1788281005.webp?s=61d26678a817a03d9ceaab811620765076ea7037",
+          "embedding": "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",
+          "ahash": "007e7e7c7c3e3e00",
+          "dhash": "07173b373f2f2f6c"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/06_00b21_asc7amgYDssq5s9N1tTjsw9W/f800/1788281005.webp?s=61d26678a817a03d9ceaab811620765076ea7037"
     },
     "7ef2fdb425d630": {
       "profil_id": "7ef2fdb425d630",
@@ -1140,6 +1173,349 @@
       "nombre_exemples": 1,
       "description_reference": "Animal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.\nAnimal Crossing New Horizons Nintendo Switch – Juego + Caja - El juego funciona perfectamente y está en muy buen estado, tanto el cartucho como la caja. Se puede ver el estado en las fotos.",
       "mis_a_jour": "2026-09-01T20:30:29"
+    },
+    "d88643756307ec": {
+      "profil_id": "d88643756307ec",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_PS5",
+      "plateforme": "ps5",
+      "modele": "Assassin Creed Shadow ps5 | Vinted",
+      "titre_reference": "Assassin Creed Shadow ps5 | Vinted",
+      "requete": "assassin creed shadow vinted ps5",
+      "mots_obligatoires": [
+        "assassin",
+        "creed"
+      ],
+      "mots_secondaires": [
+        "shadow",
+        "vinted"
+      ],
+      "mots_description": [
+        "assassin",
+        "creed",
+        "shadow"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        13.0
+      ],
+      "prix_cible_median": 13.0,
+      "prix_cible_max": 16.0,
+      "prix_marche_bas": 10.0,
+      "prix_marche_haut": 15.0,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Assassin Creed Shadow ps5 - Assassin Creed Shadow ps5\nAssassin Creed Shadow ps5 - Assassin Creed Shadow ps5",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/03_0114e_eT2AqrEKoro3tPJ7J21AptYb/f800/1788290223.webp?s=d71cefb387ad9228d86c33956f2db02168932585",
+          "embedding": "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",
+          "ahash": "e0e6ff1c07830300",
+          "dhash": "7f3105c661f19018"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/03_0114e_eT2AqrEKoro3tPJ7J21AptYb/f800/1788290223.webp?s=d71cefb387ad9228d86c33956f2db02168932585",
+      "mis_a_jour": "2026-09-01T20:58:37"
+    },
+    "038d9d97308c3c": {
+      "profil_id": "038d9d97308c3c",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_SWITCH",
+      "plateforme": "",
+      "modele": "nintendo super mario odyssey spel",
+      "titre_reference": "nintendo super mario odyssey spel",
+      "requete": "super mario odyssey spel",
+      "mots_obligatoires": [
+        "super",
+        "mario"
+      ],
+      "mots_secondaires": [
+        "odyssey",
+        "spel"
+      ],
+      "mots_description": [
+        "super",
+        "mario",
+        "odyssey",
+        "spel"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [],
+      "prix_cible_median": null,
+      "prix_cible_max": null,
+      "prix_marche_bas": 32.0,
+      "prix_marche_haut": 35.0,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "",
+      "empreintes_visuelles": [],
+      "image_reference_url": "",
+      "mis_a_jour": "2026-09-01T20:58:56"
+    },
+    "f397cc55508dbb": {
+      "profil_id": "f397cc55508dbb",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_SWITCH",
+      "plateforme": "switch",
+      "modele": "Luigi’s Mansion 3 Nintendo Switch | Vinted",
+      "titre_reference": "Luigi’s Mansion 3 Nintendo Switch | Vinted",
+      "requete": "luigi mansion 3 vinted switch",
+      "mots_obligatoires": [
+        "luigi",
+        "mansion"
+      ],
+      "mots_secondaires": [
+        "3",
+        "vinted"
+      ],
+      "mots_description": [
+        "luigi",
+        "mansion",
+        "impeccable"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        12.0
+      ],
+      "prix_cible_median": 12.0,
+      "prix_cible_max": 15.0,
+      "prix_marche_bas": 8.8,
+      "prix_marche_haut": 11.2,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Luigi’s Mansion 3 Nintendo Switch - Impeccable\nLuigi’s Mansion 3 Nintendo Switch - Impeccable",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/06_01dd3_Kxfwd1YMBRdcTZifULYkFBVi/f800/1788290620.webp?s=44cfb7b021898c2f11c07af17d50c621e10b9779",
+          "embedding": "zCSgmqerb5x8pqWmYqhyqKKmE6thqc+nOqqOqc6hdauCqy2oCqphqRCsRadXrD6nRaAHKAOjJZpeJKQciJr0Jc0k0af7qrChvSN5ov6lcqhTq6qpiqdvpfen+6froh2gR6guooeh2adLoJKmMKTVoFSpqqhUoAYh8qZRoVioAx4encaUiKD8pumk26FprF+lFKXuHfKl7aVko+yhMqRjKKioEqsSqueoYazZquqobJpMqJ+qp6l7qiysEKnmoYWq1qiSqw+sKqy2qkkgMaRDJwGqjKp0pA6kpKLgnMKmoB/0BTKdL5x0qhejR6oHJJ0X66YqINMbTRmDFaYilCIUquirCq0brAyqAaxQrDGoPqzvqPis5aoerSytP63Rruqr6qxFqIisrqlnpwYlfKFNIh6l8aSiIXskuKIOp+Gdx539p+aiZaN1o9IfYyZPoy2l3CNSqHqkUqRLpF6kTqQqn9+oEKU1HEigOZ0PIU0geJkHpMsghqLaHHWeuCU/np+cUKYgoFki+hhPGdwjsCOMo3mdx6V3oyek5qAnHhklwCAYKD0hoyXjKY2kqpwbD8ecwRilHN+gHx5HJeggZiF5Cdio9aI2HFwdB6FGIyyqR6ifpJUjpChkl0YlgxCAGx4da5xWmesldBxnoWghIqQDopCWHJowoXaffRxlqRIkD6EOIt2hB6kDoHScvKRZJIKiO6ZJIEiicxr5pHGlNKcipOmlfKJlpwuoJqlZpG+qTqh+piejh55zogWlk5XZIJChSKbXpYamNaTAG+mhb6e7pyGoXqPdp1mZE6BHpXogzqlzotajnRxnpomoOqbOnFWny6NvHHwmH6EcpZCfHZ9sGzSnPajSpA2nh6mMpwiq36V/k0sgjJwuoAaloKdlqJqkM6kYAmGiiqf8qTagn6MUqbGeRKaPmGKkFKmQpRmnJKWLqU2oO6xTqL6VwaHPIAmcoRTAIUIYtqEOpvWa+iV1IT6mAqZeH3AmuKdAIDKke6iyoHKnE6cgqcOjIKomp5SiyCQ3Gi+oUKihozoX8pbXKBCiZ6ZoHFIgoaoTpSYkxSMwpFUlwxQ5qgGsX6RBKVOhIqbbKTGos6AiKQgltCYUKPwaIyXkLLMsaSMAmWWVVCdFKE+puyivJFucVZ7SpPGkbiL5KuamK5j6o4OhYiT1nh4pPShfJBiPMJ9kpv4rGyZtJOumTSY7Ijgk2ikmLOgmsSjmI/oerp8rqg0c5ShZHaYlFiXUq8WkHCE1KEgrzqacHl8tY6c7paKhiCoNLUol+SUsLbMq3570p4AoKaeDK8IoRKM1owobdCrgG0Kb4yAkJxIcziRJKNupXB/hHGAlQSy0JQmoCSvsJOUmhanyoQwqvqRpAyCgrafSn00laiw0pGUo9SEiIycVDKz0KHEpSirOJoUqBCkGHnejkSdYoXqqVKb1pkQoMJxHnEAguyYepJEqAZv4pEEc/ixMKSYrtB9/KS2qGBuQJcWURiBVmvsi+qRioIQooqiTo6unrSYeo+GcHyqjIiMlV5y+J9SjQ6lcIg+c06f4pAyo3SWFKt0mESy6oRQpSyyUJGIm2SP/Kj0ljKAUn3YCXx6CIr8gTyfcpj8ZBqcqKdYriCYcphUoyBk9JlYqJKEsLZicdCmGElyelCdbJHMosCJdKFQp2Csqq3YsFag4rYkrRKYfKZspZypnnLQp2iFQJGkk8RjnqLkg+aFQKqYmU6mfIvUeZysro+cklyQ4itYqoKG3F3yk7KIPJxmgmaiFJxkrF6g3KAwnfibrGQKamaZZJpkoIKVuLGQstSOfIXugMCjWGEstjSYfI1AkiCgFpFUqxCVoKimjaabzKL0u0Z2ErPYoOCmGHqmbkJ7/KNejX6U5mg0mXKbuqRoqAynaK9ErdSxSJIggbSYQpkENQ6IGpF4oIyuaplcov6TIqTsboyd+mBEi7Sl4pMIpLCk9Jk2nwCLLJXQnoCWKJh4llSeOJAEiLh4vKOMmGCNiJRks3KLlICQpziQpKCSsJxwbqHwqIizcG3ctpiOyJngmnCUhm8oraqSyLDqh/iSJKIkqHSQApFIgcaTqJpmh8akkKVgkdyfvKgyj1SSFHQcj2yezJdcgASjRKW4a8igyKrGg4yNrF8YoZSq5oGyo1CsTkacW0aEyJbiCJSYgJAGQHyVHqMSmHSA8j1kpkaclnfilW6JUK2UgsqknKN8oDyYsII6YZaVKp9aiXCT1EBAqNSt4KCwYNigFl00nMZL1Kg4peCUBqQ0sESdkKS8jayYTHrihvykUG/UkBamoJ/opHymknEQrdaiGLKEksBrNK3Ca3SiPpokoxKAzqS+oTKFrpsQljQMxIw4cMCseKGCdJZejKrCjF6WVn7KnDijLKiEpHyrsp2sekiOIKowo76CrJ3IpFSezIXceCCfYKfWo2CSfKbQiTaeGrMSq1af3J94uBiKTKpspPC/aK4Ul3SRMHVMjOaUMJKYo4SRBI4gpjiBeJ9GgyyZFIScgWx6loGSjUxxOJc4l8x9vpEKSTicmmFehPqR7mIGaDZ1tqHOlfZm6pVmlQyiSJOYhTp1wDz8leCVxKR0p9SqRIfQn56b6oRCp/qR4q6GiWardqLWosA13qKglNKV0qVGnOyWOqDWpuZNGofeofZ1jpxggaCYlmT4kNCk=",
+          "ahash": "ffff938f838383c1",
+          "dhash": "1fd89894d5d9d9f0"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/06_01dd3_Kxfwd1YMBRdcTZifULYkFBVi/f800/1788290620.webp?s=44cfb7b021898c2f11c07af17d50c621e10b9779",
+      "mis_a_jour": "2026-09-01T20:59:08"
     }
   },
   "liens_classes": [
@@ -1153,7 +1529,95 @@
     "https://www.vinted.be/items/9857819396-ghost-of-yotei",
     "https://www.vinted.be/items/9857967431-zelda-skyward-sword-hd",
     "https://www.vinted.be/items/9858362606-elden-ring-ps5",
-    "https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja"
+    "https://www.vinted.be/items/9858349571-animal-crossing-new-horizons-nintendo-switch-juego-caja",
+    "https://www.vinted.be/items/9858396506-assassin-creed-shadow-ps5",
+    "https://www.vinted.be/items/9858399679-nintendo-super-mario-odyssey-spel",
+    "https://www.vinted.be/items/9858468920-luigis-mansion-3-nintendo-switch"
   ],
-  "historique_importe": []
+  "historique_importe": [],
+  "profils_negatifs": {
+    "6b9f5122a31a15": {
+      "rejet_id": "6b9f5122a31a15",
+      "actif": true,
+      "titre_reference": "caja para guardar juegos | Vinted",
+      "tokens_titre": [
+        "caja",
+        "para",
+        "guardar",
+        "juegos"
+      ],
+      "mots_description": [
+        "caja",
+        "para",
+        "guardar",
+        "juegos",
+        "buen",
+        "estado",
+        "hasta"
+      ],
+      "prix_reference": 2.0,
+      "liens": [
+        "https://www.vinted.be/items/9859197529-caja-para-guardar-juegos"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "caja para guardar juegos - caja de nintendo en buen estado para guardar hasta 4 juegos\ncaja para guardar juegos - caja de nintendo en buen estado para guardar hasta 4 juegos",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/02_010b4_kqReFoiSbzENZgmcybQVZv8a/f800/1788295170.webp?s=fa66523d841975c72e4eaad29635abf73a0e5cc2",
+          "embedding": "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",
+          "ahash": "ffff838383838304",
+          "dhash": "3fc1d8d8c0c0f107"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/02_010b4_kqReFoiSbzENZgmcybQVZv8a/f800/1788295170.webp?s=fa66523d841975c72e4eaad29635abf73a0e5cc2",
+      "mis_a_jour": "2026-09-01T20:55:27"
+    },
+    "431ce99b811ad4": {
+      "rejet_id": "431ce99b811ad4",
+      "actif": true,
+      "titre_reference": "Boîte vide Mario & Sonic aux jeux olympiques Tokyo 2020 | Vinted",
+      "tokens_titre": [
+        "boite",
+        "vide",
+        "mario",
+        "sonic",
+        "aux",
+        "olympiques",
+        "tokyo",
+        "2020"
+      ],
+      "mots_description": [
+        "boite",
+        "vide",
+        "mario",
+        "sonic",
+        "jeux",
+        "olympiques",
+        "tokyo",
+        "2020",
+        "vends",
+        "juste"
+      ],
+      "prix_reference": 3.0,
+      "liens": [
+        "https://www.vinted.be/items/9851375887-boite-vide-mario-and-sonic-aux-jeux-olympiques-tokyo-2020"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Boîte vide Mario & Sonic aux jeux olympiques Tokyo 2020 - Très bon état \nJe vends juste la boîte\nBoîte vide Mario & Sonic aux jeux olympiques Tokyo 2020 - Très bon état \nJe vends juste la boîte",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/05_00fe9_hCgkxAG9fXosLtxGDbLH55Uh/f800/1788254279.webp?s=845ac0e68482c23db779eebcf8791cd36d306c9a",
+          "embedding": "rJkMqH2lxaeqFPypEansqvGr+aeRqg+oZqjkq4+TfqqeqaumOaoPqg+srKgaqSuhaqSqpY+ohKAGpm6pI6hFnj4hbapyqbaqQheDprokOKhqqPWpJ6NXqHGlv6iAo/aS+qs2mQSmD6l6pMYYoqRfqS6ntaizoF2lzqaIq/OlxaT7p0ym26cjqFalVKgvreyk8anbpdWrGKkXp1eoNBzpJbynGqvWqWypcauypSqp8aIonyeroqhtrCWs9ahvpnKpu6gNrD6ofKK+qI0lzadFFieolKpMpierwqWSpjem7aY/piWoZqj2qQuijqiBnA2mDagtp4el8Ke/oWunpqhGqDqozac6qMemcqjArHmmR6zUptyq+6tvrFetiayDrO6ouKQBqA6sQqPeHj+inRxVpJafo58spMQWqRromnOmJaSoJE6iIZSSotUV7Bl/okUUwR2JIvUjW6hMotyTaqQiJSOfRCE2oOQVf6ZqIjue5As+lfWc2ac4nG8ZjyJVn7yTKqaGoJkd6JyppDgg/RoOoD+ky6LSIx0aM6TGIMykAiRzIIukbSF4JfmXyJOJnwQmWptylXYYf5txIKod/SEWoBqYXaZ4G4WcriRHKPGjhRjSHYMkbaKnmUOiHqcqIAGnoxkso+akkaUGoUKjjqJqG+AmUycZJMGhQx98pc+jNaFroJ4cvZxfD6qfsKGRopSn8KdWHfuknyAupCml3KB9qVKlBqZfqKmqS6g1oMmmFaTKkAWey6BYnLCm3oW2p/Ckoai9p8ypaZy2HZiYRJw2pzId7aCRp0qfZKkMqV+jH6njqL6qsqajqLqqpqrkiLSqqaxvprSlgaeUrX+rfqspqCGsc6kXqw+mrqhZqpWpNqQvpuuqYaGcojqnfahgFMAa7KkTJBOoAKiUpZiin6Q8qFanT6h7pRWqNKtApLGoEqmTqaelG6xBqVolWCG1J5UmRyEzGIceoqH6pM2emiNwJLkjK6O7HMAk0iSXJPoahKUMoCGk7CN4nFmSiZVLFBGcLxj0Jv+gBqVYkiakqquyHziorqnEo6ITw6shqlklk6Tnol4p5CkXo8qmZRiXKVQiIiaLKeisYihTJxkheihYKBwomCn1K0ItFSc8ngAkApmUJxWewCg8JNsncCbYKKGg2yGkKdAn/hC2IBMoAZy+JQkqNChxKMMkPyQPI38sqCeVJ22iTSiNJEQk2SdrJaQo3igdJQYqLybSF9IhYyovGuInMB0brBaooyR2pPon5qEAICstZ6NMoRKhfCsbLXYdWyleL3ApeRYOIlwlOSQTLOwoFiXXomwmayc4o9Ylo6TSKqEkTyoiK6Cn6yexJ5QRLCp3mPGjEyhGIJwkmJyyIYQqpiWeGJCYlKYUpOQkCCzzl8gimidfJFsY7KOZnD4keijzKTApASc3oxuYg50VqbeoCJmloWYr8ZlQI6YpNSmrposlgypsqhYjKC3gHjcnGIp8HWOc2h+HHAUsFyAFJUEsZCErHdYGTqgmpeMkKyHfoUmcfSJKKjWj/yZzKJcn9aSMKCsgRqbPqO2jEh53K3spcCgPpYUpxiigKq4p9ixhKIoolRmtp6gka5rvIWqiliiao6kk46JOIW0qcSgKog4qcCT1K8gs6CDnKh4haimOIxKa6KDBHlEluCcrIuUpESYJkLQtGKSIqIUq358YKb8jwCTgqdgogSilJYQo2yadH0Aocp+6Gh8rMB68Fzqh1iWmjGMnaZ8RJyolnKMdI8MgtZ7DJ1GovKRvInMq6yH1KIWX56E5KFeeGKQ5JLkkOac5KrctEypUIpIjZyTUFkAsFiE2iwoffCrhpE8pqiCfGpOgHagfpuou2ygwnmsqYCheKLQfcSa0KekkY5DmIIAkc6MmrL0oFiMALYsqHSnaoV2kuCrRmtEm26OVHJCUeSmdnWMjKA6roFoRdil2IOMp2SXdp24oHB9dKk6XMyRKI8Aow6JEp3YojSvLIX0nQKCVFmYpBihCJRMoXyS4KtIoziPzIZOp7h3MJOUg5yPuJXws7JdjJCsntijIpfUr9yQuLAgkTSglLEwpVSBVJHYfyaFJJPWfdKShLd8owSdWLB4jrZmsJmof9CENI0gnvSiuKPglziaXIyYityVnnGMqoiZvojOq6SqnJlolcqD6HKynkB+jIYgWmysRIJ6rg6MuJnge6x3EqjybxqRxK34jK6iBJkoYGRgOpGAnU6DMqUcdNaCiHusmVibPKB+npypiJxcqzSZwLEElTJOcplkpOaKCJbAqYhM3Iskm9SsdqMwnRakjHc0o7iV4HT8oP6R5Kf4kBScfLSegkSn9GwcgcyGXqM0kH6KdogaftyiuKjGNCSkNIjmSKSENKZUldqNxKZaX8CA4LJkrgybcoMyZEx0dJ2WajiTRHG0sdSO6KeMoiSVtJDmofqaVKCsoGZQhqZqoAKdXKvEuOyHULAci4i6lKiGb+aSfp4qpPqYzqJopNqYzpEMpkql8Hr2nw567mPgkVRhknHyq7CFcnyiZiyQbqJKooSU0oLGk76glEiqnmKQYqailCKNJn0mpOSTdnDGdA6YWoW2l1SOGmlIh1yXvnUAiqiSxoR0guyUjow8nYyP2qNmp0SmvpkWgeqV9ql6qHiFlpBKlIaX2qBujkqhzqwyoeaXvqBAZEyY=",
+          "ahash": "ffdfbf838383033f",
+          "dhash": "aa48ccd1e0e9a004"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/05_00fe9_hCgkxAG9fXosLtxGDbLH55Uh/f800/1788254279.webp?s=845ac0e68482c23db779eebcf8791cd36d306c9a",
+      "mis_a_jour": "2026-09-01T20:55:34"
+    }
+  },
+  "liens_rejetes_classes": [
+    "https://www.vinted.be/items/9859197529-caja-para-guardar-juegos",
+    "https://www.vinted.be/items/9851375887-boite-vide-mario-and-sonic-aux-jeux-olympiques-tokyo-2020"
+  ]
 }
