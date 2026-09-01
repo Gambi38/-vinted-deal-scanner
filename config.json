@@ -1,0 +1,2309 @@
+{
+  "base_url": "https://www.vinted.be",
+  "poll_seconds": 300,
+  "delay_between_searches": 0.25,
+  "page_wait_ms": 900,
+  "max_items_per_search": 15,
+  "shipping_estimate": 4.5,
+  "buyer_protection_estimate": {
+    "fixed": 0.7,
+    "pct": 0.05
+  },
+  "min_margin": 30,
+  "min_roi_pct": 20,
+  "min_demand_score": 4,
+  "searches": [
+    {
+      "name": "JEU_SWITCH - Scan large",
+      "category": "JEU_SWITCH",
+      "query": "nintendo switch",
+      "price_to": 30,
+      "rules": [
+        {
+          "label": "Animal Crossing New Horizons",
+          "brand": "Nintendo",
+          "model": "Animal Crossing New Horizons",
+          "must_contain": [
+            "animal crossing"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 36,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Mario Kart 8 Deluxe",
+          "brand": "Nintendo",
+          "model": "Mario Kart 8 Deluxe",
+          "must_contain": [
+            "mario kart"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 36,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "8",
+            "deluxe"
+          ]
+        },
+        {
+          "label": "Super Mario Odyssey",
+          "brand": "Nintendo",
+          "model": "Super Mario Odyssey",
+          "must_contain": [
+            "mario",
+            "odyssey"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 28,
+          "resale_high": 35,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Luigi's Mansion 3",
+          "brand": "Nintendo",
+          "model": "Luigi's Mansion 3",
+          "must_contain": [
+            "luigi",
+            "mansion"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "3"
+          ]
+        },
+        {
+          "label": "Super Mario Bros Wonder",
+          "brand": "Nintendo",
+          "model": "Super Mario Bros Wonder",
+          "must_contain": [
+            "mario",
+            "wonder"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Super Mario 3D World + Bowser's Fury",
+          "brand": "Nintendo",
+          "model": "Super Mario 3D World",
+          "must_contain": [
+            "mario",
+            "3d world"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Zelda Breath of the Wild",
+          "brand": "Nintendo",
+          "model": "Zelda BOTW",
+          "must_contain": [
+            "zelda"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "breath",
+            "botw"
+          ]
+        },
+        {
+          "label": "Zelda Tears of the Kingdom",
+          "brand": "Nintendo",
+          "model": "Zelda TOTK",
+          "must_contain": [
+            "zelda"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 35,
+          "resale_high": 42,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "tears",
+            "totk"
+          ]
+        },
+        {
+          "label": "Super Smash Bros Ultimate",
+          "brand": "Nintendo",
+          "model": "Smash Ultimate",
+          "must_contain": [
+            "smash",
+            "ultimate"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Pokemon Legends Arceus",
+          "brand": "Nintendo",
+          "model": "Pokemon Arceus",
+          "must_contain": [
+            "pokemon",
+            "arceus"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Pokemon Scarlet",
+          "brand": "Nintendo",
+          "model": "Pokemon Scarlet",
+          "must_contain": [
+            "pokemon"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "scarlet",
+            "ecarlate",
+            "écarlate"
+          ]
+        },
+        {
+          "label": "Pokemon Violet",
+          "brand": "Nintendo",
+          "model": "Pokemon Violet",
+          "must_contain": [
+            "pokemon",
+            "violet"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Kirby and the Forgotten Land",
+          "brand": "Nintendo",
+          "model": "Kirby Forgotten Land",
+          "must_contain": [
+            "kirby"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4,
+          "any_contain": [
+            "forgotten",
+            "monde oublie",
+            "monde oublié"
+          ]
+        },
+        {
+          "label": "Pikmin 4",
+          "brand": "Nintendo",
+          "model": "Pikmin 4",
+          "must_contain": [
+            "pikmin",
+            "4"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 32,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Metroid Dread",
+          "brand": "Nintendo",
+          "model": "Metroid Dread",
+          "must_contain": [
+            "metroid",
+            "dread"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Mario Party Superstars",
+          "brand": "Nintendo",
+          "model": "Mario Party Superstars",
+          "must_contain": [
+            "mario party",
+            "superstars"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Fire Emblem Three Houses",
+          "brand": "Nintendo",
+          "model": "Fire Emblem Three Houses",
+          "must_contain": [
+            "fire emblem",
+            "three houses"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 35,
+          "resale_high": 45,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Xenoblade Chronicles 2",
+          "brand": "Nintendo",
+          "model": "Xenoblade Chronicles 2",
+          "must_contain": [
+            "xenoblade",
+            "chronicles",
+            "2"
+          ],
+          "platform_any": [
+            "switch",
+            "nintendo switch"
+          ],
+          "resale_low": 45,
+          "resale_high": 60,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        }
+      ],
+      "max_items": 80
+    },
+    {
+      "name": "JEU_PS5 - Scan large",
+      "category": "JEU_PS5",
+      "query": "ps5",
+      "price_to": 35,
+      "rules": [
+        {
+          "label": "Marvel Spider-Man 2",
+          "brand": "Sony",
+          "model": "Spider-Man 2",
+          "must_contain": [
+            "spider",
+            "man",
+            "2"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Astro Bot",
+          "brand": "Sony",
+          "model": "Astro Bot",
+          "must_contain": [
+            "astro",
+            "bot"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 35,
+          "resale_high": 45,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Stellar Blade",
+          "brand": "Sony",
+          "model": "Stellar Blade",
+          "must_contain": [
+            "stellar",
+            "blade"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 35,
+          "resale_high": 45,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Final Fantasy VII Rebirth",
+          "brand": "Sony",
+          "model": "Final Fantasy VII Rebirth",
+          "must_contain": [
+            "final fantasy"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 30,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "rebirth"
+          ]
+        },
+        {
+          "label": "Silent Hill 2",
+          "brand": "Sony",
+          "model": "Silent Hill 2",
+          "must_contain": [
+            "silent hill",
+            "2"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 35,
+          "resale_high": 45,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Gran Turismo 7",
+          "brand": "Sony",
+          "model": "Gran Turismo 7",
+          "must_contain": [
+            "gran turismo",
+            "7"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "God of War Ragnarok",
+          "brand": "Sony",
+          "model": "God of War Ragnarok",
+          "must_contain": [
+            "god of war"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 25,
+          "resale_high": 32,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "ragnarok",
+            "ragnarök"
+          ]
+        },
+        {
+          "label": "Elden Ring",
+          "brand": "Sony",
+          "model": "Elden Ring",
+          "must_contain": [
+            "elden ring"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 30,
+          "resale_high": 38,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Resident Evil 4",
+          "brand": "Sony",
+          "model": "Resident Evil 4",
+          "must_contain": [
+            "resident evil",
+            "4"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 25,
+          "resale_high": 32,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Black Myth Wukong",
+          "brand": "Sony",
+          "model": "Black Myth Wukong",
+          "must_contain": [
+            "black myth",
+            "wukong"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 45,
+          "resale_high": 55,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        },
+        {
+          "label": "Dragon Ball Sparking Zero",
+          "brand": "Sony",
+          "model": "Dragon Ball Sparking Zero",
+          "must_contain": [
+            "dragon ball"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 30,
+          "resale_high": 40,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 5,
+          "any_contain": [
+            "sparking",
+            "zero"
+          ]
+        },
+        {
+          "label": "Lies of P",
+          "brand": "Sony",
+          "model": "Lies of P",
+          "must_contain": [
+            "lies of p"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 25,
+          "resale_high": 35,
+          "max_buy_ratio": 0.4,
+          "min_margin": 12,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Demon's Souls",
+          "brand": "Sony",
+          "model": "Demon's Souls",
+          "must_contain": [
+            "demon",
+            "souls"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 22,
+          "resale_high": 30,
+          "max_buy_ratio": 0.4,
+          "min_margin": 10,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        },
+        {
+          "label": "Ratchet & Clank Rift Apart",
+          "brand": "Sony",
+          "model": "Ratchet & Clank Rift Apart",
+          "must_contain": [
+            "ratchet",
+            "clank"
+          ],
+          "platform_any": [
+            "ps5",
+            "playstation 5"
+          ],
+          "resale_low": 22,
+          "resale_high": 30,
+          "max_buy_ratio": 0.4,
+          "min_margin": 10,
+          "min_roi_pct": 45,
+          "demand_score": 4,
+          "any_contain": [
+            "rift",
+            "apart"
+          ]
+        }
+      ],
+      "max_items": 80
+    },
+    {
+      "name": "CONSOLE - Nintendo Switch OLED",
+      "category": "CONSOLE",
+      "query": "nintendo switch oled console",
+      "price_to": 90,
+      "rules": [
+        {
+          "label": "Nintendo Switch OLED",
+          "brand": "Nintendo",
+          "model": "Switch OLED",
+          "must_contain": [
+            "switch",
+            "oled"
+          ],
+          "hardware_any": [
+            "64gb",
+            "64 gb",
+            "console",
+            "joy-con",
+            "joycon"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "lite",
+            "dock officiel",
+            "accessoires",
+            "accesorios",
+            "controller",
+            "casque vr"
+          ],
+          "resale_low": 190,
+          "resale_high": 220,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 35,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Nintendo Switch V2",
+      "category": "CONSOLE",
+      "query": "nintendo switch v2 console",
+      "price_to": 65,
+      "rules": [
+        {
+          "label": "Nintendo Switch V2",
+          "brand": "Nintendo",
+          "model": "Switch V2",
+          "must_contain": [
+            "switch"
+          ],
+          "any_contain": [
+            "v2",
+            "2019",
+            "hac-001(-01)",
+            "hac 001 01"
+          ],
+          "hardware_any": [
+            "console",
+            "32gb",
+            "32 gb",
+            "joy-con",
+            "joycon"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "oled",
+            "lite"
+          ],
+          "resale_low": 150,
+          "resale_high": 180,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 40,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - PS5 Slim Disc",
+      "category": "CONSOLE",
+      "query": "ps5 slim disc console",
+      "price_to": 170,
+      "rules": [
+        {
+          "label": "PS5 Slim Disc",
+          "brand": "Sony",
+          "model": "PS5 Slim Disc",
+          "must_contain": [
+            "ps5",
+            "slim"
+          ],
+          "any_contain": [
+            "disc",
+            "disque",
+            "lecteur"
+          ],
+          "hardware_any": [
+            "1tb",
+            "1 tb",
+            "console",
+            "cfi-20",
+            "cfi 20"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "digital",
+            "lecteur seul"
+          ],
+          "resale_low": 370,
+          "resale_high": 420,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 25,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - PS5 Disc Fat",
+      "category": "CONSOLE",
+      "query": "ps5 disc console",
+      "price_to": 140,
+      "rules": [
+        {
+          "label": "PS5 Disc Fat",
+          "brand": "Sony",
+          "model": "PS5 Disc",
+          "must_contain": [
+            "ps5"
+          ],
+          "any_contain": [
+            "disc",
+            "disque",
+            "lecteur"
+          ],
+          "hardware_any": [
+            "825gb",
+            "825 gb",
+            "console",
+            "cfi-10",
+            "cfi-11",
+            "cfi-12"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "slim",
+            "digital",
+            "lecteur seul"
+          ],
+          "resale_low": 320,
+          "resale_high": 370,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 30,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - PS4 Pro",
+      "category": "CONSOLE",
+      "query": "ps4 pro console",
+      "price_to": 65,
+      "rules": [
+        {
+          "label": "PS4 Pro",
+          "brand": "Sony",
+          "model": "PS4 Pro",
+          "must_contain": [
+            "ps4",
+            "pro"
+          ],
+          "hardware_any": [
+            "1tb",
+            "1 tb",
+            "console",
+            "cuh-7",
+            "cuh 7"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "slim"
+          ],
+          "resale_low": 150,
+          "resale_high": 180,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 40,
+          "demand_score": 4
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Xbox Series S",
+      "category": "CONSOLE",
+      "query": "xbox series s console",
+      "price_to": 75,
+      "rules": [
+        {
+          "label": "Xbox Series S",
+          "brand": "Microsoft",
+          "model": "Xbox Series S",
+          "must_contain": [
+            "xbox",
+            "series s"
+          ],
+          "hardware_any": [
+            "512gb",
+            "512 gb",
+            "1tb",
+            "1 tb",
+            "console"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "expansion card",
+            "storage expansion"
+          ],
+          "resale_low": 175,
+          "resale_high": 205,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 40,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Xbox Series X",
+      "category": "CONSOLE",
+      "query": "xbox series x console",
+      "price_to": 140,
+      "rules": [
+        {
+          "label": "Xbox Series X",
+          "brand": "Microsoft",
+          "model": "Xbox Series X",
+          "must_contain": [
+            "xbox",
+            "series x"
+          ],
+          "hardware_any": [
+            "1tb",
+            "1 tb",
+            "console",
+            "disc",
+            "disque"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film"
+          ],
+          "resale_low": 330,
+          "resale_high": 380,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 30,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Xbox One X",
+      "category": "CONSOLE",
+      "query": "xbox one x console",
+      "price_to": 55,
+      "rules": [
+        {
+          "label": "Xbox One X",
+          "brand": "Microsoft",
+          "model": "Xbox One X",
+          "must_contain": [
+            "xbox",
+            "one x"
+          ],
+          "hardware_any": [
+            "1tb",
+            "1 tb",
+            "console"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "series"
+          ],
+          "resale_low": 130,
+          "resale_high": 160,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 45,
+          "demand_score": 4
+        }
+      ]
+    },
+    {
+      "name": "JEU_3DS - Pokemon Ultra Sun Moon",
+      "category": "JEU_3DS",
+      "query": "pokemon ultra 3ds",
+      "price_to": 18,
+      "rules": [
+        {
+          "label": "Pokemon Ultra Sun/Moon 3DS",
+          "brand": "Nintendo",
+          "model": "Pokemon Ultra 3DS",
+          "must_contain": [
+            "pokemon",
+            "ultra"
+          ],
+          "hardware_any": [
+            "3ds",
+            "cartouche",
+            "jeu",
+            "game"
+          ],
+          "exclude": [
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "game case only",
+            "boîtier vide",
+            "boitier vide",
+            "goodies",
+            "figurine",
+            "porte-clés",
+            "porte clés",
+            "dvd film",
+            "blu-ray film",
+            "film dvd",
+            "film blu-ray",
+            "fifa",
+            "ea sports fc",
+            "pes",
+            "efootball",
+            "nba 2k",
+            "madden",
+            "just dance",
+            "singstar",
+            "karaoke",
+            "karaoké",
+            "fitness",
+            "zumba",
+            "jeu rayé",
+            "jeu raye",
+            "disque rayé",
+            "disque raye",
+            "scratched disc",
+            "jeu sans boîte",
+            "jeu sans boite",
+            "cartouche nue",
+            "cartouche seule",
+            "loose cartridge",
+            "disque nu",
+            "disc only"
+          ],
+          "resale_low": 45,
+          "resale_high": 60,
+          "max_buy_ratio": 0.4,
+          "min_margin": 15,
+          "min_roi_pct": 50,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "JEU_VITA - Persona 4 Golden",
+      "category": "JEU_VITA",
+      "query": "persona 4 golden vita",
+      "price_to": 20,
+      "rules": [
+        {
+          "label": "Persona 4 Golden Vita",
+          "brand": "Atlus",
+          "model": "Persona 4 Golden",
+          "must_contain": [
+            "persona",
+            "4",
+            "golden"
+          ],
+          "hardware_any": [
+            "vita",
+            "ps vita",
+            "jeu",
+            "game"
+          ],
+          "exclude": [
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "game case only",
+            "boîtier vide",
+            "boitier vide",
+            "goodies",
+            "figurine",
+            "porte-clés",
+            "porte clés",
+            "dvd film",
+            "blu-ray film",
+            "film dvd",
+            "film blu-ray",
+            "fifa",
+            "ea sports fc",
+            "pes",
+            "efootball",
+            "nba 2k",
+            "madden",
+            "just dance",
+            "singstar",
+            "karaoke",
+            "karaoké",
+            "fitness",
+            "zumba",
+            "jeu rayé",
+            "jeu raye",
+            "disque rayé",
+            "disque raye",
+            "scratched disc",
+            "jeu sans boîte",
+            "jeu sans boite",
+            "cartouche nue",
+            "cartouche seule",
+            "loose cartridge",
+            "disque nu",
+            "disc only"
+          ],
+          "resale_low": 50,
+          "resale_high": 70,
+          "max_buy_ratio": 0.4,
+          "min_margin": 15,
+          "min_roi_pct": 50,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "JEU_RETRO - Pokemon Game Boy",
+      "category": "JEU_RETRO",
+      "query": "pokemon game boy cartouche boite",
+      "price_to": 30,
+      "rules": [
+        {
+          "label": "Pokemon Game Boy en boite",
+          "brand": "Nintendo",
+          "model": "Pokemon Game Boy",
+          "must_contain": [
+            "pokemon"
+          ],
+          "any_contain": [
+            "game boy",
+            "gameboy",
+            "gbc",
+            "gba"
+          ],
+          "hardware_any": [
+            "boite",
+            "boîte",
+            "complet",
+            "complete",
+            "complet en boite"
+          ],
+          "exclude": [
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "game case only",
+            "boîtier vide",
+            "boitier vide",
+            "goodies",
+            "figurine",
+            "porte-clés",
+            "porte clés",
+            "dvd film",
+            "blu-ray film",
+            "film dvd",
+            "film blu-ray",
+            "fifa",
+            "ea sports fc",
+            "pes",
+            "efootball",
+            "nba 2k",
+            "madden",
+            "just dance",
+            "singstar",
+            "karaoke",
+            "karaoké",
+            "fitness",
+            "zumba",
+            "jeu rayé",
+            "jeu raye",
+            "disque rayé",
+            "disque raye",
+            "scratched disc",
+            "jeu sans boîte",
+            "jeu sans boite",
+            "cartouche nue",
+            "cartouche seule",
+            "loose cartridge",
+            "disque nu",
+            "disc only",
+            "repro",
+            "reproduction",
+            "fake",
+            "faux"
+          ],
+          "resale_low": 80,
+          "resale_high": 180,
+          "max_buy_ratio": 0.4,
+          "min_margin": 20,
+          "min_roi_pct": 50,
+          "demand_score": 5,
+          "rare_collectible": true
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Nintendo 3DS XL",
+      "category": "CONSOLE",
+      "query": "nintendo 3ds xl",
+      "price_to": 65,
+      "rules": [
+        {
+          "label": "Nintendo 3DS XL",
+          "brand": "Nintendo",
+          "model": "3DS XL",
+          "must_contain": [
+            "3ds",
+            "xl"
+          ],
+          "hardware_any": [
+            "console",
+            "fonctionne",
+            "fonctionnel",
+            "working",
+            "tested",
+            "testé",
+            "s'allume",
+            "s allume"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film",
+            "coque",
+            "cover"
+          ],
+          "resale_low": 160,
+          "resale_high": 220,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 40,
+          "demand_score": 5,
+          "exact_title_any": [
+            "nintendo 3ds xl",
+            "3ds xl"
+          ],
+          "hardware_in_title": true
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - New Nintendo 3DS XL",
+      "category": "CONSOLE",
+      "query": "new nintendo 3ds xl",
+      "price_to": 85,
+      "rules": [
+        {
+          "label": "New Nintendo 3DS XL",
+          "brand": "Nintendo",
+          "model": "New 3DS XL",
+          "must_contain": [
+            "new",
+            "3ds",
+            "xl"
+          ],
+          "hardware_any": [
+            "console",
+            "fonctionne",
+            "fonctionnel",
+            "working",
+            "tested",
+            "testé",
+            "s'allume",
+            "s allume"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film"
+          ],
+          "resale_low": 220,
+          "resale_high": 300,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 35,
+          "demand_score": 5,
+          "exact_title_any": [
+            "new nintendo 3ds xl",
+            "new 3ds xl"
+          ],
+          "hardware_in_title": true
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - PS Vita",
+      "category": "CONSOLE",
+      "query": "ps vita console",
+      "price_to": 60,
+      "rules": [
+        {
+          "label": "PS Vita",
+          "brand": "Sony",
+          "model": "PS Vita",
+          "must_contain": [
+            "vita"
+          ],
+          "any_contain": [
+            "ps vita",
+            "playstation vita",
+            "psvita"
+          ],
+          "hardware_any": [
+            "console",
+            "pch-",
+            "pch "
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film"
+          ],
+          "resale_low": 150,
+          "resale_high": 220,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 40,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - PSP 3000",
+      "category": "CONSOLE",
+      "query": "psp 3000 console",
+      "price_to": 35,
+      "rules": [
+        {
+          "label": "PSP 3000",
+          "brand": "Sony",
+          "model": "PSP 3000",
+          "must_contain": [
+            "psp"
+          ],
+          "any_contain": [
+            "3000",
+            "3004"
+          ],
+          "hardware_any": [
+            "console",
+            "psp-3000",
+            "psp 3000"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film"
+          ],
+          "resale_low": 90,
+          "resale_high": 130,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 50,
+          "demand_score": 4
+        }
+      ]
+    },
+    {
+      "name": "CONSOLE - Game Boy Advance SP",
+      "category": "CONSOLE",
+      "query": "game boy advance sp",
+      "price_to": 40,
+      "rules": [
+        {
+          "label": "Game Boy Advance SP",
+          "brand": "Nintendo",
+          "model": "Game Boy Advance SP",
+          "must_contain": [
+            "game boy",
+            "sp"
+          ],
+          "hardware_any": [
+            "ags-001",
+            "ags 001",
+            "ags-101",
+            "ags 101",
+            "console"
+          ],
+          "exclude": [
+            "manette seule",
+            "controller only",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "dock seul",
+            "dock only",
+            "support seul",
+            "coque seule",
+            "housse seule",
+            "pochette",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "écran de rechange",
+            "ecran de rechange",
+            "batterie de rechange",
+            "ventilateur de rechange",
+            "joystick de rechange",
+            "carte mémoire",
+            "carte memoire",
+            "micro sd",
+            "microsd",
+            "disque dur externe",
+            "external hdd",
+            "external ssd",
+            "figurine",
+            "goodies",
+            "dvd",
+            "blu-ray film"
+          ],
+          "resale_low": 110,
+          "resale_high": 180,
+          "max_buy_ratio": 0.4,
+          "min_margin": 60.0,
+          "min_roi_pct": 50,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - TI-84 Plus CE",
+      "category": "ELECTRONIQUE",
+      "query": "ti 84 plus ce",
+      "price_to": 35,
+      "rules": [
+        {
+          "label": "TI-84 Plus CE",
+          "brand": "Texas Instruments",
+          "model": "TI-84 Plus CE",
+          "must_contain": [
+            "ti",
+            "84"
+          ],
+          "any_contain": [
+            "plus ce",
+            "84 ce"
+          ],
+          "hardware_any": [
+            "calculatrice",
+            "calculator",
+            "graphique"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only"
+          ],
+          "resale_low": 90,
+          "resale_high": 120,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 50,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - TI-Nspire CX II",
+      "category": "ELECTRONIQUE",
+      "query": "ti nspire cx ii",
+      "price_to": 45,
+      "rules": [
+        {
+          "label": "TI-Nspire CX II",
+          "brand": "Texas Instruments",
+          "model": "TI-Nspire CX II",
+          "must_contain": [
+            "nspire",
+            "cx"
+          ],
+          "any_contain": [
+            "ii",
+            "2"
+          ],
+          "hardware_any": [
+            "calculatrice",
+            "calculator",
+            "graphique"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only"
+          ],
+          "resale_low": 120,
+          "resale_high": 160,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 45,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - Sony A6000",
+      "category": "ELECTRONIQUE",
+      "query": "sony a6000 appareil photo",
+      "price_to": 100,
+      "rules": [
+        {
+          "label": "Sony A6000",
+          "brand": "Sony",
+          "model": "Alpha A6000",
+          "must_contain": [
+            "sony",
+            "a6000"
+          ],
+          "hardware_any": [
+            "appareil",
+            "camera",
+            "boitier",
+            "boîtier"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "objectif seul",
+            "lens only",
+            "batterie seule"
+          ],
+          "resale_low": 260,
+          "resale_high": 330,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 35,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - Canon G7X II",
+      "category": "ELECTRONIQUE",
+      "query": "canon g7x mark ii",
+      "price_to": 160,
+      "rules": [
+        {
+          "label": "Canon G7 X Mark II",
+          "brand": "Canon",
+          "model": "G7 X Mark II",
+          "must_contain": [
+            "canon",
+            "g7"
+          ],
+          "any_contain": [
+            "mark ii",
+            "mk2",
+            "ii"
+          ],
+          "hardware_any": [
+            "appareil",
+            "camera",
+            "compact"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only"
+          ],
+          "resale_low": 420,
+          "resale_high": 520,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 30,
+          "demand_score": 5
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - Sony Walkman cassette",
+      "category": "ELECTRONIQUE",
+      "query": "sony walkman cassette vintage",
+      "price_to": 30,
+      "rules": [
+        {
+          "label": "Sony Walkman Cassette Vintage",
+          "brand": "Sony",
+          "model": "Walkman Cassette",
+          "must_contain": [
+            "sony",
+            "walkman"
+          ],
+          "any_contain": [
+            "cassette",
+            "wm-",
+            "vintage"
+          ],
+          "hardware_any": [
+            "walkman",
+            "baladeur",
+            "cassette"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only"
+          ],
+          "resale_low": 80,
+          "resale_high": 180,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 50,
+          "demand_score": 4,
+          "rare_collectible": true
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - Beelink SER5",
+      "category": "ELECTRONIQUE",
+      "query": "beelink ser5 mini pc",
+      "price_to": 80,
+      "rules": [
+        {
+          "label": "Beelink SER5 Mini PC",
+          "brand": "Beelink",
+          "model": "SER5",
+          "must_contain": [
+            "beelink",
+            "ser5"
+          ],
+          "hardware_any": [
+            "mini pc",
+            "ryzen",
+            "ram",
+            "ssd"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "boitier vide",
+            "barebone sans ram"
+          ],
+          "resale_low": 190,
+          "resale_high": 250,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 40,
+          "demand_score": 4
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE - Minisforum UM",
+      "category": "ELECTRONIQUE",
+      "query": "minisforum um mini pc",
+      "price_to": 100,
+      "rules": [
+        {
+          "label": "Minisforum UM Mini PC",
+          "brand": "Minisforum",
+          "model": "UM-series",
+          "must_contain": [
+            "minisforum",
+            "um"
+          ],
+          "hardware_any": [
+            "mini pc",
+            "ryzen",
+            "ram",
+            "ssd"
+          ],
+          "exclude": [
+            "pour pièces",
+            "pour pieces",
+            "for parts",
+            "hs",
+            "not working",
+            "broken",
+            "écran fissuré",
+            "ecran fissure",
+            "écran cassé",
+            "ecran casse",
+            "corrosion",
+            "oxydation",
+            "rouille",
+            "water damage",
+            "liquid damage",
+            "chargeur seul",
+            "charger only",
+            "câble seul",
+            "cable only",
+            "boite vide",
+            "boîte vide",
+            "empty box",
+            "box only",
+            "boitier vide",
+            "barebone sans ram"
+          ],
+          "resale_low": 240,
+          "resale_high": 350,
+          "max_buy_ratio": 0.4,
+          "min_margin": 30.0,
+          "min_roi_pct": 40,
+          "demand_score": 4
+        }
+      ]
+    }
+  ],
+  "seller_motivation_words": [
+    "pas le temps",
+    "désencombrement",
+    "desencombrement",
+    "urgence",
+    "urgent",
+    "prix ferme",
+    "doit partir",
+    "à vendre rapidement",
+    "a vendre rapidement"
+  ],
+  "ignored_brands": [
+    "shein",
+    "zara",
+    "h&m",
+    "kiabi"
+  ],
+  "fatal_condition_words": [
+    "troué",
+    "trouée",
+    "trous",
+    "trou",
+    "taché",
+    "tachée",
+    "taches",
+    "tâches",
+    "délavé",
+    "délavée",
+    "déchiré",
+    "déchirée",
+    "dechiré",
+    "dechire",
+    "stained",
+    "stain",
+    "faded",
+    "hole",
+    "holes",
+    "semelle décollée",
+    "semelle decollee",
+    "sole separation",
+    "craquelé",
+    "craquelée",
+    "craquele",
+    "cracked",
+    "heel drag",
+    "talon très usé",
+    "talon tres use"
+  ],
+  "rare_exception_words": [
+    "vintage",
+    "archive",
+    "rare",
+    "collector",
+    "collection",
+    "made in usa",
+    "made in japan",
+    "selvedge",
+    "selvage",
+    "années 80",
+    "annees 80",
+    "années 90",
+    "annees 90",
+    "70s",
+    "80s",
+    "90s",
+    "deadstock"
+  ],
+  "rare_exception_min_hits": 2,
+  "max_buy_ratio_default": 0.4,
+  "category_min_margin": {
+    "CONSOLE": 60,
+    "JEU_SWITCH": 12,
+    "JEU_PS5": 12,
+    "JEU_PS4": 15,
+    "JEU_XBOX": 15,
+    "JEU_3DS": 15,
+    "JEU_PSP": 15,
+    "JEU_VITA": 15,
+    "JEU_RETRO": 20,
+    "ELECTRONIQUE": 30
+  },
+  "required_condition_words": [
+    "fonctionne",
+    "fonctionnel",
+    "fonctionnelle",
+    "testé",
+    "testee",
+    "testée",
+    "testé et fonctionne",
+    "working",
+    "works",
+    "fully working",
+    "tested"
+  ],
+  "fatal_electronics_condition_words": [
+    "écran fissuré",
+    "ecran fissure",
+    "écran cassé",
+    "ecran casse",
+    "corrosion",
+    "oxydation",
+    "rouille",
+    "water damage",
+    "liquid damage",
+    "ne s'allume pas",
+    "ne s allume pas",
+    "no power",
+    "ne fonctionne pas",
+    "not working",
+    "broken",
+    "pour pièces",
+    "pour pieces",
+    "for parts",
+    "batterie gonflée",
+    "batterie gonflee",
+    "swollen battery"
+  ],
+  "power_missing_words": [
+    "sans câble",
+    "sans cable",
+    "sans chargeur",
+    "no cable",
+    "no charger",
+    "without charger",
+    "without cable"
+  ],
+  "profile_version": "GAMING_FR_V6_5_2026_09_01",
+  "detail_wait_ms": 350,
+  "run_budget_seconds": 480
+}
