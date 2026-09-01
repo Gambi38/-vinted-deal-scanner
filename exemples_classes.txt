@@ -15,3 +15,6 @@
 2026-09-01T21:32:11 | 0ccd6d530d4d2d | jeu | switch | 10.0 EUR | https://www.vinted.be/items/9858626704-the-walking-dead-switch
 2026-09-01T21:39:11 | ed031b796cfe43 | jeu | ds | 35.0 EUR | https://www.vinted.be/items/9838883211-vendo-nintendo-ds
 2026-09-01T21:39:20 | 3bf5be384a1453 | jeu | switch | 10.0 EUR | https://www.vinted.be/items/9859293663-sonic-colours-ultimate-nintendo-switch-2021-pal-authentic
+2026-09-01T21:45:30 | d3014775645029 | jeu | switch | 12.0 EUR | https://www.vinted.be/items/9859360884-hogwarts-legacy
+2026-09-01T21:45:44 | db95a98bbe74c6 | jeu | switch | 8.0 EUR | https://www.vinted.be/items/9859246247-spiel-fur-nintendo-switch-it-takes-two
+2026-09-01T21:45:54 | e35de96d684ca9 | jeu | switch | 19.0 EUR | https://www.vinted.be/items/9855941241-mario-odyssey-switch
