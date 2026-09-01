@@ -529,7 +529,7 @@
       ],
       "nombre_exemples": 1,
       "description_reference": "",
-      "mis_a_jour": "2026-09-01T21:55:50"
+      "mis_a_jour": "2026-09-01T22:12:29"
     },
     "ac3b20355b0154": {
       "profil_id": "ac3b20355b0154",
@@ -2846,6 +2846,126 @@
       ],
       "image_reference_url": "https://images1.vinted.net/t/02_014bf_SFEw7xLDfDJK2MztiWhqRBpG/f800/1787505933.webp?s=263872cea0c681ad915b21dd9b7453e94f8284f7",
       "mis_a_jour": "2026-09-01T21:59:33"
+    },
+    "54f52aa8d65932": {
+      "profil_id": "54f52aa8d65932",
+      "actif": true,
+      "type_produit": "jeu",
+      "categorie": "JEU_SWITCH",
+      "plateforme": "",
+      "modele": "Super Smash Bros Ultimate | Vinted",
+      "titre_reference": "Super Smash Bros Ultimate | Vinted",
+      "requete": "super smash bros ultimate",
+      "mots_obligatoires": [
+        "super",
+        "smash"
+      ],
+      "mots_secondaires": [
+        "bros",
+        "ultimate"
+      ],
+      "mots_description": [
+        "super",
+        "smash",
+        "bros",
+        "ultimate",
+        "buen",
+        "juego"
+      ],
+      "mots_exclus": [
+        "medallion",
+        "médaillon",
+        "medaillon",
+        "pierre sacrée",
+        "pierre sacree",
+        "sacred stone",
+        "pierre zelda",
+        "stone zelda",
+        "plv",
+        "présentoir",
+        "presentoir",
+        "display stand",
+        "standee",
+        "décoration",
+        "decoration",
+        "déco",
+        "deco",
+        "lithographie",
+        "lithograph",
+        "art card",
+        "carte art",
+        "porte clé",
+        "porte cle",
+        "porte-clés",
+        "porte cles",
+        "keychain",
+        "pin",
+        "pins",
+        "badge",
+        "coin",
+        "pièce de collection",
+        "piece de collection",
+        "médaille",
+        "medaille",
+        "figurine",
+        "amiibo",
+        "poster",
+        "affiche",
+        "steelbook",
+        "steel book",
+        "artbook",
+        "art book",
+        "soundtrack",
+        "ost",
+        "guide",
+        "manuel seul",
+        "manual only",
+        "boite vide",
+        "boîte vide",
+        "boite seule",
+        "boîte seule",
+        "boitier vide",
+        "boîtier vide",
+        "case only",
+        "box only",
+        "empty box",
+        "lot de boites",
+        "lot de boîtes",
+        "lot boites",
+        "lot boîtes",
+        "boites nintendo",
+        "boîtes nintendo",
+        "boites switch",
+        "boîtes switch",
+        "pochette",
+        "housse",
+        "coque",
+        "skin",
+        "sticker"
+      ],
+      "aliases_console": [],
+      "prix_exemples": [
+        12.0
+      ],
+      "prix_cible_median": 12.0,
+      "prix_cible_max": 15.0,
+      "prix_marche_bas": null,
+      "prix_marche_haut": null,
+      "liens_exemples": [
+        "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate"
+      ],
+      "nombre_exemples": 1,
+      "description_reference": "Super Smash Bros Ultimate - Muy buen juego\nSuper Smash Bros Ultimate - Muy buen juego",
+      "empreintes_visuelles": [
+        {
+          "image_url": "https://images1.vinted.net/t/06_0248e_DUs2cFGfYrFhmYH9uaBfEvbM/f800/1788299006.webp?s=445f4354857170b4aba67b06afcc6fa524bca4f8",
+          "embedding": "",
+          "ahash": "0f1f33030178fe7e",
+          "dhash": "c0cc18192c4def6f"
+        }
+      ],
+      "image_reference_url": "https://images1.vinted.net/t/06_0248e_DUs2cFGfYrFhmYH9uaBfEvbM/f800/1788299006.webp?s=445f4354857170b4aba67b06afcc6fa524bca4f8",
+      "mis_a_jour": "2026-09-01T22:13:27"
     }
   },
   "liens_classes": [
@@ -2873,7 +2993,8 @@
     "https://www.vinted.be/items/9714905425-ufc-6",
     "https://www.vinted.be/items/9732991966-es-ist-sehr-gut-ich-hab-es-ein-paar-mal-benutzt",
     "https://www.vinted.be/items/9745183583-gravity-rush-2",
-    "https://www.vinted.be/items/9755628921-ps-vita-noir"
+    "https://www.vinted.be/items/9755628921-ps-vita-noir",
+    "https://www.vinted.be/items/9859615183-super-smash-bros-ultimate"
   ],
   "historique_importe": [],
   "profils_negatifs": {

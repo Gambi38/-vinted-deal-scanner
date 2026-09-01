@@ -23,3 +23,4 @@
 2026-09-01T21:59:02 | 7ca6220e8e54a8 | jeu |  | 30.0 EUR | https://www.vinted.be/items/9732991966-es-ist-sehr-gut-ich-hab-es-ein-paar-mal-benutzt
 2026-09-01T21:59:19 | b27b63c7d8139e | jeu |  | ? EUR | https://www.vinted.be/items/9745183583-gravity-rush-2
 2026-09-01T21:59:33 | dbfc73cb8fc82a | console |  | 70.0 EUR | https://www.vinted.be/items/9755628921-ps-vita-noir
+2026-09-01T22:13:24 | 54f52aa8d65932 | jeu |  | 12.0 EUR | https://www.vinted.be/items/9859615183-super-smash-bros-ultimate
