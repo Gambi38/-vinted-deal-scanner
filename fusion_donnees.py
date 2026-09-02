@@ -3,8 +3,11 @@
 
 import csv
 import json
+import logging
 import sys
 from pathlib import Path
+
+LOGGER = logging.getLogger("fusion_donnees")
 
 
 def lire_annonces_vues(chemin):
@@ -14,8 +17,11 @@ def lire_annonces_vues(chemin):
 
     try:
         donnees = json.loads(fichier.read_text(encoding="utf-8"))
+        if not isinstance(donnees, list):
+            raise TypeError("la racine JSON doit être une liste")
         return {str(x) for x in donnees if str(x).strip()}
-    except Exception:
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        LOGGER.warning("État ignoré dans %s: %s", fichier, exc)
         return set()
 
 
@@ -54,7 +60,9 @@ def fusionner_alertes(distant, local, sortie):
 
         resultat.append(ligne)
 
-    with Path(sortie).open("w", encoding="utf-8-sig", newline="") as f:
+    chemin_sortie = Path(sortie)
+    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
+    with chemin_sortie.open("w", encoding="utf-8-sig", newline="") as f:
         ecrivain = csv.DictWriter(f, fieldnames=champs)
         ecrivain.writeheader()
 
@@ -75,7 +83,9 @@ def main():
     vues_distantes = lire_annonces_vues(annonces_sortie)
     vues_locales = lire_annonces_vues(annonces_locales)
 
-    Path(annonces_sortie).write_text(
+    chemin_annonces_sortie = Path(annonces_sortie)
+    chemin_annonces_sortie.parent.mkdir(parents=True, exist_ok=True)
+    chemin_annonces_sortie.write_text(
         json.dumps(
             sorted(vues_distantes | vues_locales),
             indent=2,
