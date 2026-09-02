@@ -22,11 +22,18 @@ class ApiOnlyTests(unittest.TestCase):
         for value in (now.timestamp(), now.timestamp() * 1000, now.isoformat()):
             self.assertIsNotNone(bot.parse_vinted_timestamp(value))
 
-    def test_strict_freshness_rejects_over_24_hours(self):
-        cfg = {"max_listing_age_hours": 24, "reject_unknown_listing_age": True}
+    def test_catalog_uses_main_photo_timestamp_as_listing_age(self):
+        item = {"photos": [
+            {"is_main": False, "high_resolution": {"timestamp": 100}},
+            {"is_main": True, "high_resolution": {"timestamp": 200}},
+        ]}
+        self.assertEqual(bot.catalog_timestamp(item), 200)
+
+    def test_strict_freshness_rejects_over_30_minutes(self):
+        cfg = {"max_listing_age_hours": 0.5, "reject_unknown_listing_age": True}
         now = datetime.now(timezone.utc)
-        self.assertTrue(bot.freshness_check((now - timedelta(hours=23)).isoformat(), cfg, now)[0])
-        self.assertFalse(bot.freshness_check((now - timedelta(hours=25)).isoformat(), cfg, now)[0])
+        self.assertTrue(bot.freshness_check((now - timedelta(minutes=29)).isoformat(), cfg, now)[0])
+        self.assertFalse(bot.freshness_check((now - timedelta(minutes=31)).isoformat(), cfg, now)[0])
 
     def test_personal_filter_conversion(self):
         rows = bot.convert_personal_filter({
@@ -43,6 +50,37 @@ class ApiOnlyTests(unittest.TestCase):
         hidden = bot.opportunity_score(30, 100, 60, [], 2/60, 0, 2, cfg)
         popular = bot.opportunity_score(30, 100, 60, [], 2/60, 8, 50, cfg)
         self.assertGreater(hidden, popular)
+
+    def test_only_ten_searches_are_selected_and_rotated(self):
+        searches = [
+            {"name": f"S{i}", "query": f"query {i}", "rules": []}
+            for i in range(14)
+        ]
+        searches.extend([
+            {"name": "Switch", "query": "nintendo switch", "rules": []},
+            {"name": "PS5", "query": "ps5", "rules": []},
+        ])
+        cfg = {
+            "max_searches_per_run": 10,
+            "always_search_queries": ["nintendo switch", "ps5"],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            cursor = Path(directory) / "cursor.json"
+            with patch.object(bot, "SCAN_CURSOR_PATH", cursor):
+                first = bot.select_searches_for_run(searches, cfg)
+                second = bot.select_searches_for_run(searches, cfg)
+        self.assertEqual(len(first), 10)
+        self.assertEqual(len(second), 10)
+        self.assertIn("nintendo switch", [x["query"] for x in first])
+        self.assertNotEqual([x["query"] for x in first[2:]],
+                            [x["query"] for x in second[2:]])
+
+    def test_candidate_rank_prefers_fresher_more_profitable_deal(self):
+        base = {"opportunity_score": 8, "demand_score": 5,
+                "margin_low": 60, "view_count": 2, "favourite_count": 0}
+        fresh = {**base, "age_minutes": 2}
+        old = {**base, "age_minutes": 25}
+        self.assertGreater(bot.candidate_rank(fresh), bot.candidate_rank(old))
 
     def test_rule_requires_keywords_and_honors_exclusion(self):
         rule = {"must_contain": ["switch"], "any_contain": ["oled", "lite"],
@@ -86,4 +124,3 @@ class ApiOnlyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
