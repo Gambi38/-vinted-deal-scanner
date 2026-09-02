@@ -1,9 +1,14 @@
 {
   "base_url": "https://www.vinted.be",
   "poll_seconds": 300,
-  "delay_between_searches": 0.25,
+  "request_delay_min_seconds": 1.0,
+  "request_delay_max_seconds": 3.0,
+  "startup_jitter_max_seconds": 20,
   "page_wait_ms": 900,
   "max_items_per_search": 15,
+  "max_listing_age_hours": 24,
+  "reject_unknown_listing_age": true,
+  "instant_listing_minutes": 30,
   "shipping_estimate": 4.5,
   "buyer_protection_estimate": {
     "fixed": 0.7,
