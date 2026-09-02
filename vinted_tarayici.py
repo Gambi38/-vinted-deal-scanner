@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VERSION : VINTED_TARAYICI_V7_0_PRODUCTION
+# VERSION : VINTED_TARAYICI_V7_4_FAST_SIGNAL
 import asyncio
 import csv
 import json
@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote_plus, unquote
 
@@ -65,6 +66,8 @@ BLACKLIST_PATH = ROOT / "blacklist.json"
 ANCIEN_BLACKLIST_PATH = ROOT / "liste_noire.json"
 DATA_DIR = Path(os.getenv("VINTED_DATA_DIR", str(ROOT / "runtime_data"))).expanduser()
 SEEN_PATH = DATA_DIR / "annonces_vues.json"
+SEEN_META_PATH = DATA_DIR / "annonces_vues_meta.json"
+PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
 ANCIEN_SEEN_PATH = (
     ROOT / "annonces_vues.json"
     if (ROOT / "annonces_vues.json").exists()
@@ -74,6 +77,8 @@ ALERTS_CSV = DATA_DIR / "alertes.csv"
 FILTRES_PATH = ROOT / "filtres.json"
 EXEMPLES_PATH = ROOT / "exemples.txt"
 PROFILE_DIR = ROOT / ".profil_vinted"
+VINTED_BROWSER_LOCALE = "fr-BE"
+VINTED_ACCEPT_LANGUAGE = "fr-BE,fr;q=0.9,en;q=0.7"
 
 PRICE_RE = re.compile(
     r"(?:(\d{1,4}(?:[.,]\d{1,2})?)\s*€|€\s*(\d{1,4}(?:[.,]\d{1,2})?))"
@@ -82,6 +87,16 @@ ITEM_ID_RE = re.compile(r"/items/(\d+)")
 SLUG_RE = re.compile(r"/items/\d+-([^/?#]+)")
 
 ALERT_MARKER_PREFIX = "alert::"
+FRESHNESS_RETRY_PREFIX = "freshness-retry::"
+
+
+class FreshnessHealthError(RuntimeError):
+    """Raised when every sampled item age becomes unreadable."""
+
+
+class ScanHealthError(RuntimeError):
+    """Raised when too many searches crash inside one cycle."""
+
 
 ALERT_FIELDS = [
     "timestamp",
@@ -94,6 +109,10 @@ ALERT_FIELDS = [
     "title",
     "published_at",
     "age_minutes",
+    "favourite_count",
+    "seller_type",
+    "previous_price",
+    "price_drop_pct",
     "image_url",
     "listing_price",
     "total_buy_est",
@@ -142,11 +161,19 @@ def apply_env_overrides(cfg):
     mapping = {
         "VINTED_BASE_URL": ("base_url", str),
         "VINTED_MAX_LISTING_AGE_HOURS": ("max_listing_age_hours", float),
+        "VINTED_FRESHNESS_HEALTHCHECK_MIN_SAMPLES": (
+            "freshness_healthcheck_min_samples",
+            int,
+        ),
+        "VINTED_UNKNOWN_AGE_MAX_ATTEMPTS": ("unknown_age_max_attempts", int),
+        "VINTED_SEEN_RETENTION_DAYS": ("seen_retention_days", int),
         "VINTED_REQUEST_DELAY_MIN_SECONDS": ("request_delay_min_seconds", float),
         "VINTED_REQUEST_DELAY_MAX_SECONDS": ("request_delay_max_seconds", float),
+        "VINTED_BACKOFF_MAX_SECONDS": ("backoff_max_seconds", float),
         "VINTED_STARTUP_JITTER_MAX_SECONDS": ("startup_jitter_max_seconds", float),
         "VINTED_RUN_BUDGET_SECONDS": ("run_budget_seconds", float),
         "VINTED_MAX_ITEMS_PER_SEARCH": ("max_items_per_search", int),
+        "VINTED_PRICE_DROP_ALERT_PCT": ("price_drop_alert_pct", float),
     }
     for env_name, (config_name, caster) in mapping.items():
         raw = os.getenv(env_name)
@@ -159,12 +186,17 @@ def apply_env_overrides(cfg):
         "VINTED_REJECT_UNKNOWN_LISTING_AGE",
         bool(cfg.get("reject_unknown_listing_age", True)),
     )
+    cfg["exclude_professional_sellers"] = env_bool(
+        "VINTED_EXCLUDE_PRO_SELLERS",
+        bool(cfg.get("exclude_professional_sellers", True)),
+    )
     return cfg
 
 
 def validate_runtime_config(cfg):
     minimum = float(cfg.get("request_delay_min_seconds", 1.0))
     maximum = float(cfg.get("request_delay_max_seconds", 3.0))
+    max_backoff = float(cfg.get("backoff_max_seconds", 60.0))
     startup_jitter = float(cfg.get("startup_jitter_max_seconds", 20))
     run_budget = float(cfg.get("run_budget_seconds", 480))
     base_url = str(cfg.get("base_url", "")).strip().rstrip("/")
@@ -172,36 +204,119 @@ def validate_runtime_config(cfg):
         raise ValueError("request_delay_min_seconds doit être >= 0.5")
     if maximum < minimum:
         raise ValueError("request_delay_max_seconds doit être >= au minimum")
+    if max_backoff < maximum:
+        raise ValueError("backoff_max_seconds doit être >= au délai maximum")
     if startup_jitter < 0:
         raise ValueError("startup_jitter_max_seconds doit être >= 0")
     if run_budget <= 0:
         raise ValueError("run_budget_seconds doit être > 0")
     if float(cfg.get("max_listing_age_hours", 24)) <= 0:
         raise ValueError("max_listing_age_hours doit être > 0")
+    if int(cfg.get("freshness_healthcheck_min_samples", 3)) <= 0:
+        raise ValueError("freshness_healthcheck_min_samples doit être > 0")
+    if int(cfg.get("unknown_age_max_attempts", 2)) <= 0:
+        raise ValueError("unknown_age_max_attempts doit être > 0")
+    if int(cfg.get("seen_retention_days", 30)) <= 0:
+        raise ValueError("seen_retention_days doit être > 0")
     if int(cfg.get("max_items_per_search", 15)) <= 0:
         raise ValueError("max_items_per_search doit être > 0")
+    price_drop_pct = float(cfg.get("price_drop_alert_pct", 20))
+    if not 0 < price_drop_pct <= 100:
+        raise ValueError("price_drop_alert_pct doit être compris entre 0 et 100")
+    if float(cfg.get("favourite_penalty_per_user", 0.25)) < 0:
+        raise ValueError("favourite_penalty_per_user doit être >= 0")
+    if float(cfg.get("favourite_penalty_cap", 2.0)) < 0:
+        raise ValueError("favourite_penalty_cap doit être >= 0")
+    if float(cfg.get("hidden_deal_bonus", 1.0)) < 0:
+        raise ValueError("hidden_deal_bonus doit être >= 0")
     if not base_url.startswith("https://"):
         raise ValueError("base_url doit utiliser HTTPS")
     cfg["base_url"] = base_url
 
 
-class AsyncRateLimiter:
-    """Sequential randomized pacing shared by catalog, detail and API calls."""
+def retry_after_seconds(headers, now=None):
+    """Parse Retry-After as seconds or as the standard HTTP date format."""
+    if not isinstance(headers, dict):
+        return None
+    raw = next(
+        (
+            value
+            for key, value in headers.items()
+            if str(key).lower() == "retry-after"
+        ),
+        None,
+    )
+    if raw is None:
+        return None
+    try:
+        return max(0.0, float(str(raw).strip()))
+    except ValueError:
+        try:
+            retry_at = parsedate_to_datetime(str(raw).strip())
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        return max(
+            0.0,
+            (retry_at.astimezone(timezone.utc) - current.astimezone(timezone.utc))
+            .total_seconds(),
+        )
 
-    def __init__(self, minimum_seconds, maximum_seconds):
+
+class AsyncRateLimiter:
+    """Random pacing plus bounded exponential backoff after HTTP 429."""
+
+    def __init__(self, minimum_seconds, maximum_seconds, max_backoff_seconds=60):
         self.minimum = float(minimum_seconds)
         self.maximum = float(maximum_seconds)
+        self.max_backoff = float(max_backoff_seconds)
         self._next_allowed = 0.0
+        self._blocked_until = 0.0
+        self._consecutive_rate_limits = 0
         self._lock = asyncio.Lock()
 
     async def wait(self, request_kind="request"):
         async with self._lock:
-            remaining = self._next_allowed - time.monotonic()
+            allowed_at = max(self._next_allowed, self._blocked_until)
+            remaining = allowed_at - time.monotonic()
             if remaining > 0:
                 LOGGER.debug("Rate limit %s: attente %.2f s", request_kind, remaining)
                 await asyncio.sleep(remaining)
             delay = random.uniform(self.minimum, self.maximum)
             self._next_allowed = time.monotonic() + delay
+
+    async def register_response(self, status_code, headers=None, request_kind="request"):
+        """Apply backoff on 429 and reset it only after the cooldown has elapsed."""
+        try:
+            status = int(status_code)
+        except (TypeError, ValueError):
+            return 0.0
+
+        async with self._lock:
+            now = time.monotonic()
+            if status == 429:
+                self._consecutive_rate_limits += 1
+                exponential = self.maximum * (2 ** self._consecutive_rate_limits)
+                retry_after = retry_after_seconds(headers) or 0.0
+                # Cap our exponential delay, but always respect a longer delay
+                # explicitly requested by Vinted through Retry-After.
+                delay = max(min(self.max_backoff, exponential), retry_after)
+                self._blocked_until = max(self._blocked_until, now + delay)
+                LOGGER.warning(
+                    "HTTP 429 | requête=%s | backoff=%.1fs | tentative=%d",
+                    request_kind,
+                    delay,
+                    self._consecutive_rate_limits,
+                )
+                return delay
+
+            if 200 <= status < 400 and now >= self._blocked_until:
+                self._consecutive_rate_limits = 0
+            return 0.0
 
 
 def search_seen_key(search, item_id):
@@ -212,6 +327,200 @@ def search_seen_key(search, item_id):
 
 def alert_seen_key(item_id):
     return f"{ALERT_MARKER_PREFIX}{item_id}"
+
+
+def mark_seen(seen_ids, key, seen_meta=None, now=None):
+    key = str(key)
+    seen_ids.add(key)
+    if isinstance(seen_meta, dict):
+        seen_meta[key] = float(time.time() if now is None else now)
+
+
+def forget_seen(seen_ids, key, seen_meta=None):
+    key = str(key)
+    seen_ids.discard(key)
+    if isinstance(seen_meta, dict):
+        seen_meta.pop(key, None)
+
+
+def _freshness_retry_base(search, item_id):
+    name = norm(str(search.get("name") or search.get("query") or "search"))
+    return f"{FRESHNESS_RETRY_PREFIX}{name}::{item_id}::"
+
+
+def clear_freshness_retries(seen_ids, search, item_id, seen_meta=None):
+    prefix = _freshness_retry_base(search, item_id)
+    for key in list(seen_ids):
+        if str(key).startswith(prefix):
+            forget_seen(seen_ids, key, seen_meta)
+
+
+def register_unknown_age_attempt(
+    seen_ids,
+    search,
+    item_id,
+    max_attempts=2,
+    seen_meta=None,
+):
+    """Record one unknown-age attempt and say whether another try is allowed."""
+    prefix = _freshness_retry_base(search, item_id)
+    previous = 0
+    for key in list(seen_ids):
+        raw = str(key)
+        if not raw.startswith(prefix):
+            continue
+        try:
+            previous = max(previous, int(raw[len(prefix):]))
+        except ValueError:
+            pass
+        forget_seen(seen_ids, key, seen_meta)
+
+    attempt = previous + 1
+    should_retry = attempt < int(max_attempts)
+    if should_retry:
+        mark_seen(seen_ids, f"{prefix}{attempt}", seen_meta)
+    return attempt, should_retry
+
+
+def prune_seen_state(seen_ids, seen_meta, retention_days=30, now=None):
+    """Remove seen/retry keys older than the configured retention period."""
+    current = float(time.time() if now is None else now)
+    cutoff = current - float(retention_days) * 86400
+    removed = 0
+
+    for key in list(seen_ids):
+        raw_timestamp = seen_meta.get(str(key)) if isinstance(seen_meta, dict) else None
+        try:
+            timestamp = float(raw_timestamp)
+            if timestamp <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            # Legacy list entries had no timestamp. Give them one full retention
+            # window after migration instead of deleting valid history at once.
+            if isinstance(seen_meta, dict):
+                seen_meta[str(key)] = current
+            continue
+        if timestamp < cutoff:
+            forget_seen(seen_ids, key, seen_meta)
+            removed += 1
+
+    if isinstance(seen_meta, dict):
+        for orphan in set(seen_meta) - {str(key) for key in seen_ids}:
+            seen_meta.pop(orphan, None)
+    return removed
+
+
+def save_seen_state(seen_ids, seen_meta):
+    """Persist the compatible key list plus timestamps used for pruning."""
+    keys = sorted(str(key) for key in seen_ids)
+    save_json(SEEN_PATH, keys)
+    current = time.time()
+    metadata = {
+        key: float(seen_meta.get(key, current))
+        for key in keys
+    }
+    save_json(SEEN_META_PATH, metadata)
+
+
+def _positive_price(value):
+    """Return a positive numeric price from Vinted's scalar/dict formats."""
+    if isinstance(value, dict):
+        value = (
+            value.get("amount")
+            or value.get("value")
+            or value.get("price")
+        )
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        price = float(str(value).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    return price if price > 0 else None
+
+
+def price_drop_event(price_history, item_id, current_price, threshold_pct=20):
+    """Detect a cumulative price drop without mutating the stored baseline."""
+    if not isinstance(price_history, dict):
+        return None
+    current = _positive_price(current_price)
+    if current is None:
+        return None
+    entry = price_history.get(str(item_id))
+    if not isinstance(entry, dict):
+        return None
+    baseline = _positive_price(
+        entry.get("baseline_price", entry.get("price"))
+    )
+    if baseline is None or current >= baseline:
+        return None
+    drop_pct = (baseline - current) / baseline * 100
+    if drop_pct + 1e-9 < float(threshold_pct):
+        return None
+    return {
+        "previous_price": round(baseline, 2),
+        "current_price": round(current, 2),
+        "price_drop_pct": round(drop_pct, 1),
+    }
+
+
+def remember_price(
+    price_history,
+    item_id,
+    current_price,
+    now=None,
+    reset_baseline=False,
+):
+    """Persist the last price while keeping cumulative drops detectable."""
+    if not isinstance(price_history, dict):
+        return
+    current = _positive_price(current_price)
+    if current is None:
+        return
+    key = str(item_id)
+    previous = price_history.get(key)
+    previous = previous if isinstance(previous, dict) else {}
+    baseline = _positive_price(
+        previous.get("baseline_price", previous.get("price"))
+    )
+    if reset_baseline or baseline is None:
+        baseline = current
+    else:
+        # A temporary increase becomes the new reference high. Smaller gradual
+        # drops accumulate until the configured alert threshold is reached.
+        baseline = max(baseline, current)
+    price_history[key] = {
+        "baseline_price": round(baseline, 2),
+        "last_price": round(current, 2),
+        "seen_at": float(time.time() if now is None else now),
+    }
+
+
+def prune_price_history(price_history, retention_days=30, now=None):
+    if not isinstance(price_history, dict):
+        return 0
+    current = float(time.time() if now is None else now)
+    cutoff = current - float(retention_days) * 86400
+    removed = 0
+    for item_id, entry in list(price_history.items()):
+        if not isinstance(entry, dict):
+            price_history.pop(item_id, None)
+            removed += 1
+            continue
+        try:
+            seen_at = float(entry.get("seen_at"))
+        except (TypeError, ValueError):
+            # Preserve a legacy entry for one full retention window.
+            entry["seen_at"] = current
+            continue
+        if seen_at < cutoff:
+            price_history.pop(item_id, None)
+            removed += 1
+    return removed
+
+
+def save_price_history(price_history):
+    save_json(PRICE_HISTORY_PATH, price_history if isinstance(price_history, dict) else {})
 
 
 def parse_vinted_timestamp(value):
@@ -246,14 +555,97 @@ def parse_vinted_timestamp(value):
     return parsed.astimezone(timezone.utc)
 
 
+def _relative_listing_age_segment(value):
+    """Return only Vinted's upload-age fragment, never seller activity."""
+    if value is None:
+        return ""
+    normalized = norm(str(value))
+    marker = re.search(
+        r"\b(?:ajoute(?:e)?|added|uploaded)\b.{0,90}",
+        normalized,
+    )
+    return marker.group(0) if marker else ""
+
+
+def relative_listing_age_bounds(value):
+    """Return (display age, conservative upper bound), expressed in hours.
+
+    Vinted currently renders relative text such as ``Ajouté il y a 6 minutes``
+    instead of an ISO/Unix creation timestamp.  The upper bound prevents an
+    item displayed as "24 heures" from slipping through a strict 24-hour cap.
+    """
+    segment = _relative_listing_age_segment(value)
+    if not segment:
+        return None
+
+    if re.search(r"\b(?:a l(?:'| )instant|maintenant|just now)\b", segment):
+        return 0.0, 1.0 / 60.0
+    if re.search(
+        r"\b(?:moins (?:d'une|d une|de une|d 1|de 1)|less than (?:a|one)) "
+        r"minute\b",
+        segment,
+    ):
+        return 0.0, 1.0 / 60.0
+    if re.search(r"\b(?:aujourd(?:'| )hui|today)\b", segment):
+        return 0.0, 24.0
+    if re.search(r"\b(?:avant(?:-| )hier|day before yesterday)\b", segment):
+        return 48.0, 72.0
+    if re.search(r"\b(?:hier|yesterday)\b", segment):
+        return 24.0, 48.0
+
+    match = re.search(
+        r"(?:il y a\s+)?(?P<count>\d+|un|une|quelques|one|an|a|few)\s+"
+        r"(?P<unit>secondes?|seconds?|secs?|s|minutes?|mins?|min|mn|"
+        r"heures?|hours?|hrs?|h|jours?|days?|j|semaines?|weeks?|"
+        r"mois|months?|ans?|annees?|years?)\b",
+        segment,
+    )
+    if not match:
+        return None
+
+    count_text = match.group("count")
+    if count_text in {"un", "une", "one", "an", "a"}:
+        count = 1
+        upper_count = 2
+    elif count_text in {"quelques", "few"}:
+        count = 0
+        upper_count = 5
+    else:
+        count = int(count_text)
+        upper_count = count + 1
+
+    unit = match.group("unit")
+    if unit in {"s", "sec", "secs"} or unit.startswith(("seconde", "second")):
+        multiplier = 1.0 / 3600.0
+    elif unit in {"min", "mins", "mn"} or unit.startswith("minute"):
+        multiplier = 1.0 / 60.0
+    elif unit in {"h", "hr", "hrs"} or unit.startswith(("heure", "hour")):
+        multiplier = 1.0
+    elif unit in {"j"} or unit.startswith(("jour", "day")):
+        multiplier = 24.0
+    elif unit.startswith(("semaine", "week")):
+        multiplier = 24.0 * 7
+    elif unit == "mois" or unit.startswith("month"):
+        multiplier = 24.0 * 28
+    else:
+        multiplier = 24.0 * 365
+
+    return count * multiplier, upper_count * multiplier
+
+
 def listing_age_hours(value, now=None):
     published = parse_vinted_timestamp(value)
-    if published is None:
-        return None
-    current = now or datetime.now(timezone.utc)
-    if current.tzinfo is None:
-        current = current.replace(tzinfo=timezone.utc)
-    return max(0.0, (current.astimezone(timezone.utc) - published).total_seconds() / 3600)
+    if published is not None:
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        return max(
+            0.0,
+            (current.astimezone(timezone.utc) - published).total_seconds() / 3600,
+        )
+
+    relative = relative_listing_age_bounds(value)
+    return relative[0] if relative is not None else None
 
 
 def freshness_check(value, cfg, now=None):
@@ -263,7 +655,17 @@ def freshness_check(value, cfg, now=None):
         if bool(cfg.get("reject_unknown_listing_age", True)):
             return False, None, "heure de publication introuvable"
         return True, None, "heure inconnue tolérée"
-    if age > max_age:
+
+    relative = relative_listing_age_bounds(value)
+    age_for_limit = relative[1] if relative is not None else age
+    if age_for_limit > max_age:
+        if relative is not None:
+            return (
+                False,
+                age,
+                f"annonce trop ancienne ou à la limite "
+                f"(âge affiché {age:g} h, plafond strict {max_age:g} h)",
+            )
         return False, age, f"annonce trop ancienne ({age:.1f} h > {max_age:g} h)"
     return True, age, "annonce récente"
 
@@ -272,12 +674,30 @@ def freshness_label(age_hours, cfg):
     if age_hours is None:
         return "âge inconnu"
     minutes = max(0, int(round(age_hours * 60)))
-    instant_limit = int(cfg.get("instant_listing_minutes", 30))
+    instant_limit = int(cfg.get("instant_listing_minutes", 5))
     if minutes <= instant_limit:
         return f"MISE À L'INSTANT ({minutes} min)"
     if minutes < 60:
         return f"publiée il y a {minutes} min"
     return f"publiée il y a {age_hours:.1f} h"
+
+
+def freshness_health_issue(stats, cfg):
+    """Detect a systemic age-parser outage without flagging an empty scan."""
+    if not isinstance(stats, dict):
+        return False
+    known = int(stats.get("freshness_known", 0))
+    unknown = int(stats.get("freshness_unknown", 0))
+    minimum = int(cfg.get("freshness_healthcheck_min_samples", 3))
+    total = known + unknown
+    return total >= minimum and unknown / total >= 0.8
+
+
+def search_health_issue(attempted, failures):
+    """Fail only on a systemic problem, not on one intermittent search."""
+    attempted = int(attempted)
+    failures = int(failures)
+    return attempted >= 3 and failures / attempted >= 0.5
 
 
 def item_already_seen(seen_ids, search, item_id):
@@ -1202,6 +1622,8 @@ def opportunity_score(
     authenticity_risk=False,
     rare_condition=False,
     age_hours=None,
+    favourite_count=None,
+    cfg=None,
 ):
     if not reference_price or reference_price <= 0:
         return 1
@@ -1231,12 +1653,36 @@ def opportunity_score(
     if motivation_hits:
         score += 1
 
-    # Speed matters for resale deals: reward listings caught immediately.
+    # The score is on 10 points: +2 is the equivalent of a +20/100 bonus.
     if age_hours is not None:
-        if age_hours <= 0.5:
+        if age_hours <= 5 / 60:
             score += 2
-        elif age_hours <= 2:
+        elif age_hours <= 0.5:
             score += 1
+        elif age_hours <= 2:
+            score += 0.5
+
+    # Vinted currently publishes favourites but not public view counts. Zero
+    # favourite on a brand-new listing is a useful "hidden deal" signal; many
+    # favourites mean visible competition. Keep the adjustment bounded so the
+    # price and net margin remain the dominant signals.
+    if favourite_count is not None:
+        try:
+            favourites = max(0, int(favourite_count))
+        except (TypeError, ValueError):
+            favourites = None
+        if favourites is not None:
+            scoring_cfg = cfg or {}
+            if favourites == 0 and age_hours is not None and age_hours <= 5 / 60:
+                score += float(scoring_cfg.get("hidden_deal_bonus", 1.0))
+            else:
+                penalty = favourites * float(
+                    scoring_cfg.get("favourite_penalty_per_user", 0.25)
+                )
+                score -= min(
+                    penalty,
+                    float(scoring_cfg.get("favourite_penalty_cap", 2.0)),
+                )
 
     if authenticity_risk:
         score -= 1
@@ -1256,8 +1702,18 @@ def reason_text(
     rare_condition_hits=None,
     age_hours=None,
     cfg=None,
+    favourite_count=None,
+    price_drop=None,
 ):
     parts = []
+
+    if price_drop:
+        parts.append(
+            "prix baisse "
+            f"{price_drop['previous_price']:.2f}→"
+            f"{price_drop['current_price']:.2f} EUR "
+            f"(-{price_drop['price_drop_pct']:.0f}%)"
+        )
 
     if age_hours is not None:
         parts.append(freshness_label(age_hours, cfg or {}))
@@ -1267,6 +1723,17 @@ def reason_text(
         parts.append(
             f"prix a environ {pct:.0f}% de la reference prudente"
         )
+
+    if favourite_count is not None:
+        try:
+            favourites = max(0, int(favourite_count))
+        except (TypeError, ValueError):
+            favourites = None
+        if favourites == 0 and age_hours is not None and age_hours <= 5 / 60:
+            parts.append("0 favori: affaire encore discrete")
+        elif favourites is not None and favourites > 0:
+            suffix = "s" if favourites > 1 else ""
+            parts.append(f"{favourites} favori{suffix}: concurrence visible")
 
     if motivation_hits:
         parts.append(
@@ -1307,9 +1774,15 @@ def ntfy_send(row):
     )
 
     # ASCII uniquement dans les headers HTTP.
-    title = (
-        f"Vinted Deal {row['opportunity_score']}/10"
-    )
+    if row.get("price_drop_pct"):
+        title = (
+            f"Vinted BAISSE -{float(row['price_drop_pct']):.0f}% "
+            f"{row['opportunity_score']}/10"
+        )
+    else:
+        title = (
+            f"Vinted Deal {row['opportunity_score']}/10"
+        )
 
     size = row.get("size") or "?"
 
@@ -1334,6 +1807,7 @@ def ntfy_send(row):
         f"→ Revente {row['resale_low']:.0f}-"
         f"{row['resale_high']:.0f} EUR | "
         f"Bénéfice net {row['margin_low']:.2f} EUR | "
+        f"Favoris {row.get('favourite_count', '?')} | "
         f"{row['reason']} | "
         f"{row['url']}"
     )
@@ -1342,7 +1816,7 @@ def ntfy_send(row):
         "Title": title,
         "Priority": (
             "high"
-            if row["opportunity_score"] >= 8
+            if row["opportunity_score"] >= 8 or row.get("price_drop_pct")
             else "default"
         ),
         "Tags": "moneybag,shopping_cart",
@@ -1452,7 +1926,178 @@ def catalog_items_from_payload(payload):
     return []
 
 
-async def extract_cards(page, catalog_payload=None):
+def _first_present(mapping, *keys):
+    if not isinstance(mapping, dict):
+        return None
+    for key in keys:
+        if key in mapping and mapping[key] is not None:
+            return mapping[key]
+    return None
+
+
+def _optional_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in {0, 1}:
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "oui"}:
+            return True
+        if normalized in {"0", "false", "no", "non"}:
+            return False
+    return None
+
+
+def _catalog_product(item):
+    if not isinstance(item, dict):
+        return {}
+    product = item.get("productItem") or item.get("product_item")
+    return product if isinstance(product, dict) else item
+
+
+def _text_value(value):
+    if isinstance(value, dict):
+        value = _first_present(value, "title", "name", "label")
+    return str(value or "").strip()
+
+
+def catalog_card_from_item(item, base_url="https://www.vinted.be"):
+    """Normalize both catalog API and current React payload field names."""
+    if not isinstance(item, dict):
+        return None
+    product = _catalog_product(item)
+    item_id = _first_present(product, "id", "item_id", "itemId")
+    if item_id is None:
+        item_id = _first_present(item, "id", "item_id", "itemId")
+    if item_id is None:
+        return None
+    item_id = str(item_id)
+
+    title = clean_title(
+        _text_value(_first_present(product, "title", "name"))
+        or _text_value(_first_present(item, "title", "name"))
+    )
+    if not title:
+        return None
+
+    raw_url = _first_present(product, "url", "item_url", "itemUrl")
+    if raw_url is None:
+        raw_url = _first_present(item, "url", "item_url", "itemUrl")
+    raw_url = str(raw_url or f"/items/{item_id}")
+    url = urllib.parse.urljoin(base_url.rstrip("/") + "/", raw_url).split("?")[0]
+
+    price = _positive_price(
+        _first_present(product, "price", "price_with_discount", "priceWithDiscount")
+    )
+    if price is None:
+        price = _positive_price(_first_present(item, "price", "price_with_discount"))
+
+    item_box = item.get("itemBox") or item.get("item_box")
+    item_box = item_box if isinstance(item_box, dict) else {}
+    brand = _text_value(
+        _first_present(product, "brand_title", "brandTitle", "brand")
+    ) or _text_value(_first_present(item_box, "firstLine", "first_line"))
+    condition = _text_value(
+        _first_present(product, "status_title", "statusTitle", "status")
+    ) or _text_value(_first_present(item_box, "secondLine", "second_line"))
+
+    text_parts = [title, brand, condition]
+    if price is not None:
+        text_parts.append(f"{price:.2f} €")
+
+    user = product.get("user") if isinstance(product.get("user"), dict) else {}
+    if not user and isinstance(item.get("user"), dict):
+        user = item["user"]
+    seller_is_business = _optional_bool(
+        _first_present(user, "isBusiness", "is_business", "business", "is_pro")
+    )
+    if seller_is_business is None:
+        seller_is_business = _optional_bool(
+            _first_present(product, "isBusiness", "is_business", "business", "is_pro")
+        )
+
+    favourite_count = _first_present(
+        product,
+        "favouriteCount",
+        "favourite_count",
+        "favoriteCount",
+        "favorite_count",
+    )
+    try:
+        favourite_count = max(0, int(favourite_count))
+    except (TypeError, ValueError):
+        favourite_count = None
+
+    created_at = _first_present(
+        product,
+        "created_at_ts",
+        "created_at",
+        "createdAt",
+        "uploaded_at",
+        "uploadedAt",
+    )
+    if created_at is None:
+        created_at = _first_present(
+            item,
+            "created_at_ts",
+            "created_at",
+            "createdAt",
+            "uploaded_at",
+            "uploadedAt",
+        )
+
+    image_url = _text_value(
+        _first_present(product, "thumbnailUrl", "thumbnail_url", "image_url")
+    )
+    if not image_url:
+        photo = product.get("photo") if isinstance(product.get("photo"), dict) else {}
+        image_url = _text_value(_first_present(photo, "url", "full_size_url"))
+
+    return {
+        "item_id": item_id,
+        "url": url,
+        "title": title,
+        "text": " ".join(part for part in text_parts if part),
+        "price": price,
+        "created_at_ts": created_at,
+        "favourite_count": favourite_count,
+        "seller_is_business": seller_is_business,
+        "image_url": image_url,
+    }
+
+
+def _sort_cards_newest(cards):
+    for index, card in enumerate(cards):
+        card["_dom_index"] = index
+    if any(parse_vinted_timestamp(x.get("created_at_ts")) for x in cards):
+        def recent_first(card):
+            parsed = parse_vinted_timestamp(card.get("created_at_ts"))
+            if parsed is not None:
+                return (1, parsed.timestamp(), -card["_dom_index"])
+            return (0, 0, -card["_dom_index"])
+
+        cards.sort(key=recent_first, reverse=True)
+    return cards
+
+
+async def extract_cards(
+    page,
+    catalog_payload=None,
+    base_url="https://www.vinted.be",
+):
+    # Fast path: the catalog response already contains everything required for
+    # cheap filtering (price, favourites and seller type). Avoid waiting for
+    # the whole visual grid to hydrate when that payload is available.
+    api_cards = []
+    api_items_raw = catalog_items_from_payload(catalog_payload)
+    for item in api_items_raw:
+        card = catalog_card_from_item(item, base_url=base_url)
+        if card is not None:
+            api_cards.append(card)
+    if api_cards:
+        return _sort_cards_newest(api_cards)
+
     data = await page.locator(
         'a[href*="/items/"]'
     ).evaluate_all(
@@ -1491,12 +2136,6 @@ async def extract_cards(page, catalog_payload=None):
         """
     )
 
-    api_items = {
-        str(item.get("id")): item
-        for item in catalog_items_from_payload(catalog_payload)
-        if isinstance(item, dict) and item.get("id") is not None
-    }
-
     out = []
     already = set()
 
@@ -1517,28 +2156,17 @@ async def extract_cards(page, catalog_payload=None):
         x["item_id"] = item_id
         x["url"] = href.split("?")[0]
         x["title"] = title_from_card(x)
-        api_item = api_items.get(item_id, {})
-        x["created_at_ts"] = (
-            api_item.get("created_at_ts")
-            or api_item.get("created_at")
-        )
-        x["_dom_index"] = len(out)
+        x["created_at_ts"] = None
+        x["favourite_count"] = None
+        x["seller_is_business"] = None
+        x["price"] = parse_price(x.get("text", ""))
 
         out.append(x)
 
     # The catalog is requested with newest_first. When Vinted also exposes its
     # creation timestamp, enforce the order explicitly and keep DOM order as a
     # stable fallback when every timestamp is absent.
-    if any(parse_vinted_timestamp(x.get("created_at_ts")) for x in out):
-        def recent_first(card):
-            parsed = parse_vinted_timestamp(card.get("created_at_ts"))
-            if parsed is not None:
-                return (1, parsed.timestamp(), -card["_dom_index"])
-            return (0, 0, -card["_dom_index"])
-
-        out.sort(key=recent_first, reverse=True)
-
-    return out
+    return _sort_cards_newest(out)
 
 
 async def verify_listing(
@@ -1555,11 +2183,32 @@ async def verify_listing(
         if limiter is not None:
             await limiter.wait("detail")
 
-        await detail.goto(
+        navigation_response = await detail.goto(
             url,
             wait_until="domcontentloaded",
             timeout=9000,
         )
+
+        if navigation_response is not None and limiter is not None:
+            navigation_status = navigation_response.status
+            backoff = await limiter.register_response(
+                navigation_status,
+                navigation_response.headers,
+                "detail",
+            )
+            if navigation_status == 429:
+                return {
+                    "ok": False,
+                    "title": fallback_title,
+                    "text": "",
+                    "seller": "",
+                    "image_url": "",
+                    "price": None,
+                    "created_at_ts": None,
+                    "available": False,
+                    "rate_limited": True,
+                    "error": f"HTTP 429, nouvelle tentative après {backoff:.1f} s",
+                }
 
         await detail.wait_for_timeout(350)
 
@@ -1571,25 +2220,65 @@ async def verify_listing(
             try:
                 if limiter is not None:
                     await limiter.wait("item-api")
-                api_payload = await detail.evaluate(
+                api_result = await detail.evaluate(
                     """
                     async itemId => {
                       const response = await fetch(
                         `/api/v2/items/${itemId}`,
                         {credentials: 'include'}
                       );
-                      if (!response.ok) return null;
-                      return await response.json();
+                      let payload = null;
+                      if (response.ok) {
+                        try {
+                          payload = await response.json();
+                        } catch (_) {}
+                      }
+                      return {
+                        status: response.status,
+                        retryAfter: response.headers.get('retry-after'),
+                        payload,
+                      };
                     }
                     """,
                     item_id,
                 )
+                api_payload = api_result
+                if isinstance(api_result, dict) and "status" in api_result:
+                    api_status = api_result.get("status")
+                    if limiter is not None:
+                        backoff = await limiter.register_response(
+                            api_status,
+                            {"retry-after": api_result.get("retryAfter")},
+                            "item-api",
+                        )
+                        if int(api_status or 0) == 429:
+                            return {
+                                "ok": False,
+                                "title": fallback_title,
+                                "text": "",
+                                "seller": "",
+                                "image_url": "",
+                                "price": None,
+                                "created_at_ts": None,
+                                "available": False,
+                                "rate_limited": True,
+                                "error": (
+                                    "HTTP 429 API article, nouvelle tentative "
+                                    f"après {backoff:.1f} s"
+                                ),
+                            }
+                    api_payload = api_result.get("payload")
                 if isinstance(api_payload, dict):
                     candidate = api_payload.get("item", api_payload)
                     if isinstance(candidate, dict):
                         api_item = candidate
             except Exception:
-                pass
+                LOGGER.debug(
+                    "API article indisponible | item_id=%s | url=%s",
+                    item_id,
+                    url,
+                    exc_info=True,
+                )
 
         title = clean_title(str(api_item.get("title") or "")) or fallback_title
 
@@ -1629,6 +2318,20 @@ async def verify_listing(
                 pass
 
         try:
+            await detail.wait_for_function(
+                """
+                () => (document.querySelector('main')?.innerText || '')
+                  .match(/Ajouté|Added|Uploaded/i)
+                """,
+                timeout=1500,
+            )
+        except PlaywrightTimeoutError:
+            LOGGER.debug(
+                "Libellé d'âge non hydraté à temps | item_id=%s",
+                item_id,
+            )
+
+        try:
             main_text = await detail.locator(
                 "main"
             ).inner_text(timeout=1800)
@@ -1647,6 +2350,37 @@ async def verify_listing(
 
         api_user = api_item.get("user") if isinstance(api_item.get("user"), dict) else {}
         seller = str(api_user.get("login") or "").strip()
+        seller_is_business = _optional_bool(
+            _first_present(
+                api_user,
+                "isBusiness",
+                "is_business",
+                "business",
+                "is_pro",
+            )
+        )
+        if seller_is_business is None:
+            seller_is_business = _optional_bool(
+                _first_present(
+                    api_item,
+                    "isBusiness",
+                    "is_business",
+                    "business",
+                    "is_pro",
+                )
+            )
+
+        favourite_count = _first_present(
+            api_item,
+            "favouriteCount",
+            "favourite_count",
+            "favoriteCount",
+            "favorite_count",
+        )
+        try:
+            favourite_count = max(0, int(favourite_count))
+        except (TypeError, ValueError):
+            favourite_count = None
 
         try:
             seller_links = detail.locator(
@@ -1759,6 +2493,43 @@ async def verify_listing(
             except Exception:
                 created_at_raw = None
 
+        # Vinted currently exposes the upload age as visible relative text
+        # (for example "Ajouté il y a 6 minutes") instead of a timestamp.
+        # This parser is anchored on "Ajouté", so seller activity such as
+        # "Vu la dernière fois" cannot be confused with the listing age.
+        if created_at_raw is None:
+            relative_segment = _relative_listing_age_segment(full_text)
+            if not relative_segment:
+                try:
+                    embedded_age = await detail.evaluate(
+                        """
+                        () => {
+                          for (const node of document.scripts) {
+                            const raw = node.textContent || '';
+                            const uploadIndex = raw.indexOf('upload_date');
+                            if (uploadIndex < 0) continue;
+                            const candidate = raw.slice(uploadIndex, uploadIndex + 700);
+                            const addedIndex = candidate.search(
+                              /Ajout(?:é|e)|Added|Uploaded/i
+                            );
+                            if (addedIndex >= 0) {
+                              return candidate.slice(addedIndex, addedIndex + 180);
+                            }
+                          }
+                          return null;
+                        }
+                        """
+                    )
+                    relative_segment = _relative_listing_age_segment(embedded_age)
+                except Exception:
+                    LOGGER.debug(
+                        "Âge intégré illisible | item_id=%s",
+                        item_id,
+                        exc_info=True,
+                    )
+            if relative_listing_age_bounds(relative_segment) is not None:
+                created_at_raw = relative_segment
+
         status_text = norm(str(api_item.get("status") or ""))
         unavailable = bool(
             api_item.get("is_closed")
@@ -1773,6 +2544,8 @@ async def verify_listing(
             "title": title,
             "text": full_text,
             "seller": seller,
+            "seller_is_business": seller_is_business,
+            "favourite_count": favourite_count,
             "image_url": image_url,
             "price": detail_price,
             "created_at_ts": created_at_raw,
@@ -1793,6 +2566,7 @@ async def verify_listing(
         }
 
     except Exception as e:
+        LOGGER.exception("Vérification inattendue impossible | url=%s", url)
         return {
             "ok": False,
             "title": fallback_title,
@@ -1838,6 +2612,22 @@ def suspicious_price(rule, price):
     return ""
 
 
+def build_search_url(search, cfg):
+    """Build the current public catalog URL with newest listings first."""
+    base = cfg.get(
+        "base_url",
+        "https://www.vinted.be",
+    ).rstrip("/")
+    url = (
+        f"{base}/catalog?"
+        f"search_text={quote_plus(search['query'])}"
+        f"&order=newest_first"
+    )
+    if search.get("price_to") is not None:
+        url += f"&price_to={float(search['price_to']):g}"
+    return url
+
+
 async def scan_search(
     page,
     search,
@@ -1845,28 +2635,15 @@ async def scan_search(
     blacklist,
     seen_ids,
     limiter,
+    health_stats=None,
+    seen_meta=None,
+    price_history=None,
+    price_drop_cache=None,
 ):
-    base = cfg.get(
-        "base_url",
-        "https://www.vinted.be",
-    ).rstrip("/")
-
-    query = search["query"]
     price_to = search.get(
         "price_to"
     )
-
-    url = (
-        f"{base}/catalog?"
-        f"search_text={quote_plus(query)}"
-        f"&order=newest_first"
-    )
-
-    if price_to is not None:
-        url += (
-            f"&price_to="
-            f"{float(price_to):g}"
-        )
+    url = build_search_url(search, cfg)
 
     LOGGER.info(
         f"\n[SCAN] "
@@ -1879,46 +2656,76 @@ async def scan_search(
     async def capture_catalog(response):
         if catalog_future.done() or "/api/v2/catalog/items" not in response.url:
             return
+        status = response.status
+        if status == 429:
+            backoff = await limiter.register_response(
+                status,
+                response.headers,
+                "catalog-api",
+            )
+            if not catalog_future.done():
+                catalog_future.set_result(
+                    {"_rate_limited": True, "_backoff_seconds": backoff}
+                )
+            return
         try:
             payload = await response.json()
         except Exception:
+            LOGGER.debug(
+                "Réponse catalogue illisible | status=%s | url=%s",
+                status,
+                response.url,
+                exc_info=True,
+            )
             return
         if catalog_items_from_payload(payload):
-            catalog_future.set_result(payload)
+            await limiter.register_response(status, response.headers, "catalog-api")
+            if not catalog_future.done():
+                catalog_future.set_result(payload)
 
     page.on("response", capture_catalog)
 
     try:
         await limiter.wait("catalog")
-        await page.goto(
+        navigation_response = await page.goto(
             url,
             wait_until="domcontentloaded",
             timeout=14000,
         )
 
-        await page.wait_for_timeout(
-            int(
-                cfg.get(
-                    "page_wait_ms",
-                    1800,
-                )
+        if navigation_response is not None:
+            navigation_status = navigation_response.status
+            backoff = await limiter.register_response(
+                navigation_status,
+                navigation_response.headers,
+                "catalog",
             )
-        )
-
-        await page.locator(
-            'a[href*="/items/"]'
-        ).first.wait_for(
-            timeout=4000
-        )
+            if navigation_status == 429:
+                LOGGER.warning(
+                    "Recherche reportée après HTTP 429 | recherche=%s | backoff=%.1fs",
+                    search.get("name"),
+                    backoff,
+                )
+                return []
 
         if not catalog_future.done():
             try:
                 await asyncio.wait_for(
                     asyncio.shield(catalog_future),
-                    timeout=0.75,
+                    timeout=1.25,
                 )
             except asyncio.TimeoutError:
                 pass
+
+        # API fast path: no need to wait for every image/card to hydrate.
+        # DOM remains a fallback when Vinted changes or withholds the payload.
+        if not catalog_future.done():
+            await page.wait_for_timeout(
+                int(cfg.get("page_wait_ms", 900))
+            )
+            await page.locator(
+                'a[href*="/items/"]'
+            ).first.wait_for(timeout=4000)
 
     except PlaywrightTimeoutError:
         LOGGER.warning(
@@ -1937,9 +2744,17 @@ async def scan_search(
         except Exception:
             catalog_payload = None
 
+    if isinstance(catalog_payload, dict) and catalog_payload.get("_rate_limited"):
+        LOGGER.warning(
+            "Catalogue limité par Vinted | recherche=%s | prochain essai différé",
+            search.get("name"),
+        )
+        return []
+
     cards = await extract_cards(
         page,
         catalog_payload=catalog_payload,
+        base_url=cfg.get("base_url", "https://www.vinted.be"),
     )
 
     # Pour les exemples fournis par l'utilisateur, le scanner estime
@@ -1977,21 +2792,55 @@ async def scan_search(
         )
     )
 
+    observed_prices = {}
+    if not isinstance(price_drop_cache, dict):
+        price_drop_cache = {}
+
     for c in cards[:max_items]:
-        if item_already_seen(seen_ids, search, c["item_id"]):
+        title = c["title"]
+        text = c.get("text", "")
+        price = _positive_price(c.get("price")) or parse_price(text)
+        if price is not None:
+            observed_prices[str(c["item_id"])] = price
+
+        price_drop = price_drop_cache.get(str(c["item_id"]))
+        if price_drop is None:
+            price_drop = price_drop_event(
+                price_history,
+                c["item_id"],
+                price,
+                threshold_pct=cfg.get("price_drop_alert_pct", 20),
+            )
+            if price_drop is not None:
+                price_drop_cache[str(c["item_id"])] = price_drop
+
+        if (
+            item_already_seen(seen_ids, search, c["item_id"])
+            and price_drop is None
+        ):
             continue
 
         # Mark deterministic rejections for this search. Otherwise the same
         # accessories/boxes occupy the first page every five minutes forever.
         # A detail-page timeout removes this key below so transient failures retry.
         per_search_seen = search_seen_key(search, c["item_id"])
-        seen_ids.add(per_search_seen)
+        mark_seen(seen_ids, per_search_seen, seen_meta)
 
-        title = c["title"]
-        text = c.get(
-            "text",
-            "",
-        )
+        if price_drop is not None:
+            LOGGER.info(
+                "  ↓ BAISSE DE PRIX | %s | %.2f -> %.2f EUR (-%.1f%%)",
+                title[:65],
+                price_drop["previous_price"],
+                price_drop["current_price"],
+                price_drop["price_drop_pct"],
+            )
+
+        if (
+            cfg.get("exclude_professional_sellers", True)
+            and c.get("seller_is_business") is True
+        ):
+            LOGGER.info("  X VENDEUR PRO | %s", title[:65])
+            continue
 
         card_created_at = c.get("created_at_ts")
         card_age = listing_age_hours(card_created_at)
@@ -2017,10 +2866,6 @@ async def scan_search(
                 f"{ignored_hits}"
             )
             continue
-
-        price = parse_price(
-            text
-        )
 
         if price is None:
             continue
@@ -2197,16 +3042,24 @@ async def scan_search(
         )
 
         if not detail.get("ok"):
-            seen_ids.discard(per_search_seen)
+            forget_seen(seen_ids, per_search_seen, seen_meta)
             LOGGER.warning(
-                f"  ? VERIFICATION "
-                f"IMPOSSIBLE | "
-                f"{title[:60]} | "
-                f"{c['url']}"
+                "Vérification impossible | item_id=%s | recherche=%s | "
+                "erreur=%s | url=%s",
+                c.get("item_id"),
+                search.get("name"),
+                detail.get("error", "inconnue"),
+                c["url"],
             )
             continue
 
         if not detail.get("available", True):
+            clear_freshness_retries(
+                seen_ids,
+                search,
+                c["item_id"],
+                seen_meta,
+            )
             LOGGER.info(
                 f"  X INDISPONIBLE/VENDUE | {title[:65]}"
             )
@@ -2217,7 +3070,36 @@ async def scan_search(
             created_at_raw,
             cfg,
         )
+        if health_stats is not None:
+            counter = (
+                "freshness_known"
+                if age_hours is not None
+                else "freshness_unknown"
+            )
+            health_stats[counter] = int(health_stats.get(counter, 0)) + 1
+        if age_hours is not None:
+            clear_freshness_retries(
+                seen_ids,
+                search,
+                c["item_id"],
+                seen_meta,
+            )
         if not fresh:
+            if age_hours is None:
+                attempt, should_retry = register_unknown_age_attempt(
+                    seen_ids,
+                    search,
+                    c["item_id"],
+                    max_attempts=cfg.get("unknown_age_max_attempts", 2),
+                    seen_meta=seen_meta,
+                )
+                if should_retry:
+                    forget_seen(seen_ids, per_search_seen, seen_meta)
+                freshness_reason += (
+                    f"; tentative {attempt}/"
+                    f"{int(cfg.get('unknown_age_max_attempts', 2))}"
+                    + (" — nouvel essai prévu" if should_retry else " — abandon")
+                )
             LOGGER.info(
                 f"  X FRAÎCHEUR | {title[:65]} | {freshness_reason}"
             )
@@ -2247,6 +3129,20 @@ async def scan_search(
             )
             .strip()
         )
+
+        seller_is_business = detail.get("seller_is_business")
+        if seller_is_business is None:
+            seller_is_business = c.get("seller_is_business")
+        if (
+            cfg.get("exclude_professional_sellers", True)
+            and seller_is_business is True
+        ):
+            LOGGER.info("  X VENDEUR PRO APRES VERIFICATION | %s", verified_title[:65])
+            continue
+
+        favourite_count = detail.get("favourite_count")
+        if favourite_count is None:
+            favourite_count = c.get("favourite_count")
 
         actual_price = detail.get(
             "price"
@@ -2467,6 +3363,8 @@ async def scan_search(
             ),
             rare_condition=rare_condition,
             age_hours=age_hours,
+            favourite_count=favourite_count,
+            cfg=cfg,
         )
 
         reason = reason_text(
@@ -2485,6 +3383,8 @@ async def scan_search(
             ),
             age_hours=age_hours,
             cfg=cfg,
+            favourite_count=favourite_count,
+            price_drop=price_drop,
         )
 
         abnormal = suspicious_price(
@@ -2543,7 +3443,31 @@ async def scan_search(
                 if age_hours is not None
                 else ""
             ),
+            "favourite_count": (
+                favourite_count
+                if favourite_count is not None
+                else ""
+            ),
+            "seller_type": (
+                "pro"
+                if seller_is_business is True
+                else "particulier"
+                if seller_is_business is False
+                else "inconnu"
+            ),
+            "previous_price": (
+                price_drop["previous_price"]
+                if price_drop is not None
+                else ""
+            ),
+            "price_drop_pct": (
+                price_drop["price_drop_pct"]
+                if price_drop is not None
+                else ""
+            ),
             "image_url": detail.get(
+                "image_url"
+            ) or c.get(
                 "image_url",
                 "",
             ),
@@ -2591,8 +3515,18 @@ async def scan_search(
         )
 
     for row in new_alerts:
-        seen_ids.add(
-            alert_seen_key(row["item_id"])
+        mark_seen(
+            seen_ids,
+            alert_seen_key(row["item_id"]),
+            seen_meta,
+        )
+
+    for item_id, observed_price in observed_prices.items():
+        remember_price(
+            price_history,
+            item_id,
+            observed_price,
+            reset_baseline=item_id in price_drop_cache,
         )
 
     return new_alerts
@@ -2647,13 +3581,58 @@ async def main():
             "introuvable ou vide."
         )
 
-    seen_ids = set(
-        charger_json_avec_ancien_nom(
+    try:
+        raw_seen = charger_json_avec_ancien_nom(
             SEEN_PATH,
             ANCIEN_SEEN_PATH,
             [],
         )
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.error("État des annonces illisible, redémarrage propre: %s", exc)
+        raw_seen = []
+    if not isinstance(raw_seen, list):
+        LOGGER.error("État des annonces invalide, liste vide utilisée")
+        raw_seen = []
+    seen_ids = {str(value) for value in raw_seen if str(value).strip()}
+
+    try:
+        seen_meta = load_json(SEEN_META_PATH, {})
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning("Métadonnées d'état illisibles, migration relancée: %s", exc)
+        seen_meta = {}
+    if not isinstance(seen_meta, dict):
+        LOGGER.warning("Métadonnées d'état invalides, migration relancée")
+        seen_meta = {}
+
+    removed_seen = prune_seen_state(
+        seen_ids,
+        seen_meta,
+        retention_days=cfg.get("seen_retention_days", 30),
     )
+    if removed_seen:
+        LOGGER.info(
+            "État nettoyé: %d clé(s) de plus de %d jours supprimée(s)",
+            removed_seen,
+            int(cfg.get("seen_retention_days", 30)),
+        )
+
+    try:
+        price_history = load_json(PRICE_HISTORY_PATH, {})
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning("Historique des prix illisible, redémarrage propre: %s", exc)
+        price_history = {}
+    if not isinstance(price_history, dict):
+        LOGGER.warning("Historique des prix invalide, dictionnaire vide utilisé")
+        price_history = {}
+    removed_prices = prune_price_history(
+        price_history,
+        retention_days=cfg.get("seen_retention_days", 30),
+    )
+    if removed_prices:
+        LOGGER.info(
+            "Historique des prix nettoyé: %d annonce(s) supprimée(s)",
+            removed_prices,
+        )
 
     one_shot = (
         "--once"
@@ -2668,6 +3647,7 @@ async def main():
     limiter = AsyncRateLimiter(
         cfg.get("request_delay_min_seconds", 1.0),
         cfg.get("request_delay_max_seconds", 3.0),
+        cfg.get("backoff_max_seconds", 60.0),
     )
 
     startup_jitter = random.uniform(
@@ -2679,7 +3659,7 @@ async def main():
         await asyncio.sleep(startup_jitter)
 
     LOGGER.info(
-        "Vinted Tarayici V7.0 — production sécurisée, fraîcheur stricte 24 h"
+        "Vinted Tarayici V7.4 — catalogue rapide, favoris, vendeurs Pro et baisses"
     )
 
     LOGGER.info(
@@ -2720,7 +3700,10 @@ async def main():
                     "width": 1280,
                     "height": 900,
                 },
-                locale="fr-BE",
+                locale=VINTED_BROWSER_LOCALE,
+                extra_http_headers={
+                    "Accept-Language": VINTED_ACCEPT_LANGUAGE,
+                },
                 args=[
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
@@ -2737,6 +3720,11 @@ async def main():
         while True:
             cycle_alerts = 0
             cycle_start = time.monotonic()
+            health_stats = {
+                "freshness_known": 0,
+                "freshness_unknown": 0,
+            }
+            price_drop_cache = {}
 
             searches = list(
                 cfg.get(
@@ -2797,6 +3785,8 @@ async def main():
             )
 
             scanned_searches = 0
+            attempted_searches = 0
+            search_failures = 0
 
             for search in searches:
                 elapsed = time.monotonic() - cycle_start
@@ -2809,6 +3799,7 @@ async def main():
                     )
                     break
 
+                attempted_searches += 1
                 try:
                     alerts = await scan_search(
                         page,
@@ -2817,6 +3808,10 @@ async def main():
                         blacklist,
                         seen_ids,
                         limiter,
+                        health_stats=health_stats,
+                        seen_meta=seen_meta,
+                        price_history=price_history,
+                        price_drop_cache=price_drop_cache,
                     )
 
                     scanned_searches += 1
@@ -2824,14 +3819,11 @@ async def main():
                         alerts
                     )
 
-                    save_json(
-                        SEEN_PATH,
-                        sorted(
-                            seen_ids
-                        ),
-                    )
+                    save_seen_state(seen_ids, seen_meta)
+                    save_price_history(price_history)
 
                 except Exception as e:
+                    search_failures += 1
                     LOGGER.exception(
                         "Erreur pendant la recherche %s: %s",
                         search.get("name"),
@@ -2844,15 +3836,26 @@ async def main():
                 f"] Cycle termine — "
                 f"{cycle_alerts} "
                 f"nouvelle(s) alerte(s), "
-                f"{scanned_searches} recherche(s)."
+                f"{scanned_searches} recherche(s), "
+                f"échecs={search_failures}/{attempted_searches}, "
+                f"âge connu={health_stats['freshness_known']}, "
+                f"âge inconnu={health_stats['freshness_unknown']}."
             )
 
-            save_json(
-                SEEN_PATH,
-                sorted(
-                    seen_ids
-                ),
-            )
+            save_seen_state(seen_ids, seen_meta)
+            save_price_history(price_history)
+
+            if freshness_health_issue(health_stats, cfg):
+                raise FreshnessHealthError(
+                    "trop d'âges contrôlés sont illisibles "
+                    f"({health_stats['freshness_unknown']} inconnu(s), "
+                    f"{health_stats['freshness_known']} connu(s))"
+                )
+
+            if search_health_issue(attempted_searches, search_failures):
+                raise ScanHealthError(
+                    f"{search_failures}/{attempted_searches} recherches ont échoué"
+                )
 
             if one_shot:
                 break
@@ -2879,3 +3882,9 @@ if __name__ == "__main__":
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
         LOGGER.critical("Configuration invalide: %s", exc)
         raise SystemExit(2) from exc
+    except FreshnessHealthError as exc:
+        LOGGER.critical("Contrôle santé fraîcheur en échec: %s", exc)
+        raise SystemExit(3) from exc
+    except ScanHealthError as exc:
+        LOGGER.critical("Contrôle santé du scan en échec: %s", exc)
+        raise SystemExit(4) from exc
