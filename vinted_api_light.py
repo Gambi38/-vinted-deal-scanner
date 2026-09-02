@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# VINTED_API_LIGHT_V1
-# Version de test : utilise UNIQUEMENT l'API HTTP (aiohttp) pour le catalogue et les détails.
-# Ce fichier est indépendant de vinted_tarayici.py et ne le modifie pas.
+# VINTED_API_AIOHTTP_V2
+# Scanner autonome : catalogue, détails et notifications utilisent aiohttp.
 
 import asyncio
 import aiohttp
@@ -25,10 +24,20 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 CONFIG_PATH = ROOT / "config.json"
 BLACKLIST_PATH = ROOT / "blacklist.json"
+FILTRES_PATH = ROOT / "filtres.json"
 SEEN_PATH = DATA_DIR / "annonces_vues.json"
 SEEN_META_PATH = DATA_DIR / "annonces_vues_meta.json"
 PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
 ALERTS_CSV = DATA_DIR / "alertes.csv"
+
+ALERT_FIELDS = [
+    "timestamp", "category", "search", "brand", "model", "size",
+    "opportunity_score", "title", "published_at", "age_minutes",
+    "view_count", "favourite_count", "seller_type", "previous_price",
+    "price_drop_pct", "image_url", "listing_price", "total_buy_est",
+    "resale_low", "resale_high", "margin_low", "margin_high", "roi_low",
+    "demand_score", "risk", "reason", "url", "item_id",
+]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -108,7 +117,7 @@ def listing_age_hours(value, now=None):
     return None
 
 def freshness_check(value, cfg, now=None):
-    max_age = float(cfg.get("max_listing_age_hours", 24))
+    max_age = float(cfg.get("max_listing_age_hours", 3))
     age = listing_age_hours(value, now)
     if age is None:
         if cfg.get("reject_unknown_listing_age", True):
@@ -226,6 +235,64 @@ def save_seen_state(seen_ids, seen_meta):
     meta = {k: float(seen_meta.get(k, time.time())) for k in keys}
     save_json(SEEN_META_PATH, meta)
 
+def convert_personal_filter(entry):
+    if not isinstance(entry, dict) or not entry.get("actif", True):
+        return []
+    name = str(entry.get("nom", "")).strip()
+    category = str(entry.get("categorie", "")).strip()
+    queries = entry.get("recherches_vinted", [])
+    if isinstance(queries, str):
+        queries = [queries]
+    single = str(entry.get("recherche_vinted", "")).strip()
+    if single:
+        queries = [single, *queries]
+    queries = list(dict.fromkeys(str(x).strip() for x in queries if str(x).strip()))
+    resale_low = entry.get("revente_prudente")
+    if not name or not category or not queries or resale_low is None:
+        return []
+    resale_high = entry.get("revente_haute", resale_low)
+    rule = {
+        "label": name,
+        "brand": str(entry.get("marque", "")).strip(),
+        "model": str(entry.get("modele", name)).strip(),
+        "must_contain": list(entry.get("mots_obligatoires", [])),
+        "any_contain": list(entry.get("un_des_mots", [])),
+        "platform_any": list(entry.get("mots_plateforme", [])),
+        "hardware_any": list(entry.get("indices_materiel", [])),
+        "exclude": list(entry.get("mots_exclus", [])),
+        "resale_low": float(resale_low),
+        "resale_high": float(resale_high),
+        "min_margin": float(entry.get("marge_minimum", 10)),
+        "min_roi_pct": float(entry.get("roi_minimum", 30)),
+        "demand_score": int(entry.get("score_demande", 5)),
+    }
+    if entry.get("materiel_dans_titre"):
+        rule["hardware_in_title"] = True
+    return [{
+        "name": f"FILTRE - {name} / {query}",
+        "category": category,
+        "query": query,
+        "price_to": float(entry.get("prix_recherche_max", float(resale_low) * 0.5)),
+        "max_items": int(entry.get("nombre_annonces_a_lire", 35)),
+        "rules": [rule],
+    } for query in queries]
+
+def apply_personal_filters(cfg, blacklist):
+    data = load_json(FILTRES_PATH, {})
+    if not isinstance(data, dict):
+        return 0
+    for word in data.get("mots_a_exclure", []):
+        if word and word not in blacklist.setdefault("accessory_blacklist", []):
+            blacklist["accessory_blacklist"].append(word)
+    for word in data.get("mots_a_exclure_du_titre", []):
+        if word and word not in blacklist.setdefault("title_accessory_blacklist", []):
+            blacklist["title_accessory_blacklist"].append(word)
+    searches = []
+    for entry in data.get("articles_a_surveille", []):
+        searches.extend(convert_personal_filter(entry))
+    cfg["searches"] = searches + list(cfg.get("searches", []))
+    return len(searches)
+
 # ---------- Scoring ----------
 def fee_estimate(price, cfg):
     bp = cfg.get("buyer_protection_estimate", {})
@@ -246,8 +313,14 @@ def score_candidate(rule, price, cfg):
     roi = (margin_low / total * 100) if total > 0 else 0
     return total, low, high, round(margin_low, 2), round(margin_high, 2), round(roi, 1)
 
+def _optional_count(value):
+    try:
+        return max(0, int(value)) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
 def opportunity_score(price, ref_price, margin_low, motivation_hits, age_hours=None,
-                      favourite_count=None, cfg=None):
+                      favourite_count=None, view_count=None, cfg=None):
     if not ref_price or ref_price <= 0:
         return 1
     ratio = price / ref_price
@@ -278,14 +351,93 @@ def opportunity_score(price, ref_price, margin_low, motivation_hits, age_hours=N
             score += 1
         elif age_hours <= 2:
             score += 0.5
-    if favourite_count is not None:
-        favs = max(0, int(favourite_count)) if favourite_count is not None else 0
-        if favs == 0 and age_hours is not None and age_hours <= 5/60:
-            score += float(cfg.get("hidden_deal_bonus", 1.0))
-        else:
-            penalty = favs * float(cfg.get("favourite_penalty_per_user", 0.25))
-            score -= min(penalty, float(cfg.get("favourite_penalty_cap", 2.0)))
+    cfg = cfg or {}
+    favs = _optional_count(favourite_count)
+    views = _optional_count(view_count)
+    penalty = 0.0
+    if favs is not None:
+        penalty += favs * float(cfg.get("favourite_penalty_per_user", 0.25))
+    if views is not None:
+        penalty += views * float(cfg.get("view_penalty_per_view", 0.05))
+    score -= min(penalty, float(cfg.get("popularity_penalty_cap", 2.0)))
+    if (age_hours is not None and age_hours <= 5/60 and
+            (favs is not None or views is not None) and
+            (favs is None or favs == 0) and (views is None or views < 5)):
+        score += float(cfg.get("hidden_deal_bonus", 1.0))
     return max(1, min(10, int(round(score))))
+
+def reason_text(price, reference_price, motivation_hits, age_hours=None,
+                favourite_count=None, view_count=None, cfg=None):
+    parts = []
+    if age_hours is not None:
+        parts.append(freshness_label(age_hours, cfg or {}))
+    if reference_price:
+        parts.append(f"prix à environ {price/reference_price*100:.0f}% de la référence prudente")
+    views = _optional_count(view_count)
+    favs = _optional_count(favourite_count)
+    if views is not None:
+        parts.append(f"{views} vue{'s' if views > 1 else ''}")
+    if favs is not None:
+        parts.append(f"{favs} favori{'s' if favs > 1 else ''}")
+    if motivation_hits:
+        parts.append("vendeur motivé: " + ", ".join(motivation_hits[:2]))
+    return "; ".join(parts) or "rapport achat/revente intéressant"
+
+def ensure_alert_csv_schema():
+    ALERTS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    if not ALERTS_CSV.exists() or ALERTS_CSV.stat().st_size == 0:
+        return list(ALERT_FIELDS)
+    with ALERTS_CSV.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        previous = [x for x in (reader.fieldnames or []) if x]
+        rows = list(reader)
+    fields = list(dict.fromkeys(ALERT_FIELDS + previous))
+    if fields != previous:
+        tmp = ALERTS_CSV.with_suffix(".csv.tmp")
+        with tmp.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows({k: row.get(k, "") for k in fields} for row in rows)
+        tmp.replace(ALERTS_CSV)
+    return fields
+
+def append_alert(row):
+    fields = ensure_alert_csv_schema()
+    new = not ALERTS_CSV.exists() or ALERTS_CSV.stat().st_size == 0
+    with ALERTS_CSV.open("a", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        if new:
+            writer.writeheader()
+        writer.writerow({key: row.get(key, "") for key in fields})
+
+async def ntfy_send(row, session):
+    topic = os.getenv("NTFY_TOPIC", "").strip()
+    if not topic:
+        LOGGER.warning("NTFY_TOPIC absent: alerte enregistrée mais non envoyée")
+        return False
+    server = os.getenv("NTFY_SERVER", "https://ntfy.sh").rstrip("/")
+    url = f"{server}/{urllib.parse.quote(topic, safe='')}"
+    body = (f"[{row['opportunity_score']}/10] {row['title']} | "
+            f"Achat {row['listing_price']:.2f} EUR | revente "
+            f"{row['resale_low']:.0f}-{row['resale_high']:.0f} EUR | "
+            f"bénéfice {row['margin_low']:.2f} EUR | {row['reason']}")
+    headers = {
+        "Title": f"Vinted Deal {row['opportunity_score']}/10",
+        "Priority": "high" if row["opportunity_score"] >= 8 else "default",
+        "Tags": "moneybag,shopping_cart", "Click": row["url"],
+        "Actions": f"view, Ouvrir Vinted, {row['url']}",
+    }
+    if row.get("image_url"):
+        headers["Attach"] = row["image_url"]
+    try:
+        async with session.post(url, data=body.encode("utf-8"), headers=headers,
+                                timeout=aiohttp.ClientTimeout(total=8)) as response:
+            if 200 <= response.status < 300:
+                return True
+            LOGGER.error("ntfy HTTP %s", response.status)
+    except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+        LOGGER.error("ntfy indisponible: %s", exc)
+    return False
 
 # ---------- Filtres simplifiés ----------
 def blacklist_check(title, text, blacklist):
@@ -348,12 +500,14 @@ def rule_match(rule, title, text, deep=False):
     return True
 
 # ---------- Appels API ----------
-async def catalog_items(query, price_to, base_url, limiter, session, headers):
+async def catalog_items(query, price_to, base_url, limiter, session, headers, stats=None):
     url = f"{base_url}/api/v2/catalog/items"
     params = {"search_text": query, "order": "newest_first", "per_page": 40}
     if price_to is not None:
         params["price_to"] = float(price_to)
     await limiter.wait("catalog")
+    if stats is not None:
+        stats["catalog_requested"] += 1
     try:
         async with session.get(url, params=params, headers=headers, timeout=10) as resp:
             await limiter.register_response(resp.status, resp.headers, "catalog")
@@ -361,14 +515,20 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers):
                 LOGGER.warning("Catalogue HTTP %s pour %s", resp.status, query)
                 return []
             data = await resp.json()
-            return data.get("items", [])
+            items = data.get("items", [])
+            if stats is not None:
+                stats["catalog_success"] += 1
+                stats["catalog_items"] += len(items)
+            return items
     except Exception as e:
         LOGGER.error("Erreur catalogue %s: %s", query, e)
         return []
 
-async def detail_item(item_id, base_url, limiter, session, headers):
+async def detail_item(item_id, base_url, limiter, session, headers, stats=None):
     url = f"{base_url}/api/v2/items/{item_id}"
     await limiter.wait("detail")
+    if stats is not None:
+        stats["detail_requested"] += 1
     try:
         async with session.get(url, headers=headers, timeout=8) as resp:
             await limiter.register_response(resp.status, resp.headers, "detail")
@@ -381,12 +541,12 @@ async def detail_item(item_id, base_url, limiter, session, headers):
 
 # ---------- Scan principal ----------
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
-                      limiter, session, base_url, headers):
+                      limiter, session, base_url, headers, stats):
     query = search["query"]
     name = search.get("name", query)
     LOGGER.info(f"\n[API-TEST] {name} → {query}")
 
-    items = await catalog_items(query, search.get("price_to"), base_url, limiter, session, headers)
+    items = await catalog_items(query, search.get("price_to"), base_url, limiter, session, headers, stats)
     if not items:
         return []
 
@@ -403,9 +563,11 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
 
         # 1. Vérifier âge
         created = item.get("created_at_ts") or item.get("created_at")
-        fresh, age, reason = freshness_check(created, cfg)
-        if not fresh:
-            LOGGER.debug("  X Âge | %s", reason)
+        # L'API catalogue omet souvent la date. Dans ce cas, on diffère la
+        # décision jusqu'au détail au lieu de rejeter silencieusement l'annonce.
+        age = listing_age_hours(created)
+        if age is not None and age > float(cfg.get("max_listing_age_hours", 3)):
+            LOGGER.debug("  X Âge | %.1fh", age)
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
@@ -460,13 +622,29 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             continue
 
         # 7. Appel détail (pour les favoris et la description)
-        detail = await detail_item(item_id, base_url, limiter, session, headers)
+        detail = await detail_item(item_id, base_url, limiter, session, headers, stats)
         if detail is None or detail.get("is_closed") or detail.get("status") in ("sold", "reserved"):
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
         fav_count = detail.get("favourite_count")
+        view_count = detail.get("view_count")
         description = detail.get("description", "")
+
+        detail_created = (detail.get("created_at_ts") or detail.get("created_at")
+                          or detail.get("uploaded_at"))
+        if detail_created is not None:
+            fresh, age, age_reason = freshness_check(detail_created, cfg)
+            if not fresh:
+                mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
+                continue
+            stats["age_known"] += 1
+        elif age is None:
+            stats["age_unknown"] += 1
+            # Une date absente ne doit pas devenir un rejet permanent : elle
+            # pourra être réessayée au prochain scan (maximum contrôlé ailleurs).
+            LOGGER.warning("  ? Âge absent dans catalogue et détail | %s", item_id)
+            continue
         real_price = _positive_price(detail.get("price"))
         if real_price is not None and real_price > 0:
             price = real_price
@@ -480,8 +658,11 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
 
         # 8. Score final
         motivation_hits = [w for w in cfg.get("seller_motivation_words", []) if term_present(f"{title} {description}", w)]
-        score = opportunity_score(price, ref_price, margin_low, motivation_hits,
-                                  age_hours=age, favourite_count=fav_count, cfg=cfg)
+        score = opportunity_score(
+            price, ref_price, margin_low, motivation_hits,
+            age_hours=age, favourite_count=fav_count,
+            view_count=view_count, cfg=cfg,
+        )
 
         # 9. Alerte
         size = "?"
@@ -500,6 +681,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "published_at": published_at,
             "age_minutes": int(round(age * 60)) if age is not None else "",
             "favourite_count": fav_count if fav_count is not None else "",
+            "view_count": view_count if view_count is not None else "",
             "seller_type": "pro" if seller.get("is_business") else "particulier",
             "image_url": item.get("photo", {}).get("url", ""),
             "listing_price": round(price, 2),
@@ -511,12 +693,19 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "roi_low": roi_low,
             "demand_score": matched_rule.get("demand_score", 5),
             "risk": "",
-            "reason": f"prix ~ {price/ref_price*100:.0f}% de la référence",
+            "reason": reason_text(
+                price, ref_price, motivation_hits, age_hours=age,
+                cfg=cfg, favourite_count=fav_count,
+                view_count=view_count,
+            ),
             "url": f"{base_url}/items/{item_id}",
             "item_id": item_id,
         }
 
         alerts.append(row)
+        append_alert(row)
+        if await ntfy_send(row, session):
+            stats["notifications_sent"] += 1
         LOGGER.info(f"  ★ SCORE {score}/10 | {freshness_label(age, cfg)} | {title[:58]} | {price:.2f}€ | marge +{margin_low:.2f}€")
         LOGGER.info(f"    {row['url']}")
 
@@ -534,6 +723,8 @@ async def main_async():
         return
 
     blacklist = load_json(BLACKLIST_PATH, {})
+    personal_count = apply_personal_filters(cfg, blacklist)
+    LOGGER.info("%s recherches personnelles ajoutées", personal_count)
 
     # Charger état
     seen_ids = set()
@@ -562,9 +753,34 @@ async def main_async():
         "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     }
 
+    stats = {key: 0 for key in (
+        "catalog_requested", "catalog_success", "catalog_items",
+        "detail_requested", "age_known", "age_unknown",
+        "notifications_sent",
+    )}
+
     async with aiohttp.ClientSession() as session:
+        # Crée les cookies de session avant l'API. Un échec ici est informatif,
+        # mais les appels catalogue décideront de l'état de santé réel.
+        try:
+            async with session.get(base_url + "/", headers={
+                **headers, "Accept": "text/html,application/xhtml+xml"
+            }, timeout=12) as resp:
+                LOGGER.info("Initialisation session HTTP %s", resp.status)
+        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            LOGGER.warning("Initialisation session impossible: %s", exc)
+
         searches = cfg.get("searches", [])
-        tasks = [scan_search(s, cfg, blacklist, seen_ids, seen_meta, limiter, session, base_url, headers) for s in searches]
+        semaphore = asyncio.Semaphore(int(cfg.get("api_max_concurrency", 3)))
+
+        async def bounded_scan(search):
+            async with semaphore:
+                return await scan_search(
+                    search, cfg, blacklist, seen_ids, seen_meta,
+                    limiter, session, base_url, headers, stats,
+                )
+
+        tasks = [bounded_scan(s) for s in searches]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         total_alerts = 0
@@ -575,7 +791,19 @@ async def main_async():
                 total_alerts += len(res)
 
         save_seen_state(seen_ids, seen_meta)
-        LOGGER.info(f"\n[API-TEST] Terminé : {total_alerts} nouvelles alertes trouvées.")
+        LOGGER.info("Santé API | catalogues %s/%s | articles %s | détails %s | "
+                    "âges connus %s | inconnus %s | notifications %s",
+                    stats["catalog_success"], stats["catalog_requested"],
+                    stats["catalog_items"], stats["detail_requested"],
+                    stats["age_known"], stats["age_unknown"],
+                    stats["notifications_sent"])
+        LOGGER.info(f"\n[API] Terminé : {total_alerts} nouvelles alertes trouvées.")
+
+        requested = stats["catalog_requested"]
+        if requested and stats["catalog_success"] / requested < 0.5:
+            raise RuntimeError("Moins de 50% des catalogues ont répondu: scan invalide")
+        if requested and stats["catalog_success"] and stats["catalog_items"] == 0:
+            raise RuntimeError("Catalogues vides: scan probablement bloqué par Vinted")
 
 if __name__ == "__main__":
     try:
