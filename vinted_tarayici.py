@@ -1,29 +1,76 @@
 #!/usr/bin/env python3
-# VERSION : VINTED_TARAYICI_V6_8_APPRENTISSAGE_EXEMPLES
+# VERSION : VINTED_TARAYICI_V7_0_PRODUCTION
 import asyncio
 import csv
 import json
+import logging
 import os
+import random
 import re
+import shutil
 import sys
 import time
 import unicodedata
 import urllib.parse
+import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus, unquote
 
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 ROOT = Path(__file__).resolve().parent
+
+
+def load_env_file(path):
+    """Load a local .env without overwriting real environment variables."""
+    if not path.exists():
+        return
+    for number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            raise ValueError(f"{path.name}:{number}: ligne .env invalide")
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+            raise ValueError(f"{path.name}:{number}: nom de variable invalide")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+load_env_file(ROOT / ".env")
+
+logging.basicConfig(
+    level=getattr(logging, os.getenv("VINTED_LOG_LEVEL", "INFO").upper(), logging.INFO),
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    stream=sys.stdout,
+    force=True,
+)
+LOGGER = logging.getLogger("vinted_tarayici")
+
 CONFIG_PATH = ROOT / "config.json"
 ANCIEN_CONFIG_PATH = ROOT / "configuration.json"
 BLACKLIST_PATH = ROOT / "blacklist.json"
 ANCIEN_BLACKLIST_PATH = ROOT / "liste_noire.json"
-SEEN_PATH = ROOT / "annonces_vues.json"
-ANCIEN_SEEN_PATH = ROOT / "seen.json"
-ALERTS_CSV = ROOT / "alertes.csv"
+DATA_DIR = Path(os.getenv("VINTED_DATA_DIR", str(ROOT / "runtime_data"))).expanduser()
+SEEN_PATH = DATA_DIR / "annonces_vues.json"
+ANCIEN_SEEN_PATH = (
+    ROOT / "annonces_vues.json"
+    if (ROOT / "annonces_vues.json").exists()
+    else ROOT / "seen.json"
+)
+ALERTS_CSV = DATA_DIR / "alertes.csv"
 FILTRES_PATH = ROOT / "filtres.json"
 EXEMPLES_PATH = ROOT / "exemples.txt"
 PROFILE_DIR = ROOT / ".profil_vinted"
@@ -34,6 +81,34 @@ PRICE_RE = re.compile(
 ITEM_ID_RE = re.compile(r"/items/(\d+)")
 SLUG_RE = re.compile(r"/items/\d+-([^/?#]+)")
 
+ALERT_MARKER_PREFIX = "alert::"
+
+ALERT_FIELDS = [
+    "timestamp",
+    "category",
+    "search",
+    "brand",
+    "model",
+    "size",
+    "opportunity_score",
+    "title",
+    "published_at",
+    "age_minutes",
+    "image_url",
+    "listing_price",
+    "total_buy_est",
+    "resale_low",
+    "resale_high",
+    "margin_low",
+    "margin_high",
+    "roi_low",
+    "demand_score",
+    "risk",
+    "reason",
+    "url",
+    "item_id",
+]
+
 
 def load_json(path, default):
     if not path.exists():
@@ -43,10 +118,175 @@ def load_json(path, default):
 
 
 def save_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     tmp.replace(path)
+
+
+def env_bool(name, default):
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} doit valoir true/false ou 1/0")
+
+
+def apply_env_overrides(cfg):
+    """Apply scalar runtime settings; product rules remain in config.json."""
+    mapping = {
+        "VINTED_BASE_URL": ("base_url", str),
+        "VINTED_MAX_LISTING_AGE_HOURS": ("max_listing_age_hours", float),
+        "VINTED_REQUEST_DELAY_MIN_SECONDS": ("request_delay_min_seconds", float),
+        "VINTED_REQUEST_DELAY_MAX_SECONDS": ("request_delay_max_seconds", float),
+        "VINTED_STARTUP_JITTER_MAX_SECONDS": ("startup_jitter_max_seconds", float),
+        "VINTED_RUN_BUDGET_SECONDS": ("run_budget_seconds", float),
+        "VINTED_MAX_ITEMS_PER_SEARCH": ("max_items_per_search", int),
+    }
+    for env_name, (config_name, caster) in mapping.items():
+        raw = os.getenv(env_name)
+        if raw is not None and raw.strip() != "":
+            try:
+                cfg[config_name] = caster(raw.strip())
+            except ValueError as exc:
+                raise ValueError(f"{env_name} contient une valeur invalide") from exc
+    cfg["reject_unknown_listing_age"] = env_bool(
+        "VINTED_REJECT_UNKNOWN_LISTING_AGE",
+        bool(cfg.get("reject_unknown_listing_age", True)),
+    )
+    return cfg
+
+
+def validate_runtime_config(cfg):
+    minimum = float(cfg.get("request_delay_min_seconds", 1.0))
+    maximum = float(cfg.get("request_delay_max_seconds", 3.0))
+    startup_jitter = float(cfg.get("startup_jitter_max_seconds", 20))
+    run_budget = float(cfg.get("run_budget_seconds", 480))
+    base_url = str(cfg.get("base_url", "")).strip().rstrip("/")
+    if minimum < 0.5:
+        raise ValueError("request_delay_min_seconds doit être >= 0.5")
+    if maximum < minimum:
+        raise ValueError("request_delay_max_seconds doit être >= au minimum")
+    if startup_jitter < 0:
+        raise ValueError("startup_jitter_max_seconds doit être >= 0")
+    if run_budget <= 0:
+        raise ValueError("run_budget_seconds doit être > 0")
+    if float(cfg.get("max_listing_age_hours", 24)) <= 0:
+        raise ValueError("max_listing_age_hours doit être > 0")
+    if int(cfg.get("max_items_per_search", 15)) <= 0:
+        raise ValueError("max_items_per_search doit être > 0")
+    if not base_url.startswith("https://"):
+        raise ValueError("base_url doit utiliser HTTPS")
+    cfg["base_url"] = base_url
+
+
+class AsyncRateLimiter:
+    """Sequential randomized pacing shared by catalog, detail and API calls."""
+
+    def __init__(self, minimum_seconds, maximum_seconds):
+        self.minimum = float(minimum_seconds)
+        self.maximum = float(maximum_seconds)
+        self._next_allowed = 0.0
+        self._lock = asyncio.Lock()
+
+    async def wait(self, request_kind="request"):
+        async with self._lock:
+            remaining = self._next_allowed - time.monotonic()
+            if remaining > 0:
+                LOGGER.debug("Rate limit %s: attente %.2f s", request_kind, remaining)
+                await asyncio.sleep(remaining)
+            delay = random.uniform(self.minimum, self.maximum)
+            self._next_allowed = time.monotonic() + delay
+
+
+def search_seen_key(search, item_id):
+    """Return a per-search key so one broad search cannot hide another one."""
+    name = norm(str(search.get("name") or search.get("query") or "search"))
+    return f"search::{name}::{item_id}"
+
+
+def alert_seen_key(item_id):
+    return f"{ALERT_MARKER_PREFIX}{item_id}"
+
+
+def parse_vinted_timestamp(value):
+    """Parse Vinted Unix seconds/milliseconds or an ISO-8601 timestamp."""
+    if value is None or isinstance(value, bool):
+        return None
+
+    if isinstance(value, (int, float)):
+        number = float(value)
+        if number > 10_000_000_000:
+            number /= 1000.0
+        try:
+            return datetime.fromtimestamp(number, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    raw = str(value).strip()
+    if not raw:
+        return None
+
+    if re.fullmatch(r"\d+(?:\.\d+)?", raw):
+        return parse_vinted_timestamp(float(raw))
+
+    candidate = raw.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def listing_age_hours(value, now=None):
+    published = parse_vinted_timestamp(value)
+    if published is None:
+        return None
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return max(0.0, (current.astimezone(timezone.utc) - published).total_seconds() / 3600)
+
+
+def freshness_check(value, cfg, now=None):
+    max_age = float(cfg.get("max_listing_age_hours", 24))
+    age = listing_age_hours(value, now=now)
+    if age is None:
+        if bool(cfg.get("reject_unknown_listing_age", True)):
+            return False, None, "heure de publication introuvable"
+        return True, None, "heure inconnue tolérée"
+    if age > max_age:
+        return False, age, f"annonce trop ancienne ({age:.1f} h > {max_age:g} h)"
+    return True, age, "annonce récente"
+
+
+def freshness_label(age_hours, cfg):
+    if age_hours is None:
+        return "âge inconnu"
+    minutes = max(0, int(round(age_hours * 60)))
+    instant_limit = int(cfg.get("instant_listing_minutes", 30))
+    if minutes <= instant_limit:
+        return f"MISE À L'INSTANT ({minutes} min)"
+    if minutes < 60:
+        return f"publiée il y a {minutes} min"
+    return f"publiée il y a {age_hours:.1f} h"
+
+
+def item_already_seen(seen_ids, search, item_id):
+    # Bare IDs are the legacy V6 format. Keep honoring them during migration.
+    return (
+        str(item_id) in seen_ids
+        or search_seen_key(search, item_id) in seen_ids
+        or alert_seen_key(item_id) in seen_ids
+    )
 
 
 def charger_json_avec_ancien_nom(nouveau_fichier, ancien_fichier, valeur_defaut):
@@ -371,7 +611,7 @@ def calibrer_regles_exemple(search, cards, blacklist):
         if len(prix) < 4:
             rule["resale_low"] = None
             rule["resale_high"] = None
-            print(
+            LOGGER.info(
                 f"  ? EXEMPLE APPRENTISSAGE | {rule.get('model', '')[:50]} | "
                 f"{len(prix)} comparable(s), estimation insuffisante"
             )
@@ -391,7 +631,7 @@ def calibrer_regles_exemple(search, cards, blacklist):
         rule["resale_low"] = round(max(5.0, bas), 2)
         rule["resale_high"] = round(max(rule["resale_low"], haut or bas), 2)
 
-        print(
+        LOGGER.info(
             f"  + APPRENTISSAGE | {rule.get('model', '')[:50]} | "
             f"{len(prix)} comparables | "
             f"revente prudente {rule['resale_low']:.2f}-{rule['resale_high']:.2f} EUR"
@@ -961,6 +1201,7 @@ def opportunity_score(
     motivation_hits,
     authenticity_risk=False,
     rare_condition=False,
+    age_hours=None,
 ):
     if not reference_price or reference_price <= 0:
         return 1
@@ -990,6 +1231,13 @@ def opportunity_score(
     if motivation_hits:
         score += 1
 
+    # Speed matters for resale deals: reward listings caught immediately.
+    if age_hours is not None:
+        if age_hours <= 0.5:
+            score += 2
+        elif age_hours <= 2:
+            score += 1
+
     if authenticity_risk:
         score -= 1
 
@@ -1006,8 +1254,13 @@ def reason_text(
     motivation_hits,
     authenticity_risk=False,
     rare_condition_hits=None,
+    age_hours=None,
+    cfg=None,
 ):
     parts = []
+
+    if age_hours is not None:
+        parts.append(freshness_label(age_hours, cfg or {}))
 
     if reference_price:
         pct = price / reference_price * 100
@@ -1116,32 +1369,50 @@ def ntfy_send(row):
         ) as resp:
             return 200 <= resp.status < 300
 
-    except Exception as e:
-        print(f"  ! ntfy: {e}")
+    except urllib.error.HTTPError as exc:
+        LOGGER.error("ntfy a répondu HTTP %s", exc.code)
+        return False
+    except urllib.error.URLError as exc:
+        LOGGER.error("ntfy indisponible: %s", exc.reason)
+        return False
+    except TimeoutError:
+        LOGGER.error("Timeout lors de l'envoi ntfy")
+        return False
+    except OSError as exc:
+        LOGGER.error("Erreur réseau ntfy: %s", exc)
+        return False
+    except Exception:
+        LOGGER.exception("Erreur ntfy inattendue")
         return False
 
 
+def ensure_alert_csv_schema():
+    """Upgrade an existing V6 CSV before appending rows with new columns."""
+    ALERTS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    if not ALERTS_CSV.exists() or ALERTS_CSV.stat().st_size == 0:
+        return list(ALERT_FIELDS)
+
+    with ALERTS_CSV.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        previous_fields = [x for x in (reader.fieldnames or []) if x]
+        rows = list(reader)
+
+    fields = list(dict.fromkeys(ALERT_FIELDS + previous_fields))
+    if previous_fields == fields:
+        return fields
+
+    tmp = ALERTS_CSV.with_suffix(ALERTS_CSV.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for previous in rows:
+            writer.writerow({key: previous.get(key, "") for key in fields})
+    tmp.replace(ALERTS_CSV)
+    return fields
+
+
 def append_alert(row):
-    fields = [
-        "timestamp",
-        "category",
-        "search",
-        "brand",
-        "model",
-        "size",
-        "opportunity_score",
-        "title",
-        "listing_price",
-        "total_buy_est",
-        "resale_low",
-        "resale_high",
-        "margin_low",
-        "margin_high",
-        "roi_low",
-        "reason",
-        "url",
-        "item_id",
-    ]
+    fields = ensure_alert_csv_schema()
 
     new = not ALERTS_CSV.exists()
 
@@ -1166,7 +1437,22 @@ def append_alert(row):
         )
 
 
-async def extract_cards(page):
+def catalog_items_from_payload(payload):
+    if not isinstance(payload, dict):
+        return []
+    items = payload.get("items")
+    if isinstance(items, list):
+        return items
+    catalog = payload.get("catalog")
+    if isinstance(catalog, dict) and isinstance(catalog.get("items"), list):
+        return catalog["items"]
+    data = payload.get("data")
+    if isinstance(data, dict) and isinstance(data.get("items"), list):
+        return data["items"]
+    return []
+
+
+async def extract_cards(page, catalog_payload=None):
     data = await page.locator(
         'a[href*="/items/"]'
     ).evaluate_all(
@@ -1205,6 +1491,12 @@ async def extract_cards(page):
         """
     )
 
+    api_items = {
+        str(item.get("id")): item
+        for item in catalog_items_from_payload(catalog_payload)
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+
     out = []
     already = set()
 
@@ -1225,8 +1517,26 @@ async def extract_cards(page):
         x["item_id"] = item_id
         x["url"] = href.split("?")[0]
         x["title"] = title_from_card(x)
+        api_item = api_items.get(item_id, {})
+        x["created_at_ts"] = (
+            api_item.get("created_at_ts")
+            or api_item.get("created_at")
+        )
+        x["_dom_index"] = len(out)
 
         out.append(x)
+
+    # The catalog is requested with newest_first. When Vinted also exposes its
+    # creation timestamp, enforce the order explicitly and keep DOM order as a
+    # stable fallback when every timestamp is absent.
+    if any(parse_vinted_timestamp(x.get("created_at_ts")) for x in out):
+        def recent_first(card):
+            parsed = parse_vinted_timestamp(card.get("created_at_ts"))
+            if parsed is not None:
+                return (1, parsed.timestamp(), -card["_dom_index"])
+            return (0, 0, -card["_dom_index"])
+
+        out.sort(key=recent_first, reverse=True)
 
     return out
 
@@ -1235,11 +1545,15 @@ async def verify_listing(
     page,
     url,
     fallback_title="",
+    limiter=None,
 ):
     detail = None
 
     try:
         detail = await page.context.new_page()
+
+        if limiter is not None:
+            await limiter.wait("detail")
 
         await detail.goto(
             url,
@@ -1249,7 +1563,35 @@ async def verify_listing(
 
         await detail.wait_for_timeout(350)
 
-        title = fallback_title
+        item_match = ITEM_ID_RE.search(url)
+        item_id = item_match.group(1) if item_match else ""
+        api_item = {}
+
+        if item_id:
+            try:
+                if limiter is not None:
+                    await limiter.wait("item-api")
+                api_payload = await detail.evaluate(
+                    """
+                    async itemId => {
+                      const response = await fetch(
+                        `/api/v2/items/${itemId}`,
+                        {credentials: 'include'}
+                      );
+                      if (!response.ok) return null;
+                      return await response.json();
+                    }
+                    """,
+                    item_id,
+                )
+                if isinstance(api_payload, dict):
+                    candidate = api_payload.get("item", api_payload)
+                    if isinstance(candidate, dict):
+                        api_item = candidate
+            except Exception:
+                pass
+
+        title = clean_title(str(api_item.get("title") or "")) or fallback_title
 
         try:
             og_title = await detail.locator(
@@ -1260,13 +1602,15 @@ async def verify_listing(
                 og_title or ""
             )
 
-            if cleaned:
+            if cleaned and not api_item.get("title"):
                 title = cleaned
 
         except Exception:
             pass
 
         description_parts = []
+        if api_item.get("description"):
+            description_parts.append(str(api_item["description"]))
 
         for selector in (
             'meta[property="og:description"]',
@@ -1301,14 +1645,15 @@ async def verify_listing(
             description_parts
         )[:7000]
 
-        seller = ""
+        api_user = api_item.get("user") if isinstance(api_item.get("user"), dict) else {}
+        seller = str(api_user.get("login") or "").strip()
 
         try:
             seller_links = detail.locator(
                 'a[href*="/member/"]'
             )
 
-            if await seller_links.count() > 0:
+            if not seller and await seller_links.count() > 0:
                 seller = (
                     await seller_links.first.inner_text(timeout=1200)
                 ).strip()
@@ -1316,26 +1661,42 @@ async def verify_listing(
         except Exception:
             pass
 
-        image_url = ""
+        api_photo = api_item.get("photo") if isinstance(api_item.get("photo"), dict) else {}
+        image_url = str(
+            api_photo.get("url")
+            or api_photo.get("full_size_url")
+            or ""
+        )
 
         try:
-            image_url = (
-                await detail.locator(
-                    'meta[property="og:image"]'
-                ).get_attribute("content", timeout=1200)
-                or ""
-            )
+            if not image_url:
+                image_url = (
+                    await detail.locator(
+                        'meta[property="og:image"]'
+                    ).get_attribute("content", timeout=1200)
+                    or ""
+                )
 
         except Exception:
             pass
 
         detail_price = None
+        api_price = api_item.get("price")
+        if isinstance(api_price, dict):
+            api_price = api_price.get("amount")
+        if api_price is not None:
+            try:
+                detail_price = float(str(api_price).replace(",", "."))
+            except ValueError:
+                detail_price = None
 
         for selector, attr in (
             ('meta[property="product:price:amount"]', "content"),
             ('meta[itemprop="price"]', "content"),
             ('[itemprop="price"]', "content"),
         ):
+            if detail_price is not None:
+                break
             try:
                 locator = detail.locator(
                     selector
@@ -1365,6 +1726,48 @@ async def verify_listing(
             except Exception:
                 pass
 
+        created_at_raw = (
+            api_item.get("created_at_ts")
+            or api_item.get("created_at")
+        )
+
+        if created_at_raw is None:
+            try:
+                created_at_raw = await detail.evaluate(
+                    """
+                    () => {
+                      const meta = document.querySelector(
+                        'meta[property="article:published_time"], meta[itemprop="datePosted"]'
+                      );
+                      if (meta) return meta.content || meta.getAttribute('datetime');
+                      for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
+                        try {
+                          const value = JSON.parse(node.textContent || '{}');
+                          const entries = Array.isArray(value) ? value : [value];
+                          for (const entry of entries) {
+                            if (entry && (entry.datePosted || entry.datePublished)) {
+                              return entry.datePosted || entry.datePublished;
+                            }
+                          }
+                        } catch (_) {}
+                      }
+                      const time = document.querySelector('time[datetime]');
+                      return time ? time.getAttribute('datetime') : null;
+                    }
+                    """
+                )
+            except Exception:
+                created_at_raw = None
+
+        status_text = norm(str(api_item.get("status") or ""))
+        unavailable = bool(
+            api_item.get("is_closed")
+            or api_item.get("is_reserved")
+            or api_item.get("is_hidden")
+            or api_item.get("is_visible") is False
+            or status_text in {"sold", "vendu", "reserved", "reserve"}
+        )
+
         return {
             "ok": True,
             "title": title,
@@ -1372,6 +1775,8 @@ async def verify_listing(
             "seller": seller,
             "image_url": image_url,
             "price": detail_price,
+            "created_at_ts": created_at_raw,
+            "available": not unavailable,
         }
 
     except PlaywrightTimeoutError:
@@ -1382,6 +1787,8 @@ async def verify_listing(
             "seller": "",
             "image_url": "",
             "price": None,
+            "created_at_ts": None,
+            "available": False,
             "error": "timeout annonce",
         }
 
@@ -1393,6 +1800,8 @@ async def verify_listing(
             "seller": "",
             "image_url": "",
             "price": None,
+            "created_at_ts": None,
+            "available": False,
             "error": str(e)[:120],
         }
 
@@ -1435,6 +1844,7 @@ async def scan_search(
     cfg,
     blacklist,
     seen_ids,
+    limiter,
 ):
     base = cfg.get(
         "base_url",
@@ -1458,12 +1868,28 @@ async def scan_search(
             f"{float(price_to):g}"
         )
 
-    print(
+    LOGGER.info(
         f"\n[SCAN] "
         f"{search['name']} -> {url}"
     )
 
+    loop = asyncio.get_running_loop()
+    catalog_future = loop.create_future()
+
+    async def capture_catalog(response):
+        if catalog_future.done() or "/api/v2/catalog/items" not in response.url:
+            return
+        try:
+            payload = await response.json()
+        except Exception:
+            return
+        if catalog_items_from_payload(payload):
+            catalog_future.set_result(payload)
+
+    page.on("response", capture_catalog)
+
     try:
+        await limiter.wait("catalog")
         await page.goto(
             url,
             wait_until="domcontentloaded",
@@ -1485,15 +1911,35 @@ async def scan_search(
             timeout=4000
         )
 
+        if not catalog_future.done():
+            try:
+                await asyncio.wait_for(
+                    asyncio.shield(catalog_future),
+                    timeout=0.75,
+                )
+            except asyncio.TimeoutError:
+                pass
+
     except PlaywrightTimeoutError:
-        print(
+        LOGGER.warning(
             "  ! Aucun résultat visible "
             "/ contrôle Vinted possible."
         )
         return []
 
+    finally:
+        page.remove_listener("response", capture_catalog)
+
+    catalog_payload = None
+    if catalog_future.done() and not catalog_future.cancelled():
+        try:
+            catalog_payload = catalog_future.result()
+        except Exception:
+            catalog_payload = None
+
     cards = await extract_cards(
-        page
+        page,
+        catalog_payload=catalog_payload,
     )
 
     # Pour les exemples fournis par l'utilisateur, le scanner estime
@@ -1532,8 +1978,14 @@ async def scan_search(
     )
 
     for c in cards[:max_items]:
-        if c["item_id"] in seen_ids:
+        if item_already_seen(seen_ids, search, c["item_id"]):
             continue
+
+        # Mark deterministic rejections for this search. Otherwise the same
+        # accessories/boxes occupy the first page every five minutes forever.
+        # A detail-page timeout removes this key below so transient failures retry.
+        per_search_seen = search_seen_key(search, c["item_id"])
+        seen_ids.add(per_search_seen)
 
         title = c["title"]
         text = c.get(
@@ -1541,13 +1993,25 @@ async def scan_search(
             "",
         )
 
+        card_created_at = c.get("created_at_ts")
+        card_age = listing_age_hours(card_created_at)
+        if (
+            card_age is not None
+            and card_age > float(cfg.get("max_listing_age_hours", 24))
+        ):
+            LOGGER.info(
+                f"  X TROP ANCIENNE | {title[:65]} | "
+                f"{card_age:.1f} h"
+            )
+            continue
+
         ignored_hits = ignored_brand_check(
             f"{title} {text}",
             cfg,
         )
 
         if ignored_hits:
-            print(
+            LOGGER.info(
                 f"  X MARQUE IGNORÉE | "
                 f"{title[:65]} | "
                 f"{ignored_hits}"
@@ -1577,7 +2041,7 @@ async def scan_search(
         )
 
         if blocked:
-            print(
+            LOGGER.info(
                 f"  X BLACKLIST "
                 f"[{group}] "
                 f"{title[:65]} | "
@@ -1594,7 +2058,7 @@ async def scan_search(
         )
 
         if low_value_blocked:
-            print(
+            LOGGER.info(
                 f"  X JEU FAIBLE VALEUR | "
                 f"{title[:65]} | "
                 f"{low_value_hits}"
@@ -1604,7 +2068,7 @@ async def scan_search(
         category = search.get("category", "")
         sane, sane_reason = category_sanity_check(category, title)
         if not sane:
-            print(
+            LOGGER.info(
                 f"  X TYPE PRODUIT | "
                 f"{title[:65]} | {sane_reason}"
             )
@@ -1614,7 +2078,7 @@ async def scan_search(
             category, title, text
         )
         if packaging_only:
-            print(
+            LOGGER.info(
                 f"  X BOITE/EMBALLAGE SEUL | "
                 f"{title[:65]} | {packaging_hits}"
             )
@@ -1729,10 +2193,12 @@ async def scan_search(
             page,
             c["url"],
             title,
+            limiter=limiter,
         )
 
         if not detail.get("ok"):
-            print(
+            seen_ids.discard(per_search_seen)
+            LOGGER.warning(
                 f"  ? VERIFICATION "
                 f"IMPOSSIBLE | "
                 f"{title[:60]} | "
@@ -1740,9 +2206,29 @@ async def scan_search(
             )
             continue
 
-        # This listing was successfully inspected in depth.
-        # Avoid repeating the same costly verification on every scheduled run.
-        seen_ids.add(c["item_id"])
+        if not detail.get("available", True):
+            LOGGER.info(
+                f"  X INDISPONIBLE/VENDUE | {title[:65]}"
+            )
+            continue
+
+        created_at_raw = detail.get("created_at_ts") or card_created_at
+        fresh, age_hours, freshness_reason = freshness_check(
+            created_at_raw,
+            cfg,
+        )
+        if not fresh:
+            LOGGER.info(
+                f"  X FRAÎCHEUR | {title[:65]} | {freshness_reason}"
+            )
+            continue
+
+        published_dt = parse_vinted_timestamp(created_at_raw)
+        published_at = (
+            published_dt.isoformat(timespec="seconds")
+            if published_dt is not None
+            else ""
+        )
 
         verified_title = (
             detail.get("title")
@@ -1806,7 +2292,7 @@ async def scan_search(
         )
 
         if deep_blocked:
-            print(
+            LOGGER.info(
                 f"  X REJET APRES "
                 f"VERIFICATION "
                 f"[{deep_group}] "
@@ -1824,7 +2310,7 @@ async def scan_search(
         )
 
         if low_value_blocked:
-            print(
+            LOGGER.info(
                 f"  X JEU FAIBLE VALEUR "
                 f"APRES VERIFICATION | "
                 f"{low_value_hits}"
@@ -1838,7 +2324,7 @@ async def scan_search(
         )
 
         if ignored_hits:
-            print(
+            LOGGER.info(
                 f"  X MARQUE IGNORÉE "
                 f"APRES VERIFICATION | "
                 f"{ignored_hits}"
@@ -1855,7 +2341,7 @@ async def scan_search(
         )
 
         if not condition_ok:
-            print(
+            LOGGER.info(
                 f"  X ETAT REDHIBITOIRE | "
                 f"{verified_title[:60]} | "
                 f"{bad_condition_hits}"
@@ -1875,7 +2361,7 @@ async def scan_search(
             and norm(seller)
             in seller_blacklist
         ):
-            print(
+            LOGGER.info(
                 f"  X VENDEUR "
                 f"BLACKLISTE | "
                 f"{seller}"
@@ -1884,7 +2370,7 @@ async def scan_search(
 
         sane, sane_reason = category_sanity_check(category, verified_title)
         if not sane:
-            print(
+            LOGGER.info(
                 f"  X TYPE PRODUIT APRES VERIFICATION | "
                 f"{verified_title[:65]} | {sane_reason}"
             )
@@ -1894,7 +2380,7 @@ async def scan_search(
             category, verified_title, verified_text
         )
         if packaging_only:
-            print(
+            LOGGER.info(
                 f"  X BOITE/EMBALLAGE SEUL APRES VERIFICATION | "
                 f"{verified_title[:65]} | {packaging_hits}"
             )
@@ -1906,7 +2392,7 @@ async def scan_search(
             verified_text,
             deep=True,
         ):
-            print(
+            LOGGER.info(
                 f"  X MAUVAIS PRODUIT | "
                 f"{verified_title[:65]}"
             )
@@ -1925,7 +2411,7 @@ async def scan_search(
         )
 
         if not electronics_ok:
-            print(
+            LOGGER.info(
                 f"  X ETAT/ALIMENTATION | "
                 f"{electronics_reason}"
             )
@@ -1980,6 +2466,7 @@ async def scan_search(
                 )
             ),
             rare_condition=rare_condition,
+            age_hours=age_hours,
         )
 
         reason = reason_text(
@@ -1996,6 +2483,8 @@ async def scan_search(
                 if rare_condition
                 else None
             ),
+            age_hours=age_hours,
+            cfg=cfg,
         )
 
         abnormal = suspicious_price(
@@ -2048,6 +2537,12 @@ async def scan_search(
             "size": size,
             "opportunity_score": score,
             "title": title,
+            "published_at": published_at,
+            "age_minutes": (
+                int(round(age_hours * 60))
+                if age_hours is not None
+                else ""
+            ),
             "image_url": detail.get(
                 "image_url",
                 "",
@@ -2083,20 +2578,21 @@ async def scan_search(
             row
         )
 
-        print(
+        LOGGER.info(
             f"  ★ SCORE {score}/10 | "
+            f"{freshness_label(age_hours, cfg)} | "
             f"{title[:58]} | "
             f"{price:.2f} EUR | "
             f"marge +{margin_low:.2f} EUR"
         )
 
-        print(
+        LOGGER.info(
             f"    {c['url']}"
         )
 
     for row in new_alerts:
         seen_ids.add(
-            row["item_id"]
+            alert_seen_key(row["item_id"])
         )
 
     return new_alerts
@@ -2108,6 +2604,21 @@ async def main():
         ANCIEN_CONFIG_PATH,
         {},
     )
+
+    if not cfg:
+        raise FileNotFoundError("config.json introuvable")
+
+    apply_env_overrides(cfg)
+    validate_runtime_config(cfg)
+
+    configured_level = os.getenv("VINTED_LOG_LEVEL", "INFO").upper()
+    LOGGER.setLevel(getattr(logging, configured_level, logging.INFO))
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    legacy_alerts = ROOT / "alertes.csv"
+    if not ALERTS_CSV.exists() and legacy_alerts.exists():
+        shutil.copy2(legacy_alerts, ALERTS_CSV)
+        LOGGER.info("Ancien alertes.csv migré vers %s", DATA_DIR)
 
     blacklist = charger_json_avec_ancien_nom(
         BLACKLIST_PATH,
@@ -2125,19 +2636,13 @@ async def main():
     )
 
     if nombre_exemples:
-        print(
+        LOGGER.info(
             f"[INFO] {nombre_exemples} exemple(s) "
             f"chargé(s) depuis exemples.txt."
         )
 
-    if not cfg:
-        print(
-            "config.json introuvable."
-        )
-        sys.exit(1)
-
     if not blacklist:
-        print(
+        LOGGER.warning(
             "ATTENTION: blacklist.json "
             "introuvable ou vide."
         )
@@ -2160,15 +2665,28 @@ async def main():
         in sys.argv
     )
 
-    print(
-        "Vinted Tarayici V6.8"
+    limiter = AsyncRateLimiter(
+        cfg.get("request_delay_min_seconds", 1.0),
+        cfg.get("request_delay_max_seconds", 3.0),
     )
 
-    print(
+    startup_jitter = random.uniform(
+        0,
+        float(cfg.get("startup_jitter_max_seconds", 20)),
+    )
+    if startup_jitter > 0:
+        LOGGER.info("Décalage anti-pic avant démarrage: %.1f s", startup_jitter)
+        await asyncio.sleep(startup_jitter)
+
+    LOGGER.info(
+        "Vinted Tarayici V7.0 — production sécurisée, fraîcheur stricte 24 h"
+    )
+
+    LOGGER.info(
         "Mode opportunités : "
         "prix/revente + marge + "
         "etat + vendeur motive + "
-        "anti faux-positifs."
+        "anti faux-positifs + annonces récentes d'abord."
     )
 
     async with async_playwright() as p:
@@ -2283,7 +2801,7 @@ async def main():
             for search in searches:
                 elapsed = time.monotonic() - cycle_start
                 if one_shot and elapsed >= run_budget_seconds:
-                    print(
+                    LOGGER.info(
                         f"\n[INFO] Budget du scan atteint "
                         f"({elapsed:.0f}s). "
                         f"Les autres recherches passeront "
@@ -2298,6 +2816,7 @@ async def main():
                         cfg,
                         blacklist,
                         seen_ids,
+                        limiter,
                     )
 
                     scanned_searches += 1
@@ -2312,23 +2831,14 @@ async def main():
                         ),
                     )
 
-                    await asyncio.sleep(
-                        float(
-                            cfg.get(
-                                "delay_between_searches",
-                                1,
-                            )
-                        )
-                    )
-
                 except Exception as e:
-                    print(
-                        f"  ! Erreur "
-                        f"{search.get('name')}: "
-                        f"{e}"
+                    LOGGER.exception(
+                        "Erreur pendant la recherche %s: %s",
+                        search.get("name"),
+                        e,
                     )
 
-            print(
+            LOGGER.info(
                 f"\n["
                 f"{datetime.now().strftime('%H:%M:%S')}"
                 f"] Cycle termine — "
@@ -2365,6 +2875,7 @@ if __name__ == "__main__":
             main()
         )
     except KeyboardInterrupt:
-        print(
-            "\nArret demande."
-        )
+        LOGGER.info("Arrêt demandé")
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
+        LOGGER.critical("Configuration invalide: %s", exc)
+        raise SystemExit(2) from exc
