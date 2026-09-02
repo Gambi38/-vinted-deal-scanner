@@ -1,5 +1,1 @@
-playwright>=1.45,<2
-Pillow>=10,<12
-numpy>=1.26,<3
-onnxruntime>=1.19,<2
 aiohttp>=3.9,<4
