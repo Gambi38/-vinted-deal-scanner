@@ -1,0 +1,19 @@
+# Secrets et configuration locale
+.env
+
+# État produit par le bot
+runtime_data/
+annonces_vues.json
+seen.json
+alertes.csv
+alerts.csv
+base_apprentissage.json
+
+# Profil navigateur et journaux
+.profil_vinted/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
