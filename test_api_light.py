@@ -38,9 +38,29 @@ class ApiOnlyTests(unittest.TestCase):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
         self.assertEqual(cfg["catalog_per_page"], 50)
         self.assertEqual(cfg["max_items_per_search"], 50)
-        self.assertEqual(cfg["max_catalog_items_per_run"], 250)
+        self.assertEqual(cfg["max_catalog_items_per_run"], 500)
+        self.assertEqual(cfg["max_searches_per_run"], 10)
+        self.assertEqual(cfg["max_alerts_per_run"], 10)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
         self.assertEqual(cfg["api_max_concurrency"], 3)
+
+    def test_workflow_session_repeats_three_cycles(self):
+        cfg = {
+            "cycles_per_workflow": 3,
+            "seconds_between_cycles": 75,
+            "max_alerts_per_run": 10,
+        }
+
+        async def run():
+            with patch.object(bot, "load_json", return_value=cfg), \
+                    patch.object(bot, "main_async", new=AsyncMock()) as scan, \
+                    patch.object(bot.asyncio, "sleep", new=AsyncMock()) as sleep:
+                await bot.run_workflow_session()
+                return scan.await_count, sleep.await_args_list
+
+        scans, sleeps = asyncio.run(run())
+        self.assertEqual(scans, 3)
+        self.assertEqual([call.args[0] for call in sleeps], [75.0, 75.0])
 
     def test_term_regexes_are_cached(self):
         bot._term_regex.cache_clear()
@@ -262,6 +282,42 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertFalse(bot.strict_product_type_check(
             source, rule, "Manette PS5 pour console PlayStation 5",
         )[0])
+
+    def test_ds_battery_in_multiple_languages_is_never_a_console(self):
+        source = {"category": "CONSOLE", "product_type": "CONSOLE"}
+        rule = {"product_type": "CONSOLE", "must_contain": ["ds", "lite"]}
+        battery_titles = (
+            "Battery Nintendo DS Lite",
+            "Nintendo DS Lite battery replacement",
+            "Batterij voor Nintendo DS Lite",
+            "Batteria per Nintendo DS Lite",
+            "Akku für Nintendo DS Lite",
+        )
+        for title in battery_titles:
+            self.assertFalse(
+                bot.strict_product_type_check(source, rule, title)[0], title,
+            )
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "Console Nintendo DS Lite avec batterie neuve",
+        )[0])
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "Nintendo DS Lite avec batterie incluse",
+        )[0])
+
+    def test_little_nightmares_switch_is_a_game_not_the_console(self):
+        targets = bot.load_target_products()
+        index = bot.build_rule_index(targets, {"min_demand_score": 4})
+        self.assertEqual(
+            bot.choose_known_product(
+                index, "Little Nightmares Nintendo Switch", 15,
+            ),
+            (None, None),
+        )
+        source, rule = bot.choose_known_product(
+            index, "Console Nintendo Switch avec Little Nightmares", 45,
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(bot.infer_product_type(source, rule), "CONSOLE")
 
     def test_packaging_title_requires_confirmation_product_is_included(self):
         game_source = {"category": "JEU_PS5", "product_type": "GAME"}

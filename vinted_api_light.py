@@ -726,7 +726,8 @@ CONSOLE_ACCESSORY_TERMS = frozenset((
     "gamepad", "gamepads", "joy-con", "joycon", "joystick", "joysticks",
     "dock", "chargeur",
     "charger", "câble", "cable", "coque", "housse", "étui", "etui",
-    "pochette", "support", "stand", "batterie", "écran", "ecran",
+    "pochette", "support", "stand", "batterie", "battery", "batterij",
+    "accu", "akku", "batería", "bateria", "batteria", "écran", "ecran",
     "joystick", "lecteur seul", "carte mémoire", "carte memoire",
     "micro sd", "microsd", "adaptateur", "alimentation",
 ))
@@ -772,8 +773,31 @@ ACCESSORY_PART_TERMS = frozenset((
 ))
 
 ACCESSORY_ONLY_MARKERS = frozenset((
-    "pour", "para", "for", "fur", "für", "compatible", "seul", "seule",
-    "only", "support", "stand", "housse", "coque", "pochette", "case",
+    "pour", "para", "for", "voor", "per", "fur", "für", "compatible",
+    "seul", "seule", "only", "support", "stand", "housse", "coque",
+    "pochette", "case", "remplacement", "replacement", "de rechange",
+    "ersatz", "sostituzione", "repuesto",
+))
+
+BATTERY_TERMS = frozenset((
+    "batterie", "battery", "batterij", "accu", "akku",
+    "batería", "bateria", "batteria",
+))
+
+BATTERY_INCLUDED_MARKERS = frozenset((
+    "avec batterie", "batterie incluse", "batterie incluse",
+    "with battery", "battery included", "met batterij",
+    "batterij inbegrepen", "con batería", "con bateria",
+    "batteria inclusa", "mit akku",
+))
+
+KNOWN_GAME_TITLE_TERMS = frozenset((
+    "little nightmares", "minecraft", "fortnite", "fifa", "ea sports fc",
+    "call of duty", "grand theft auto", "gta", "zelda", "mario kart",
+    "super mario", "pokemon", "pokémon", "animal crossing", "splatoon",
+    "metroid", "xenoblade", "elden ring", "spider-man", "spider man",
+    "god of war", "gran turismo", "horizon", "last of us", "returnal",
+    "stellar blade", "silent hill", "ratchet", "final fantasy",
 ))
 
 PLATFORM_FAMILIES = {
@@ -881,7 +905,17 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         )
         if any(term_present(title, word) for word in game_words) and not has_console_word:
             return False, "jeu, pas console"
+        if (not has_console_word and any(
+                term_present(title, game_title)
+                for game_title in KNOWN_GAME_TITLE_TERMS)):
+            return False, "titre de jeu connu, pas console"
         accessory_hit = any(term_present(title, word) for word in CONSOLE_ACCESSORY_TERMS)
+        battery_hit = any(term_present(title, word) for word in BATTERY_TERMS)
+        battery_included = any(
+            term_present(title, marker) for marker in BATTERY_INCLUDED_MARKERS
+        )
+        if battery_hit and not has_console_word and not battery_included:
+            return False, "batterie seule, pas console"
         accessory_only = (
             _starts_with_term(title, CONSOLE_ACCESSORY_TERMS)
             or any(term_present(title, word) for word in ACCESSORY_ONLY_MARKERS)
@@ -1410,7 +1444,7 @@ async def main_async():
                 candidates.extend(res)
 
         # Une même annonce peut apparaître dans plusieurs recherches. On ne
-        # conserve que sa meilleure évaluation avant de calculer le Top 5.
+        # conserve que sa meilleure évaluation avant de calculer le classement.
         best_by_item = {}
         for row in candidates:
             item_id = str(row.get("item_id"))
@@ -1486,8 +1520,26 @@ async def main_async():
         if sampled_ages >= 3 and stats["age_known"] == 0:
             raise RuntimeError("Aucun âge lisible dans le catalogue: scan invalide")
 
+async def run_workflow_session():
+    """Répète plusieurs cycles courts pendant un même workflow GitHub."""
+    cfg = load_json(CONFIG_PATH, {})
+    cycles = max(1, min(int(cfg.get("cycles_per_workflow", 1)), 6))
+    pause_seconds = max(15.0, float(cfg.get("seconds_between_cycles", 75)))
+    alert_limit = max(1, int(cfg.get("max_alerts_per_run", 5)))
+    LOGGER.info(
+        "Session prolongée | %s cycle(s) | pause %.0fs | jusqu'à %s alertes/cycle",
+        cycles, pause_seconds, alert_limit,
+    )
+
+    for cycle_number in range(1, cycles + 1):
+        LOGGER.info("Démarrage cycle %s/%s", cycle_number, cycles)
+        await main_async()
+        if cycle_number < cycles:
+            LOGGER.info("Prochain cycle dans %.0f secondes", pause_seconds)
+            await asyncio.sleep(pause_seconds)
+
 if __name__ == "__main__":
     try:
-        asyncio.run(main_async())
+        asyncio.run(run_workflow_session())
     except KeyboardInterrupt:
         LOGGER.info("Arrêt demandé")
