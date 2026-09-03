@@ -259,6 +259,47 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertFalse(bot.strict_product_type_check(
             source, rule, "Manette compatible pour PS5",
         )[0])
+        self.assertFalse(bot.strict_product_type_check(
+            source, rule, "Manette PS5 pour console PlayStation 5",
+        )[0])
+
+    def test_packaging_title_requires_confirmation_product_is_included(self):
+        game_source = {"category": "JEU_PS5", "product_type": "GAME"}
+        game_rule = {"product_type": "GAME", "must_contain": ["minecraft"],
+                     "platform_any": ["ps5"]}
+        self.assertFalse(bot.strict_product_type_check(
+            game_source, game_rule, "Boîte Minecraft PS5",
+        )[0])
+        self.assertFalse(bot.strict_product_type_check(
+            game_source, game_rule, "Minecraft PS5 boîte vide",
+        )[0])
+        self.assertTrue(bot.strict_product_type_check(
+            game_source, game_rule, "Boîte Minecraft PS5 avec le jeu inclus",
+        )[0])
+        self.assertTrue(bot.strict_product_type_check(
+            game_source, game_rule, "Minecraft PS5 avec boîte",
+        )[0])
+
+    def test_real_profile_rejects_box_and_controller_but_keeps_console_bundle(self):
+        targets = bot.load_target_products()
+        index = bot.build_rule_index(targets, {"min_demand_score": 4})
+        self.assertEqual(
+            bot.choose_known_product(
+                index, "Boîte Minecraft Nintendo Switch", 10,
+            ),
+            (None, None),
+        )
+        self.assertEqual(
+            bot.choose_known_product(
+                index, "Manette PS5 pour console PlayStation 5 disque", 20,
+            ),
+            (None, None),
+        )
+        source, rule = bot.choose_known_product(
+            index, "Console PS5 disque avec manette et jeu", 200,
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(bot.infer_product_type(source, rule), "CONSOLE")
 
     def test_incomplete_but_potentially_profitable_item_becomes_warning(self):
         source = {"category": "CONSOLE", "product_type": "CONSOLE"}
