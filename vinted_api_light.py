@@ -723,10 +723,14 @@ PRODUCT_INCLUDED_MARKERS = frozenset((
 
 CONSOLE_ACCESSORY_TERMS = frozenset((
     "manette", "manettes", "controller", "controllers", "mando", "mandos",
+    "comando", "comandos",
     "gamepad", "gamepads", "joy-con", "joycon", "joystick", "joysticks",
     "dock", "chargeur",
     "charger", "câble", "cable", "coque", "housse", "étui", "etui",
-    "pochette", "support", "stand", "batterie", "battery", "batterij",
+    "pochette", "cover", "covers", "protection", "protective cover",
+    "protective case", "shell", "skin", "sleeve", "funda", "custodia",
+    "capa", "hoes", "hoesje", "beschermhoes", "schutzhülle",
+    "schutzhulle", "support", "stand", "batterie", "battery", "batterij",
     "accu", "akku", "batería", "bateria", "batteria", "écran", "ecran",
     "joystick", "lecteur seul", "carte mémoire", "carte memoire",
     "micro sd", "microsd", "adaptateur", "alimentation",
@@ -774,9 +778,23 @@ ACCESSORY_PART_TERMS = frozenset((
 
 ACCESSORY_ONLY_MARKERS = frozenset((
     "pour", "para", "for", "voor", "per", "fur", "für", "compatible",
-    "seul", "seule", "only", "support", "stand", "housse", "coque",
-    "pochette", "case", "remplacement", "replacement", "de rechange",
+    "seul", "seule", "only", "remplacement", "replacement", "de rechange",
     "ersatz", "sostituzione", "repuesto",
+))
+
+PROTECTIVE_COVER_TERMS = frozenset((
+    "coque", "housse", "étui", "etui", "pochette", "cover", "covers",
+    "protection", "protective cover", "protective case", "case", "shell",
+    "skin", "sleeve", "funda", "custodia", "capa", "hoes", "hoesje",
+    "beschermhoes", "schutzhülle", "schutzhulle",
+))
+
+ACCESSORY_INCLUDED_MARKERS = frozenset((
+    "avec manette", "manette incluse", "manette inclus", "avec controller",
+    "controller included", "with controller", "avec housse", "avec coque",
+    "avec étui", "avec etui", "avec pochette", "with case", "case included",
+    "avec cover", "cover included", "avec support", "avec dock", "dock inclus",
+    "avec chargeur", "chargeur inclus", "+ manette", "+ coque", "+ housse",
 ))
 
 BATTERY_TERMS = frozenset((
@@ -910,16 +928,25 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
                 for game_title in KNOWN_GAME_TITLE_TERMS)):
             return False, "titre de jeu connu, pas console"
         accessory_hit = any(term_present(title, word) for word in CONSOLE_ACCESSORY_TERMS)
+        protective_cover_hit = any(
+            term_present(title, word) for word in PROTECTIVE_COVER_TERMS
+        )
         battery_hit = any(term_present(title, word) for word in BATTERY_TERMS)
         battery_included = any(
             term_present(title, marker) for marker in BATTERY_INCLUDED_MARKERS
+        )
+        accessory_included = battery_included or any(
+            term_present(title, marker) for marker in ACCESSORY_INCLUDED_MARKERS
         )
         if battery_hit and not has_console_word and not battery_included:
             return False, "batterie seule, pas console"
         accessory_only = (
             _starts_with_term(title, CONSOLE_ACCESSORY_TERMS)
             or any(term_present(title, word) for word in ACCESSORY_ONLY_MARKERS)
+            or (accessory_hit and not has_console_word and not accessory_included)
         )
+        if protective_cover_hit and not accessory_included:
+            return False, "protection seule, pas console"
         # « Manette PS5 pour console » reste un accessoire même si le mot
         # console figure dans le titre. « Console PS5 avec manette » est admis.
         if accessory_hit and accessory_only:
@@ -941,6 +968,14 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         if any(term_present(title, word) for word in ACCESSORY_PART_TERMS):
             return False, "pièce d'accessoire seulement"
         subtype = str(rule.get("accessory_type", "")).upper()
+        protective_cover_hit = any(
+            term_present(title, word) for word in PROTECTIVE_COVER_TERMS
+        )
+        protective_cover_included = any(
+            term_present(title, marker) for marker in ACCESSORY_INCLUDED_MARKERS
+        )
+        if subtype == "CONTROLLER" and protective_cover_hit and not protective_cover_included:
+            return False, "protection, pas manette"
         if subtype == "CONTROLLER" and any(
                 term_present(title, word) for word in ("dock", "chargeur", "station de charge")):
             return False, "chargeur, pas manette"
@@ -1243,7 +1278,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             len(filter_risks) * float(cfg.get("soft_risk_penalty", 0.35)),
         )
         score = round(max(1.0, score), 1)
-        if score < int(cfg.get("min_candidate_score", 5)):
+        if score < float(cfg.get("min_candidate_score", 5)):
             stats["rejected_score"] += 1
             continue
 

@@ -41,6 +41,8 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertEqual(cfg["max_catalog_items_per_run"], 500)
         self.assertEqual(cfg["max_searches_per_run"], 10)
         self.assertEqual(cfg["max_alerts_per_run"], 10)
+        self.assertEqual(cfg["min_candidate_score"], 2.5)
+        self.assertEqual(cfg["popularity_penalty_cap"], 1.0)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
         self.assertEqual(cfg["api_max_concurrency"], 3)
 
@@ -281,6 +283,39 @@ class ApiOnlyTests(unittest.TestCase):
         )[0])
         self.assertFalse(bot.strict_product_type_check(
             source, rule, "Manette PS5 pour console PlayStation 5",
+        )[0])
+
+    def test_console_rejects_protective_covers_and_comando(self):
+        source = {"category": "CONSOLE", "product_type": "CONSOLE"}
+        rule = {"product_type": "CONSOLE", "must_contain": ["switch"]}
+        accessory_titles = (
+            "Cover de protection pour Nintendo Switch",
+            "Protective case Nintendo Switch",
+            "Funda protectora para Nintendo Switch",
+            "Custodia Nintendo Switch",
+            "Capa de proteção Nintendo Switch",
+            "Schutzhülle Nintendo Switch",
+            "Comando para console Nintendo Switch",
+        )
+        for title in accessory_titles:
+            self.assertFalse(
+                bot.strict_product_type_check(source, rule, title)[0], title,
+            )
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "Console Nintendo Switch avec housse de protection",
+        )[0])
+
+    def test_controller_rejects_cover_but_keeps_controller_with_case(self):
+        source = {"category": "ACCESSOIRE", "product_type": "ACCESSORY"}
+        rule = {"product_type": "ACCESSORY", "accessory_type": "CONTROLLER"}
+        self.assertFalse(bot.strict_product_type_check(
+            source, rule, "Coque de protection DualSense PS5",
+        )[0])
+        self.assertFalse(bot.strict_product_type_check(
+            source, rule, "Protective cover for PS5 controller",
+        )[0])
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "Manette DualSense avec coque de protection",
         )[0])
 
     def test_ds_battery_in_multiple_languages_is_never_a_console(self):
