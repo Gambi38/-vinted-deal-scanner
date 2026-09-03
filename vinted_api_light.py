@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V3_TOP5
-# Scanner autonome : catalogue, détails et notifications utilisent aiohttp.
+# VINTED_API_AIOHTTP_V8_CATALOG_ONLY
+# Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
 import aiohttp
@@ -15,6 +15,7 @@ import time
 import unicodedata
 import urllib.parse
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 
 # ---------- Configuration ----------
@@ -25,19 +26,20 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = ROOT / "config.json"
 BLACKLIST_PATH = ROOT / "blacklist.json"
 FILTRES_PATH = ROOT / "filtres.json"
+TARGETS_PATH = ROOT / "produits_cibles.json"
 SEEN_PATH = DATA_DIR / "annonces_vues.json"
 SEEN_META_PATH = DATA_DIR / "annonces_vues_meta.json"
-PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
 ALERTS_CSV = DATA_DIR / "alertes.csv"
 SCAN_CURSOR_PATH = DATA_DIR / "scan_cursor.json"
+CYCLE_STATE_PATH = DATA_DIR / "cycle_state.json"
 
 ALERT_FIELDS = [
-    "timestamp", "category", "search", "brand", "model", "size",
+    "timestamp", "category", "product_type", "search", "brand", "model", "size",
     "opportunity_score", "title", "published_at", "age_minutes",
     "view_count", "favourite_count", "seller_type", "previous_price",
     "price_drop_pct", "image_url", "listing_price", "total_buy_est",
     "resale_low", "resale_high", "margin_low", "margin_high", "roi_low",
-    "demand_score", "risk", "reason", "url", "item_id",
+    "demand_score", "target_price", "price_zone", "risk", "reason", "url", "item_id",
 ]
 
 logging.basicConfig(
@@ -47,6 +49,22 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 LOGGER = logging.getLogger("vinted_api_light")
+
+SPACE_RE = re.compile(r"\s+")
+NUMERIC_TIMESTAMP_RE = re.compile(r"\d+(?:\.\d+)?")
+BUNDLE_COUNT_RE = re.compile(r"(?<!\d)(\d{1,2})(?!\d)")
+
+
+@lru_cache(maxsize=8192)
+def _normalise_cached(value):
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(c for c in value if not unicodedata.combining(c))
+    return SPACE_RE.sub(" ", value.lower()).strip()
+
+
+@lru_cache(maxsize=8192)
+def _term_regex(normalised_term):
+    return re.compile(rf"(?<!\w){re.escape(normalised_term)}(?!\w)")
 
 # ---------- Utilitaires ----------
 def load_json(path, default=None):
@@ -63,16 +81,36 @@ def save_json(path, data):
     tmp.replace(path)
 
 def norm(s):
-    s = unicodedata.normalize("NFKD", s or "")
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", s.lower()).strip()
+    return _normalise_cached(str(s or ""))
+
+
+def term_present_normalized(normalised_text, term):
+    normalised_term = norm(term)
+    if not normalised_term:
+        return False
+    return _term_regex(normalised_term).search(normalised_text) is not None
 
 def term_present(text, term):
-    t = norm(text)
-    nt = norm(term)
-    if not nt:
-        return False
-    return re.search(rf"(?<!\w){re.escape(nt)}(?!\w)", t) is not None
+    return term_present_normalized(norm(text), term)
+
+
+def matching_terms(text, terms):
+    """Normalise le texte une fois et déduplique les listes de mots."""
+    normalised_text = norm(text)
+    unique_terms = dict.fromkeys(str(term) for term in terms if str(term).strip())
+    return [term for term in unique_terms
+            if term_present_normalized(normalised_text, term)]
+
+def product_type_from_category(category):
+    """Convertit les catégories historiques en types de produits stricts."""
+    category_n = norm(category).upper()
+    if category_n.startswith("JEU_"):
+        return "GAME"
+    if category_n == "CONSOLE":
+        return "CONSOLE"
+    if category_n.startswith("ACCESS"):
+        return "ACCESSORY"
+    return "ELECTRONICS"
 
 def _positive_price(value):
     if isinstance(value, dict):
@@ -97,7 +135,7 @@ def parse_vinted_timestamp(value):
             return None
     if isinstance(value, str):
         raw = value.strip()
-        if re.fullmatch(r"\d+(?:\.\d+)?", raw):
+        if NUMERIC_TIMESTAMP_RE.fullmatch(raw):
             return parse_vinted_timestamp(float(raw))
         try:
             dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
@@ -256,11 +294,16 @@ def prune_seen_state(seen_ids, seen_meta, retention_days=30, now=None):
             removed += 1
     return removed
 
-def save_seen_state(seen_ids, seen_meta):
+def save_cycle_state(seen_ids, seen_meta, cursor=0):
+    """Une seule écriture atomique pour tout l'état persistant du cycle."""
     keys = sorted(str(k) for k in seen_ids)
-    save_json(SEEN_PATH, keys)
     meta = {k: float(seen_meta.get(k, time.time())) for k in keys}
-    save_json(SEEN_META_PATH, meta)
+    save_json(CYCLE_STATE_PATH, {
+        "schema": 1,
+        "seen_ids": keys,
+        "seen_meta": meta,
+        "scan_cursor": int(cursor),
+    })
 
 def convert_personal_filter(entry):
     if not isinstance(entry, dict) or not entry.get("actif", True):
@@ -278,6 +321,9 @@ def convert_personal_filter(entry):
     if not name or not category or not queries or resale_low is None:
         return []
     resale_high = entry.get("revente_haute", resale_low)
+    product_type = str(entry.get("type_produit", "")).strip().upper()
+    if not product_type:
+        product_type = product_type_from_category(category)
     rule = {
         "label": name,
         "brand": str(entry.get("marque", "")).strip(),
@@ -292,12 +338,16 @@ def convert_personal_filter(entry):
         "min_margin": float(entry.get("marge_minimum", 10)),
         "min_roi_pct": float(entry.get("roi_minimum", 30)),
         "demand_score": int(entry.get("score_demande", 5)),
+        "max_buy_ratio": float(entry.get("ratio_achat_max", 0.50)),
+        "product_type": product_type,
+        "profile_priority": 20,
     }
     if entry.get("materiel_dans_titre"):
         rule["hardware_in_title"] = True
     return [{
         "name": f"FILTRE - {name} / {query}",
         "category": category,
+        "product_type": product_type,
         "query": query,
         "price_to": float(entry.get("prix_recherche_max", float(resale_low) * 0.5)),
         "max_items": int(entry.get("nombre_annonces_a_lire", 35)),
@@ -320,6 +370,75 @@ def apply_personal_filters(cfg, blacklist):
     cfg["searches"] = searches + list(cfg.get("searches", []))
     return len(searches)
 
+def convert_target_product(entry):
+    """Transforme une ligne lisible de produits_cibles.json en règle interne."""
+    if not isinstance(entry, dict) or not entry.get("active", True):
+        return None
+    name = str(entry.get("name", "")).strip()
+    product_type = str(entry.get("type", "")).strip().upper()
+    query = str(entry.get("query") or name).strip()
+    price_max = _positive_price(entry.get("price_max"))
+    resale_low = _positive_price(entry.get("resale_low"))
+    if not name or not product_type or not query or price_max is None or resale_low is None:
+        return None
+    category = str(entry.get("category", "")).strip()
+    if not category:
+        category = {
+            "CONSOLE": "CONSOLE", "GAME": "JEU_AUTRE",
+            "ACCESSORY": "ACCESSOIRE",
+        }.get(product_type, "ELECTRONIQUE")
+    rule = {
+        "label": name,
+        "brand": str(entry.get("brand", "")).strip(),
+        "model": str(entry.get("model") or name).strip(),
+        "product_type": product_type,
+        "accessory_type": str(entry.get("accessory_type", "")).strip().upper(),
+        "must_contain": list(entry.get("must", [])),
+        "any_contain": list(entry.get("any", [])),
+        "platform_any": list(entry.get("platform", [])),
+        "title_prefix_any": list(entry.get("title_prefix", [])),
+        "exclude": list(entry.get("exclude", [])),
+        "resale_low": float(resale_low),
+        "resale_high": float(entry.get("resale_high", resale_low)),
+        "min_margin": float(entry.get("min_margin", 8)),
+        "min_roi_pct": float(entry.get("min_roi_pct", 20)),
+        "demand_score": int(entry.get("demand", 4)),
+        "profile_priority": 10,
+        "hot_buy_price": float(entry.get("hot_buy", price_max)),
+        "suspicious_below": float(entry.get("suspicious_below", 0) or 0),
+        "allow_loose": bool(entry.get("allow_loose", False)),
+        "manual_review": bool(entry.get("manual_review", False)),
+        "bundle_min_items": int(entry.get("bundle_min_items", 0) or 0),
+    }
+    return {
+        "name": f"CIBLE - {name}",
+        "category": category,
+        "product_type": product_type,
+        "query": query,
+        "price_to": float(price_max),
+        "rules": [rule],
+    }
+
+def load_target_products(path=TARGETS_PATH):
+    """Charge la liste de prix séparément du code et ignore les lignes invalides."""
+    try:
+        data = load_json(path, {})
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.error("Profil produits illisible: %s", exc)
+        return []
+    entries = data.get("products", []) if isinstance(data, dict) else []
+    searches = []
+    invalid = 0
+    for entry in entries:
+        search = convert_target_product(entry)
+        if search is None:
+            invalid += 1
+        else:
+            searches.append(search)
+    if invalid:
+        LOGGER.warning("Profil produits: %s lignes invalides ignorées", invalid)
+    return searches
+
 def _merge_searches(searches):
     """Fusionne les requêtes identiques pour économiser des appels HTTP."""
     merged = {}
@@ -337,36 +456,66 @@ def _merge_searches(searches):
         current["price_to"] = max(float(x) for x in prices) if prices else None
     return list(merged.values())
 
-def select_searches_for_run(searches, cfg):
+def _collapse_personal_variants(searches):
+    """Une requête précise par produit, au lieu de gaspiller trois créneaux."""
+    regular = []
+    families = {}
+    for search in searches:
+        name = str(search.get("name", ""))
+        if not name.startswith("FILTRE - "):
+            regular.append(search)
+            continue
+        family = name.split(" / ", 1)[0]
+        previous = families.get(family)
+        if previous is None or len(norm(search.get("query", ""))) > len(norm(previous.get("query", ""))):
+            families[family] = search
+    return list(families.values()) + regular
+
+def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
     """Garde les recherches clés et fait tourner les autres à chaque cycle."""
-    searches = _merge_searches(searches)
+    searches = _collapse_personal_variants(_merge_searches(searches))
     limit = max(1, int(cfg.get("max_searches_per_run", 10)))
     anchors = {norm(x) for x in cfg.get("always_search_queries", [])}
     fixed = [search for search in searches if norm(search.get("query", "")) in anchors]
     fixed = fixed[:limit]
     remaining = [search for search in searches if search not in fixed]
     slots = max(0, limit - len(fixed))
-    cursor_data = load_json(SCAN_CURSOR_PATH, {})
-    try:
-        cursor = int(cursor_data.get("cursor", 0)) if isinstance(cursor_data, dict) else 0
-    except (TypeError, ValueError):
-        cursor = 0
+    if cursor is None:
+        cursor_data = load_json(SCAN_CURSOR_PATH, {})
+        try:
+            cursor = (
+                int(cursor_data.get("cursor", 0))
+                if isinstance(cursor_data, dict) and cursor_data.get("schema") == 4
+                else 0
+            )
+        except (TypeError, ValueError):
+            cursor = 0
+    else:
+        try:
+            cursor = int(cursor)
+        except (TypeError, ValueError):
+            cursor = 0
     rotating = []
     if remaining and slots:
         cursor %= len(remaining)
         rotating = [remaining[(cursor + index) % len(remaining)] for index in range(min(slots, len(remaining)))]
-        save_json(SCAN_CURSOR_PATH, {"cursor": (cursor + len(rotating)) % len(remaining)})
+        cursor = (cursor + len(rotating)) % len(remaining)
+        if persist_cursor:
+            save_json(SCAN_CURSOR_PATH, {"schema": 4, "cursor": cursor})
+    cfg["_next_scan_cursor"] = cursor
     return fixed + rotating
 
 def candidate_rank(row):
     """Classe rentabilité, demande, fraîcheur et concurrence."""
-    age = float(row.get("age_minutes") or 999)
+    age_value = row.get("age_minutes")
+    age = 999.0 if age_value in (None, "") else float(age_value)
     views = float(row.get("view_count") or 0)
     favourites = float(row.get("favourite_count") or 0)
     return (
         float(row.get("opportunity_score") or 0) * 100
         + float(row.get("demand_score") or 0) * 10
         + min(float(row.get("margin_low") or 0), 200) * 0.10
+        + (35 if row.get("price_zone") == "JACKPOT" else 0)
         - age * 0.50
         - views * 0.05
         - favourites * 0.50
@@ -496,10 +645,13 @@ async def ntfy_send(row, session):
         return False
     server = os.getenv("NTFY_SERVER", "https://ntfy.sh").rstrip("/")
     url = f"{server}/{urllib.parse.quote(topic, safe='')}"
-    body = (f"[{row['opportunity_score']}/10] {row['title']} | "
+    risk_suffix = f" | ATTENTION: {row['risk']}" if row.get("risk") else ""
+    zone = " JACKPOT" if row.get("price_zone") == "JACKPOT" else ""
+    body = (f"[{row['opportunity_score']}/10]{zone} {row['title']} | "
             f"Achat {row['listing_price']:.2f} EUR | revente "
             f"{row['resale_low']:.0f}-{row['resale_high']:.0f} EUR | "
-            f"bénéfice {row['margin_low']:.2f} EUR | {row['reason']}")
+            f"bénéfice prudent {row['margin_low']:.2f} EUR | {row['reason']}"
+            f"{risk_suffix}")
     headers = {
         "Title": f"Vinted Deal {row['opportunity_score']}/10",
         "Priority": "high" if row["opportunity_score"] >= 8 else "default",
@@ -519,68 +671,343 @@ async def ntfy_send(row, session):
     return False
 
 # ---------- Filtres simplifiés ----------
-def blacklist_check(title, text, blacklist):
-    combined = norm(f"{title} {text}")
-    for group in ("hard_blacklist", "fake_blacklist", "accessory_blacklist", "title_accessory_blacklist"):
+def blacklist_check(title, text, blacklist, check_accessories=True,
+                    ignored_accessory_terms=()):
+    combined = f"{title} {text}"
+    groups = ["hard_blacklist", "fake_blacklist"]
+    if check_accessories:
+        groups.extend(("accessory_blacklist", "title_accessory_blacklist"))
+    ignored = {norm(word) for word in ignored_accessory_terms}
+    for group in groups:
         if group == "title_accessory_blacklist":
-            hits = [w for w in blacklist.get(group, []) if term_present(title, w)]
+            hits = [w for w in matching_terms(title, blacklist.get(group, []))
+                    if norm(w) not in ignored]
         else:
-            hits = [w for w in blacklist.get(group, []) if term_present(combined, w)]
+            hits = [w for w in matching_terms(combined, blacklist.get(group, []))
+                    if norm(w) not in ignored]
         if hits:
             return True, group, hits[:3], []
-    risks = [w for w in blacklist.get("suspicious_words", []) if term_present(combined, w)]
+    risks = matching_terms(combined, blacklist.get("suspicious_words", []))
     return False, "", [], risks[:3]
 
-def category_sanity_check(category, title):
-    if category.startswith("JEU_"):
-        merch = ["steelbook", "pin", "badge", "figurine", "amiibo", "poster", "artbook", "guide", "boite vide", "empty box"]
-        if any(term_present(title, w) for w in merch):
-            return False, "objet dérivé/accessoire"
-    elif category == "CONSOLE":
-        accessoires = ["chargeur", "manette", "dock", "câble", "alimentation", "batterie", "coque"]
-        if any(term_present(title, w) for w in accessoires):
-            return False, "accessoire console"
-        if any(term_present(title, w) for w in ["jeu", "game"]) and not any(term_present(title, w) for w in ["console", "avec"]):
-            return False, "annonce de jeu, pas console"
+EMPTY_PACKAGING_TERMS = frozenset((
+    "boite vide", "boîte vide", "boitier vide", "boîtier vide",
+    "empty box", "box only", "boite seule", "boîte seule",
+    "juste la boite", "juste la boîte", "sans console", "sans jeu",
+    "game case only", "coffret vide", "empty collector box",
+))
+
+CONSOLE_ACCESSORY_TERMS = frozenset((
+    "manette", "manettes", "controller", "controllers", "mando", "mandos",
+    "gamepad", "gamepads", "joy-con", "joycon", "joystick", "joysticks",
+    "dock", "chargeur",
+    "charger", "câble", "cable", "coque", "housse", "étui", "etui",
+    "pochette", "support", "stand", "batterie", "écran", "ecran",
+    "joystick", "lecteur seul", "carte mémoire", "carte memoire",
+    "micro sd", "microsd", "adaptateur", "alimentation",
+))
+
+GAME_ACCESSORY_TERMS = frozenset((
+    "steelbook", "poster", "figurine", "amiibo", "goodies", "artbook",
+    "guide", "manuel seul", "manual only", "porte-clés", "porte cles",
+    "code seul", "download code only", "jaquette seule", "cover only",
+))
+
+GAME_HARDWARE_TERMS = frozenset((
+    "console", "pack console", "switch oled", "switch lite",
+    "ps5 slim", "ps5 pro", "ps4 pro", "xbox series s", "xbox series x",
+    "xbox one x", "3ds xl", "2ds xl", "game boy advance sp",
+))
+
+ELECTRONICS_ACCESSORY_TERMS = frozenset((
+    "chargeur seul", "charger only", "câble seul", "cable only",
+    "coque", "housse", "étui", "etui", "batterie seule", "battery only",
+    "objectif seul", "lens only", "écran seul", "ecran seul",
+    "adaptateur seul", "power adapter only", "boitier vide", "boîtier vide",
+))
+
+UNSAFE_CONDITION_TERMS = frozenset((
+    "non testé", "non teste", "pas testé", "pas teste", "untested",
+    "sans chargeur", "sans câble", "sans cable", "sans manette",
+    "without charger", "without cable", "without controller",
+    "jeu rayé", "jeu raye", "disque rayé", "disque raye",
+    "cartouche abîmée", "cartouche abimee", "scratched disc",
+))
+
+LOOSE_GAME_TERMS = frozenset((
+    "jeu sans boîte", "jeu sans boite", "cartouche nue",
+    "cartouche seule", "loose cartridge", "disque nu", "disc only",
+))
+
+ACCESSORY_PART_TERMS = frozenset((
+    "façade", "facade", "faceplate", "support manette", "controller stand",
+    "coque manette", "controller shell", "boutons de rechange",
+    "replacement buttons", "joystick de rechange", "replacement joystick",
+    "pédalier seul", "pedal set only", "levier seul", "shifter only",
+    "câble seul", "cable only", "adaptateur seul", "adapter only",
+))
+
+ACCESSORY_ONLY_MARKERS = frozenset((
+    "pour", "para", "for", "fur", "für", "compatible", "seul", "seule",
+    "only", "support", "stand", "housse", "coque", "pochette", "case",
+))
+
+PLATFORM_FAMILIES = {
+    "SWITCH": frozenset(("switch", "nintendo switch")),
+    "PS5": frozenset(("ps5", "playstation 5")),
+    "PS4": frozenset(("ps4", "playstation 4")),
+    "PS3": frozenset(("ps3", "playstation 3")),
+    "PS2": frozenset(("ps2", "playstation 2")),
+    "PS1": frozenset(("ps1", "playstation 1")),
+    "XBOX": frozenset(("xbox", "xbox one", "xbox series")),
+    "WII": frozenset(("wii", "wii u")),
+    "3DS": frozenset(("3ds", "nintendo 3ds")),
+    "DS": frozenset(("nintendo ds", "ds lite")),
+    "N64": frozenset(("n64", "nintendo 64")),
+    "SNES": frozenset(("snes", "super nintendo")),
+    "GBA": frozenset(("gba", "game boy advance", "gameboy advance")),
+    "GAME_BOY": frozenset(("game boy", "gameboy", "gbc")),
+}
+
+CONSOLE_INTENT_TERMS = frozenset((
+    "console", "consola", "konsole", "pack console", "bundle console",
+    "pack ps5", "bundle ps5", "pack switch", "bundle switch",
+    "pack xbox", "bundle xbox",
+))
+
+
+def _platform_families_in(text):
+    text_n = norm(text)
+    return {
+        family for family, aliases in PLATFORM_FAMILIES.items()
+        if any(term_present_normalized(text_n, alias) for alias in aliases)
+    }
+
+
+def _platform_conflict(title, allowed_platforms):
+    mentioned = _platform_families_in(title)
+    wanted = _platform_families_in(" ".join(str(x) for x in allowed_platforms))
+    return bool(mentioned and wanted and mentioned.isdisjoint(wanted))
+
+
+def _starts_with_term(title, terms):
+    title_n = norm(title)
+    return any(
+        title_n == norm(term) or title_n.startswith(norm(term) + " ")
+        for term in terms
+    )
+
+def infer_product_type(source_search, rule):
+    """Retourne le type explicite, ou l'infère sans modifier config.json."""
+    explicit = str(
+        rule.get("product_type") or source_search.get("product_type") or ""
+    ).strip().upper()
+    aliases = {
+        "JEU": "GAME", "JEUX": "GAME", "GAME": "GAME",
+        "CONSOLE": "CONSOLE",
+        "CALCULATRICE": "CALCULATOR", "CALCULATOR": "CALCULATOR",
+        "APPAREIL_PHOTO": "CAMERA", "CAMERA": "CAMERA",
+        "MINI_PC": "MINI_PC", "MINIPC": "MINI_PC",
+        "AUDIO": "AUDIO", "ELECTRONIQUE": "ELECTRONICS",
+        "ELECTRONICS": "ELECTRONICS", "ACCESSOIRE": "ACCESSORY",
+        "ACCESSORY": "ACCESSORY",
+    }
+    if explicit:
+        return aliases.get(explicit, explicit)
+    category_type = product_type_from_category(source_search.get("category", ""))
+    if category_type != "ELECTRONICS":
+        return category_type
+    identity = norm(f"{rule.get('label', '')} {rule.get('model', '')}")
+    if any(term_present(identity, word) for word in ("ti-84", "ti 84", "nspire", "calculatrice")):
+        return "CALCULATOR"
+    if any(term_present(identity, word) for word in ("appareil photo", "camera", "a6000", "g7 x")):
+        return "CAMERA"
+    if any(term_present(identity, word) for word in ("mini pc", "beelink", "minisforum")):
+        return "MINI_PC"
+    if any(term_present(identity, word) for word in ("walkman", "cassette")):
+        return "AUDIO"
+    return "ELECTRONICS"
+
+def strict_product_type_check(source_search, rule, title, cfg=None):
+    """Bloque seulement les incompatibilités certaines entre produit et titre."""
+    if cfg is not None and not cfg.get("strict_product_type", True):
+        return True, ""
+    if any(term_present(title, word) for word in EMPTY_PACKAGING_TERMS):
+        return False, "emballage vide"
+
+    product_type = infer_product_type(source_search, rule)
+    if product_type == "CONSOLE":
+        has_console_word = any(term_present(title, word) for word in (
+            "console", "consola", "konsole",
+        ))
+        game_words = (
+            "jeu", "jeux", "game", "games", "juego", "juegos",
+            "gioco", "giochi", "spiel", "spiele", "spel", "jogo", "jogos",
+        )
+        if any(term_present(title, word) for word in game_words) and not has_console_word:
+            return False, "jeu, pas console"
+        accessory_hit = any(term_present(title, word) for word in CONSOLE_ACCESSORY_TERMS)
+        accessory_only = (
+            _starts_with_term(title, CONSOLE_ACCESSORY_TERMS)
+            or any(term_present(title, word) for word in ACCESSORY_ONLY_MARKERS)
+        )
+        if accessory_hit and not has_console_word and accessory_only:
+            return False, "accessoire, pas console"
+    elif product_type == "GAME":
+        if any(term_present(title, word) for word in GAME_ACCESSORY_TERMS):
+            return False, "accessoire de jeu"
+        if any(term_present(title, word) for word in GAME_HARDWARE_TERMS):
+            return False, "console, pas jeu"
+        platforms = rule.get("platform_any", [])
+        if platforms and _platform_conflict(title, platforms):
+            return False, "plateforme différente"
+        minimum = int(rule.get("bundle_min_items", 0) or 0)
+        if minimum:
+            counts = [int(value) for value in BUNDLE_COUNT_RE.findall(norm(title))]
+            if not counts or max(counts) < minimum:
+                return False, "nombre de jeux du lot non confirmé"
+    elif product_type == "ACCESSORY":
+        if any(term_present(title, word) for word in ACCESSORY_PART_TERMS):
+            return False, "pièce d'accessoire seulement"
+        subtype = str(rule.get("accessory_type", "")).upper()
+        if subtype == "CONTROLLER" and any(
+                term_present(title, word) for word in ("dock", "chargeur", "station de charge")):
+            return False, "chargeur, pas manette"
+        if subtype == "DOCK" and any(
+                term_present(title, word) for word in ("câble", "cable", "chargeur", "adaptateur")):
+            return False, "câble, pas dock"
+        if subtype == "WHEEL" and any(
+                term_present(title, word) for word in ("jeu", "game", "support volant")):
+            return False, "jeu ou support, pas volant"
+    else:
+        if any(term_present(title, word) for word in ELECTRONICS_ACCESSORY_TERMS):
+            return False, "accessoire électronique"
     return True, ""
 
-def empty_packaging_check(category, title, text):
-    if not category.startswith("JEU_"):
-        return False, []
-    phrases = ["boite vide", "boîte vide", "boitier vide", "sans jeu", "empty box", "box only"]
-    combined = norm(f"{title} {text}")
-    hits = [p for p in phrases if term_present(combined, p)]
-    if hits:
-        return True, hits[:3]
-    return False, []
+
+def soft_filter_risks(source_search, rule, title, blacklist=None):
+    """Transforme les ambiguïtés en avertissements au lieu de perdre l'annonce."""
+    risks = []
+    unsafe = matching_terms(title, UNSAFE_CONDITION_TERMS)
+    if unsafe:
+        risks.append("état ou équipement à vérifier: " + ", ".join(unsafe[:2]))
+
+    prefixes = [norm(value) for value in rule.get("title_prefix_any", []) if norm(value)]
+    title_n = norm(title)
+    if prefixes and not any(
+            title_n == prefix or title_n.startswith(prefix + " ")
+            for prefix in prefixes):
+        risks.append("titre ambigu: vérifier que le produit complet est inclus")
+
+    if infer_product_type(source_search, rule) == "GAME":
+        platforms = rule.get("platform_any", [])
+        if (platforms and not _platform_conflict(title, platforms)
+                and not any(term_present(title, platform) for platform in platforms)):
+            risks.append("plateforme non indiquée dans le titre")
+
+    if blacklist:
+        suspicious = matching_terms(title, blacklist.get("suspicious_words", []))
+        if suspicious:
+            risks.append("annonce à contrôler: " + ", ".join(suspicious[:2]))
+    return list(dict.fromkeys(risks))
 
 def rule_match(rule, title, text, deep=False):
     title_n = norm(title)
     full = norm(f"{title} {text}")
-    must = rule.get("must_contain", [])
-    any_kw = rule.get("any_contain", [])
-    exclude = rule.get("exclude", [])
-    if must and not all(term_present(title_n, w) for w in must):
+    must = frozenset(rule.get("must_contain", []))
+    any_kw = frozenset(rule.get("any_contain", []))
+    exclude = frozenset(rule.get("exclude", []))
+    if must and not all(term_present_normalized(title_n, word) for word in must):
         return False
-    if any_kw and not any(term_present(title_n, w) for w in any_kw):
+    if any_kw and not any(term_present_normalized(title_n, word) for word in any_kw):
         return False
-    if exclude and any(term_present(full, w) for w in exclude):
+    if exclude and any(term_present_normalized(full, word) for word in exclude):
         return False
     if not deep:
         return True
     platform = rule.get("platform_any", [])
     hardware = rule.get("hardware_any", [])
-    if platform and not any(term_present(full, w) for w in platform):
+    if platform and not any(term_present_normalized(full, word) for word in platform):
         return False
     if hardware:
         hardware_text = title_n if rule.get("hardware_in_title") else full
-        if not any(term_present(hardware_text, w) for w in hardware):
+        if not any(term_present_normalized(hardware_text, word) for word in hardware):
             return False
     return True
 
+def build_rule_index(searches, cfg):
+    """Index mondial des produits connus à forte demande."""
+    minimum_demand = int(cfg.get("min_demand_score", 4))
+    index = []
+    seen = set()
+    for source_search in searches:
+        for rule in source_search.get("rules", []):
+            if int(rule.get("demand_score", 0)) < minimum_demand:
+                continue
+            identity = (
+                norm(rule.get("brand", "")), norm(rule.get("model", "")),
+                tuple(norm(x) for x in rule.get("must_contain", [])),
+            )
+            if identity in seen:
+                continue
+            seen.add(identity)
+            index.append((source_search, rule))
+    return index
+
+def choose_known_product(rule_index, title, price, cfg=None):
+    """Reconnaît le meilleur produit rentable dans une annonce découverte."""
+    title_matches = []
+    for source_search, rule in rule_index:
+        if not rule_match(rule, title, title, deep=False):
+            continue
+        type_ok, _ = strict_product_type_check(
+            source_search, rule, title, cfg,
+        )
+        if not type_ok:
+            continue
+        title_matches.append((
+            infer_product_type(source_search, rule), source_search, rule,
+        ))
+    if not title_matches:
+        return None, None
+
+    # La classification se fait avant le filtre de prix. Ainsi un jeu PS5 trop
+    # cher n'est jamais recyclé en fausse « console PS5 à 20 EUR ».
+    has_console_intent = any(
+        term_present(title, term) for term in CONSOLE_INTENT_TERMS
+    )
+    matched_types = {item[0] for item in title_matches}
+    if "GAME" in matched_types and not has_console_intent:
+        title_matches = [item for item in title_matches if item[0] == "GAME"]
+    elif "CONSOLE" in matched_types and has_console_intent:
+        title_matches = [item for item in title_matches if item[0] == "CONSOLE"]
+
+    matches = []
+    for product_type, source_search, rule in title_matches:
+        price_limit = source_search.get("price_to")
+        resale_low = rule.get("resale_low")
+        ratio = float(rule.get("max_buy_ratio", 0.50))
+        ratio_limit = float(resale_low) * ratio if resale_low is not None else None
+        effective_limit = price_limit if price_limit is not None else ratio_limit
+        if effective_limit is not None and float(price) > float(effective_limit):
+            continue
+        priority = (
+            int(rule.get("profile_priority", 0)),
+            int(rule.get("demand_score", 0)),
+            len(rule.get("must_contain", [])) + len(rule.get("any_contain", [])),
+            float(rule.get("resale_low") or 0) - float(price),
+        )
+        matches.append((priority, product_type, source_search, rule))
+    if not matches:
+        return None, None
+
+    _, _, source_search, rule = max(matches, key=lambda item: item[0])
+    return source_search, rule
+
 # ---------- Appels API ----------
 async def catalog_items(query, price_to, base_url, limiter, session, headers,
-                        per_page=5, stats=None):
+                        per_page=50, stats=None):
+    request_started = time.perf_counter()
     url = f"{base_url}/api/v2/catalog/items"
     params = {
         "search_text": query,
@@ -604,116 +1031,120 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
                 stats["catalog_success"] += 1
                 stats["catalog_items"] += len(items)
             return items
-    except Exception as e:
-        LOGGER.error("Erreur catalogue %s: %s", query, e)
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError) as exc:
+        LOGGER.error("Erreur catalogue %s: %s", query, exc)
         return []
-
-async def detail_item(item_id, base_url, limiter, session, headers, stats=None):
-    url = f"{base_url}/api/v2/items/{item_id}"
-    await limiter.wait("detail")
-    if stats is not None:
-        stats["detail_requested"] += 1
-    try:
-        async with session.get(url, headers=headers, timeout=8) as resp:
-            await limiter.register_response(resp.status, resp.headers, "detail")
-            if resp.status != 200:
-                return None
-            data = await resp.json()
-            return data.get("item", {})
-    except Exception:
-        return None
+    finally:
+        if stats is not None:
+            stats["catalog_seconds"] += time.perf_counter() - request_started
 
 # ---------- Scan principal ----------
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
-                      limiter, session, base_url, headers, stats):
+                      limiter, session, base_url, headers, stats,
+                      rule_index=None):
     query = search["query"]
     name = search.get("name", query)
     LOGGER.info(f"\n[API-TEST] {name} → {query}")
 
     max_items = min(
-        int(search.get("max_items", cfg.get("max_items_per_search", 5))),
-        int(cfg.get("max_items_per_search", 5)),
+        int(search.get("max_items", cfg.get("max_items_per_search", 50))),
+        int(cfg.get("max_items_per_search", 50)),
     )
     items = await catalog_items(
         query, search.get("price_to"), base_url, limiter, session,
-        headers, per_page=max_items, stats=stats,
+        headers, per_page=int(cfg.get("catalog_per_page", 50)), stats=stats,
     )
     if not items:
         return []
 
     alerts = []
-    price_history = load_json(PRICE_HISTORY_PATH, {})
 
     for item in items[:max_items]:
+        stats["items_examined"] += 1
         item_id = str(item.get("id"))
         title = item.get("title", "")
         price = _positive_price(item.get("price"))
         if price is None:
+            stats["rejected_price"] += 1
             continue
 
         # 1. Vérifier âge
         created = catalog_timestamp(item)
-        # L'API catalogue omet souvent la date. Dans ce cas, on diffère la
-        # décision jusqu'au détail au lieu de rejeter silencieusement l'annonce.
+        # Aucun appel détail : l'âge provient uniquement du catalogue/photo.
         age = listing_age_hours(created)
         if age is None:
             stats["age_unknown"] += 1
             LOGGER.warning("  ? Âge catalogue introuvable | %s", item_id)
-            continue
+            if cfg.get("reject_unknown_listing_age", True):
+                continue
+            age = float(cfg.get("max_listing_age_hours", 0.5))
         stats["age_known"] += 1
         if age > float(cfg.get("max_listing_age_hours", 0.5)):
+            stats["rejected_old"] += 1
             LOGGER.debug("  X Âge | %.1fh", age)
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
         # 2. Vérifier vu (sauf si baisse de prix, simplifié ici)
         if item_already_seen(seen_ids, search, item_id):
+            stats["rejected_seen"] += 1
             continue
 
-        # 3. Vendeur pro
+        # 3. Vendeur pro : blocage uniquement si explicitement demandé.
         seller = item.get("user", {})
         if cfg.get("exclude_professional_sellers", True) and (seller.get("is_business") or seller.get("is_pro")):
+            stats["rejected_pro"] += 1
             LOGGER.debug("  X Vendeur Pro | %s", title[:60])
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
         # 4. Filtres rapides
-        blocked, _, _, _ = blacklist_check(title, title, blacklist)
+        blocked, _, _, _ = blacklist_check(
+            title, title, blacklist, check_accessories=False,
+        )
         if blocked:
+            stats["rejected_blacklist"] += 1
             LOGGER.debug("  X Blacklist | %s", title[:60])
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
-        category = search.get("category", "")
-        sane, _ = category_sanity_check(category, title)
-        if not sane:
-            mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
-            continue
-
-        empty, _ = empty_packaging_check(category, title, title)
-        if empty:
-            mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
-            continue
-
         # 5. Trouver la règle
-        matched_rule = None
-        for rule in search.get("rules", []):
-            if rule_match(rule, title, title):
-                matched_rule = rule
-                break
-        if matched_rule is None:
+        if rule_index is not None:
+            matched_search, matched_rule = choose_known_product(
+                rule_index, title, price, cfg,
+            )
+        else:
+            matched_search = search
+            matched_rule = next(
+                (rule for rule in search.get("rules", [])
+                 if rule_match(rule, title, title)
+                 and strict_product_type_check(search, rule, title, cfg)[0]),
+                None,
+            )
+        if matched_rule is None or matched_search is None:
+            stats["rejected_rule"] += 1
             continue
+
+        category = matched_search.get("category", "")
+        product_type = infer_product_type(matched_search, matched_rule)
+        # Les accessoires et ambiguïtés ne déclenchent plus un second rejet
+        # global : la règle de type a déjà éliminé les incompatibilités sûres.
+        filter_risks = soft_filter_risks(
+            matched_search, matched_rule, title, blacklist,
+        )
 
         # 6. Scoring avec catalogue
         total, resale_low, resale_high, margin_low, margin_high, roi_low = score_candidate(matched_rule, price, cfg)
         if margin_low is None:
+            stats["rejected_profit"] += 1
             continue
         ref_price = float(matched_rule.get("market_avg", resale_low))
         min_margin = matched_rule.get("min_margin", cfg.get("min_margin", 25))
-        if margin_low < float(min_margin):
-            continue
         min_roi = matched_rule.get("min_roi_pct", cfg.get("min_roi_pct", 20))
-        if roi_low < float(min_roi):
+        strict_profit = margin_low >= float(min_margin) and roi_low >= float(min_roi)
+        if (margin_low < float(cfg.get("candidate_min_margin", 8)) or
+                roi_low < float(cfg.get("candidate_min_roi_pct", 20))):
+            stats["rejected_profit"] += 1
             continue
 
         # Le catalogue fournit déjà prix, vues, favoris, vendeur et photo.
@@ -723,27 +1154,50 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
         view_count = item.get("view_count")
         description = item.get("description", "")
 
-        # Re-vérifier les règles avec la description
-        if not rule_match(matched_rule, title, description or title, deep=True):
-            continue
-
         # 8. Score final
-        motivation_hits = [w for w in cfg.get("seller_motivation_words", []) if term_present(f"{title} {description}", w)]
+        motivation_hits = matching_terms(
+            f"{title} {description}", cfg.get("seller_motivation_words", []),
+        )
         score = opportunity_score(
             price, ref_price, margin_low, motivation_hits,
             age_hours=age, favourite_count=fav_count,
             view_count=view_count, cfg=cfg,
         )
+        hot_buy_price = float(matched_rule.get("hot_buy_price", 0) or 0)
+        price_zone = "JACKPOT" if hot_buy_price and price <= hot_buy_price else "CIBLE"
+        if price_zone == "JACKPOT":
+            score = min(10, score + 1)
+        score -= min(
+            float(cfg.get("soft_risk_penalty_cap", 1.0)),
+            len(filter_risks) * float(cfg.get("soft_risk_penalty", 0.35)),
+        )
+        score = round(max(1.0, score), 1)
+        if score < int(cfg.get("min_candidate_score", 5)):
+            stats["rejected_score"] += 1
+            continue
 
         # 9. Alerte
         size = "?"
         published_dt = parse_vinted_timestamp(created)
         published_at = published_dt.isoformat(timespec="seconds") if published_dt else ""
 
+        risk_parts = list(filter_risks)
+        if seller.get("is_business") or seller.get("is_pro"):
+            risk_parts.append("vendeur professionnel")
+        suspicious_below = float(matched_rule.get("suspicious_below", 0) or 0)
+        if suspicious_below and price <= suspicious_below:
+            risk_parts.append("prix anormalement bas: vérifier vendeur et contenu")
+        if matched_rule.get("manual_review"):
+            risk_parts.append("contenu à vérifier manuellement")
+        if not strict_profit:
+            risk_parts.append("seuil prudent à vérifier")
+
         row = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "category": category,
-            "search": search.get("name", "") + " / " + matched_rule.get("label", ""),
+            "product_type": product_type,
+            "search": search.get("name", "") + " → " + matched_search.get("name", "")
+                      + " / " + matched_rule.get("label", ""),
             "brand": matched_rule.get("brand", ""),
             "model": matched_rule.get("model", ""),
             "size": size,
@@ -763,7 +1217,9 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "margin_high": margin_high,
             "roi_low": roi_low,
             "demand_score": matched_rule.get("demand_score", 5),
-            "risk": "",
+            "target_price": matched_search.get("price_to", ""),
+            "price_zone": price_zone,
+            "risk": "; ".join(risk_parts),
             "reason": reason_text(
                 price, ref_price, motivation_hits, age_hours=age,
                 cfg=cfg, favourite_count=fav_count,
@@ -775,6 +1231,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
         }
 
         alerts.append(row)
+        stats["candidates"] += 1
         LOGGER.info(
             "  + CANDIDAT %s/10 | %s | %s | %.2f EUR | marge +%.2f EUR",
             score, freshness_label(age, cfg), title[:58], price, margin_low,
@@ -784,23 +1241,40 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
 
 # ---------- Main ----------
 async def main_async():
+    cycle_started = time.perf_counter()
     cfg = load_json(CONFIG_PATH, {})
     if not cfg:
         LOGGER.error("config.json introuvable")
         return
 
     blacklist = load_json(BLACKLIST_PATH, {})
+    target_searches = load_target_products()
+    cfg["searches"] = target_searches + list(cfg.get("searches", []))
+    LOGGER.info("Profil marché: %s produits cibles chargés", len(target_searches))
     personal_count = apply_personal_filters(cfg, blacklist)
     LOGGER.info("%s recherches personnelles ajoutées", personal_count)
+    product_searches = list(cfg.get("searches", []))
+    rule_index = build_rule_index(product_searches, cfg)
+    LOGGER.info("Profil demande chargé | %s produits reconnus", len(rule_index))
 
-    # Charger état
+    # Charger l'état agrégé, avec migration automatique de l'ancien format.
     seen_ids = set()
     seen_meta = {}
-    if SEEN_PATH.exists():
+    cycle_state = load_json(CYCLE_STATE_PATH, {})
+    scan_cursor = 0
+    if isinstance(cycle_state, dict) and cycle_state.get("schema") == 1:
+        seen_ids = {str(x) for x in cycle_state.get("seen_ids", [])}
+        raw_meta = cycle_state.get("seen_meta", {})
+        seen_meta = raw_meta if isinstance(raw_meta, dict) else {}
+        try:
+            scan_cursor = int(cycle_state.get("scan_cursor", 0))
+        except (TypeError, ValueError):
+            scan_cursor = 0
+    elif SEEN_PATH.exists():
         raw = load_json(SEEN_PATH, [])
         if isinstance(raw, list):
             seen_ids = {str(x) for x in raw}
-    if SEEN_META_PATH.exists():
+    if not seen_meta and SEEN_META_PATH.exists():
         meta = load_json(SEEN_META_PATH, {})
         if isinstance(meta, dict):
             seen_meta = meta
@@ -822,11 +1296,21 @@ async def main_async():
 
     stats = {key: 0 for key in (
         "catalog_requested", "catalog_success", "catalog_items",
-        "detail_requested", "age_known", "age_unknown",
-        "notifications_sent",
+        "catalog_seconds", "items_examined", "searches_completed",
+        "searches_failed", "search_seconds", "age_known", "age_unknown",
+        "notifications_sent", "candidates", "rejected_price",
+        "rejected_old", "rejected_seen", "rejected_pro",
+        "rejected_blacklist", "rejected_rule", "rejected_profit",
+        "rejected_score",
     )}
 
-    async with aiohttp.ClientSession() as session:
+    concurrency = max(1, int(cfg.get("api_max_concurrency", 3)))
+    connector = aiohttp.TCPConnector(
+        limit=max(4, concurrency * 2), ttl_dns_cache=300,
+    )
+    timeout = aiohttp.ClientTimeout(total=15, connect=5)
+    async with aiohttp.ClientSession(
+            connector=connector, timeout=timeout) as session:
         # Crée les cookies de session avant l'API. Un échec ici est informatif,
         # mais les appels catalogue décideront de l'état de santé réel.
         try:
@@ -837,8 +1321,15 @@ async def main_async():
         except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
             LOGGER.warning("Initialisation session impossible: %s", exc)
 
-        all_searches = cfg.get("searches", [])
-        searches = select_searches_for_run(all_searches, cfg)
+        discovery_mode = bool(cfg.get("discovery_mode", True))
+        all_searches = (
+            list(cfg.get("discovery_searches", []))
+            if discovery_mode
+            else product_searches
+        )
+        searches = select_searches_for_run(
+            all_searches, cfg, cursor=scan_cursor, persist_cursor=False,
+        )
         max_catalog_items = int(cfg.get("max_catalog_items_per_run", 50))
         per_search = max(1, max_catalog_items // max(1, len(searches)))
         cfg["max_items_per_search"] = min(
@@ -846,17 +1337,29 @@ async def main_async():
         )
         LOGGER.info(
             "Cycle rapide | %s/%s recherches | maximum %s annonces",
-            len(searches), len(_merge_searches(all_searches)),
+            len(searches), len(_collapse_personal_variants(_merge_searches(all_searches))),
             len(searches) * cfg["max_items_per_search"],
         )
-        semaphore = asyncio.Semaphore(int(cfg.get("api_max_concurrency", 3)))
+        semaphore = asyncio.Semaphore(concurrency)
 
         async def bounded_scan(search):
             async with semaphore:
-                return await scan_search(
-                    search, cfg, blacklist, seen_ids, seen_meta,
-                    limiter, session, base_url, headers, stats,
-                )
+                search_started = time.perf_counter()
+                try:
+                    rows = await scan_search(
+                        search, cfg, blacklist, seen_ids, seen_meta,
+                        limiter, session, base_url, headers, stats,
+                        rule_index=rule_index if discovery_mode else None,
+                    )
+                    stats["searches_completed"] += 1
+                    return rows
+                finally:
+                    elapsed = time.perf_counter() - search_started
+                    stats["search_seconds"] += elapsed
+                    LOGGER.info(
+                        "PERF recherche | %.2fs | %s",
+                        elapsed, search.get("query", "?"),
+                    )
 
         tasks = [bounded_scan(s) for s in searches]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -864,6 +1367,7 @@ async def main_async():
         candidates = []
         for res in results:
             if isinstance(res, Exception):
+                stats["searches_failed"] += 1
                 LOGGER.error("Erreur recherche: %s", res)
             else:
                 candidates.extend(res)
@@ -905,16 +1409,35 @@ async def main_async():
 
         total_alerts = len(selected)
 
-        save_seen_state(seen_ids, seen_meta)
-        LOGGER.info("Santé API | catalogues %s/%s | articles %s | détails %s | "
-                    "âges connus %s | inconnus %s | notifications %s",
+        state_started = time.perf_counter()
+        save_cycle_state(
+            seen_ids, seen_meta, cfg.get("_next_scan_cursor", scan_cursor),
+        )
+        state_seconds = time.perf_counter() - state_started
+        cycle_seconds = time.perf_counter() - cycle_started
+        throughput = stats["items_examined"] / max(cycle_seconds, 0.001)
+        LOGGER.info("Santé API | catalogues %s/%s | articles reçus %s | "
+                    "articles analysés %s | âges connus %s | inconnus %s | notifications %s",
                     stats["catalog_success"], stats["catalog_requested"],
-                    stats["catalog_items"], stats["detail_requested"],
+                    stats["catalog_items"], stats["items_examined"],
                     stats["age_known"], stats["age_unknown"],
                     stats["notifications_sent"])
         LOGGER.info(
+            "Rejets | anciens %s | déjà vus %s | règle %s | rentabilité %s | "
+            "score %s | filtres durs %s | pro %s",
+            stats["rejected_old"], stats["rejected_seen"],
+            stats["rejected_rule"], stats["rejected_profit"],
+            stats["rejected_score"], stats["rejected_blacklist"], stats["rejected_pro"],
+        )
+        LOGGER.info(
             "\n[API] Terminé : %s candidats, Top %s, %s notifications envoyées.",
             len(candidates), total_alerts, stats["notifications_sent"],
+        )
+        LOGGER.info(
+            "PERF cycle | %.2fs | %.1f articles/s | réseau cumulé %.2fs | "
+            "état %.3fs (1 sauvegarde) | recherches %s OK / %s erreur(s)",
+            cycle_seconds, throughput, stats["catalog_seconds"], state_seconds,
+            stats["searches_completed"], stats["searches_failed"],
         )
 
         requested = stats["catalog_requested"]
