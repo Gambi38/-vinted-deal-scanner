@@ -362,6 +362,38 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertIsNotNone(rule)
         self.assertEqual(bot.infer_product_type(source, rule), "CONSOLE")
 
+    def test_unknown_game_before_platform_never_inherits_console_value(self):
+        targets = bot.load_target_products()
+        index = bot.build_rule_index(targets, {"min_demand_score": 4})
+        false_console_titles = (
+            "Digimon Survive - Nintendo Switch (Nuovo)",
+            "Hades Nintendo Switch",
+            "Rampage World Tour Nintendo 64",
+            "Harry Potter GameCube",
+            "Michael Jackson PS Vita",
+        )
+        for title in false_console_titles:
+            self.assertEqual(
+                bot.choose_known_product(index, title, 25),
+                (None, None),
+                title,
+            )
+
+    def test_console_sales_prefixes_remain_accepted(self):
+        targets = bot.load_target_products()
+        index = bot.build_rule_index(targets, {"min_demand_score": 4})
+        console_titles = (
+            ("Vends ma Nintendo Switch", 45, "Nintendo Switch LCD"),
+            ("Lot 2 Nintendo Switch", 45, "Nintendo Switch LCD"),
+            ("Console Nintendo Switch avec Digimon", 45, "Nintendo Switch LCD"),
+            ("New Nintendo 3DS XL", 100, "New Nintendo 3DS XL"),
+        )
+        for title, price, expected_model in console_titles:
+            source, rule = bot.choose_known_product(index, title, price)
+            self.assertIsNotNone(rule, title)
+            self.assertEqual(rule.get("model"), expected_model, title)
+            self.assertEqual(bot.infer_product_type(source, rule), "CONSOLE")
+
     def test_packaging_title_requires_confirmation_product_is_included(self):
         game_source = {"category": "JEU_PS5", "product_type": "GAME"}
         game_rule = {"product_type": "GAME", "must_contain": ["minecraft"],

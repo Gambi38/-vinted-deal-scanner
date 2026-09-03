@@ -915,10 +915,14 @@ PLATFORM_FAMILIES = {
     "PS1": frozenset(("ps1", "playstation 1")),
     "XBOX": frozenset(("xbox", "xbox one", "xbox series")),
     "WII": frozenset(("wii", "wii u")),
+    "GAMECUBE": frozenset(("gamecube", "nintendo gamecube")),
     "3DS": frozenset(("3ds", "nintendo 3ds")),
     "DS": frozenset(("nintendo ds", "ds lite")),
+    "PSP": frozenset(("psp", "psp 3000", "psp 3004")),
+    "VITA": frozenset(("ps vita", "psvita", "playstation vita")),
     "N64": frozenset(("n64", "nintendo 64")),
     "SNES": frozenset(("snes", "super nintendo")),
+    "NES": frozenset(("nes", "nintendo nes")),
     "GBA": frozenset(("gba", "game boy advance", "gameboy advance")),
     "GAME_BOY": frozenset(("game boy", "gameboy", "gbc")),
 }
@@ -927,6 +931,18 @@ CONSOLE_INTENT_TERMS = frozenset((
     "console", "consola", "konsole", "pack console", "bundle console",
     "pack ps5", "bundle ps5", "pack switch", "bundle switch",
     "pack xbox", "bundle xbox",
+))
+
+# Mots pouvant précéder normalement le modèle dans une annonce de console.
+# Tout autre préfixe (« Digimon Survive Nintendo Switch », « Rampage N64 »)
+# indique généralement que la plateforme sert à décrire un jeu.
+CONSOLE_LISTING_PREFIX_WORDS = frozenset((
+    "a", "à", "vendre", "vend", "vends", "vente", "vendo", "selling",
+    "sell", "verkaufe", "vendo", "mon", "ma", "mes", "my", "mia",
+    "mio", "belle", "beau", "superbe", "magnifique", "neuf", "neuve",
+    "nouveau", "nouvelle", "occasion", "lot", "pack", "bundle",
+    "original", "officiel", "officielle", "sony", "microsoft", "nintendo",
+    "playstation", "xbox", "new",
 ))
 
 
@@ -942,6 +958,53 @@ def _platform_conflict(title, allowed_platforms):
     mentioned = _platform_families_in(title)
     wanted = _platform_families_in(" ".join(str(x) for x in allowed_platforms))
     return bool(mentioned and wanted and mentioned.isdisjoint(wanted))
+
+
+def _console_platform_preceded_by_product_name(title, rule):
+    """Repère un nom de jeu placé avant une plateforme de console.
+
+    Les vendeurs écrivent très souvent « nom du jeu - Nintendo Switch ».
+    Une règle matérielle générique ne doit pas transformer cette structure en
+    console. Les mots de vente, marques et nombres restent admis afin de garder
+    « Vends ma Nintendo Switch » et « Lot 2 Nintendo Switch ».
+    """
+    title_n = norm(title)
+    identity = " ".join((
+        str(rule.get("brand", "")), str(rule.get("model", "")),
+        " ".join(str(value) for value in rule.get("must_contain", [])),
+    ))
+    families = _platform_families_in(identity)
+    aliases = sorted(
+        {
+            norm(alias)
+            for family in families
+            for alias in PLATFORM_FAMILIES.get(family, ())
+            if norm(alias)
+        },
+        key=len, reverse=True,
+    )
+    occurrences = []
+    for alias in aliases:
+        match = re.search(rf"(?:^|\s){re.escape(alias)}(?:\s|$)", title_n)
+        if match:
+            start = match.start()
+            if start and title_n[start].isspace():
+                start += 1
+            occurrences.append((start, -len(alias), alias))
+    if not occurrences:
+        return False
+
+    start, _, _ = min(occurrences)
+    prefix = title_n[:start].strip()
+    if not prefix:
+        return False
+    prefix_words = set(prefix.split())
+    identity_words = set(norm(identity).split())
+    allowed = CONSOLE_LISTING_PREFIX_WORDS | identity_words
+    return any(
+        not word.isdigit() and word not in allowed
+        for word in prefix_words
+    )
 
 
 def _starts_with_term(title, terms):
@@ -1005,6 +1068,9 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         has_console_word = any(term_present(title, word) for word in (
             "console", "consola", "konsole",
         ))
+        if (not has_console_word and
+                _console_platform_preceded_by_product_name(title, rule)):
+            return False, "nom de produit avant la plateforme: probablement un jeu"
         game_words = (
             "jeu", "jeux", "game", "games", "juego", "juegos",
             "gioco", "giochi", "spiel", "spiele", "spel", "spelletjes",
