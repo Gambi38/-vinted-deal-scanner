@@ -387,6 +387,13 @@ def convert_target_product(entry):
             "CONSOLE": "CONSOLE", "GAME": "JEU_AUTRE",
             "ACCESSORY": "ACCESSOIRE",
         }.get(product_type, "ELECTRONIQUE")
+    exclusions = list(entry.get("exclude", []))
+    if product_type == "CONSOLE":
+        bundle_words = {
+            "jeu", "jeux", "game", "games", "manette", "manettes",
+            "controller", "controllers",
+        }
+        exclusions = [word for word in exclusions if norm(word) not in bundle_words]
     rule = {
         "label": name,
         "brand": str(entry.get("brand", "")).strip(),
@@ -397,7 +404,7 @@ def convert_target_product(entry):
         "any_contain": list(entry.get("any", [])),
         "platform_any": list(entry.get("platform", [])),
         "title_prefix_any": list(entry.get("title_prefix", [])),
-        "exclude": list(entry.get("exclude", [])),
+        "exclude": exclusions,
         "resale_low": float(resale_low),
         "resale_high": float(entry.get("resale_high", resale_low)),
         "min_margin": float(entry.get("min_margin", 8)),
@@ -647,13 +654,16 @@ async def ntfy_send(row, session):
     url = f"{server}/{urllib.parse.quote(topic, safe='')}"
     risk_suffix = f" | ATTENTION: {row['risk']}" if row.get("risk") else ""
     zone = " JACKPOT" if row.get("price_zone") == "JACKPOT" else ""
-    body = (f"[{row['opportunity_score']}/10]{zone} {row['title']} | "
+    type_label = {
+        "CONSOLE": "CONSOLE", "GAME": "JEU", "ACCESSORY": "ACCESSOIRE",
+    }.get(str(row.get("product_type", "")).upper(), "ARTICLE")
+    body = (f"[{type_label}] [{row['opportunity_score']}/10]{zone} {row['title']} | "
             f"Achat {row['listing_price']:.2f} EUR | revente "
             f"{row['resale_low']:.0f}-{row['resale_high']:.0f} EUR | "
             f"bénéfice prudent {row['margin_low']:.2f} EUR | {row['reason']}"
             f"{risk_suffix}")
     headers = {
-        "Title": f"Vinted Deal {row['opportunity_score']}/10",
+        "Title": f"Vinted {type_label} {row['opportunity_score']}/10",
         "Priority": "high" if row["opportunity_score"] >= 8 else "default",
         "Tags": "moneybag,shopping_cart", "Click": row["url"],
         "Actions": f"view, Ouvrir Vinted, {row['url']}",
@@ -695,6 +705,20 @@ EMPTY_PACKAGING_TERMS = frozenset((
     "empty box", "box only", "boite seule", "boîte seule",
     "juste la boite", "juste la boîte", "sans console", "sans jeu",
     "game case only", "coffret vide", "empty collector box",
+    "verpackung leer", "leere verpackung", "nur verpackung",
+    "solo scatola", "scatola vuota", "solo caja", "caja vacia",
+    "caja vacía", "lege doos", "alleen doos", "caixa vazia", "só caixa",
+))
+
+PACKAGING_START_TERMS = frozenset((
+    "boite", "boîte", "boitier", "boîtier", "coffret", "box", "case",
+    "verpackung", "scatola", "caja", "doos", "caixa", "embalagem",
+))
+
+PRODUCT_INCLUDED_MARKERS = frozenset((
+    "avec console", "console incluse", "console inclus", "console included",
+    "avec le jeu", "avec jeu", "jeu inclus", "jeu incluse", "game included",
+    "contient la console", "contient le jeu", "complet avec console",
 ))
 
 CONSOLE_ACCESSORY_TERMS = frozenset((
@@ -797,6 +821,15 @@ def _starts_with_term(title, terms):
         for term in terms
     )
 
+
+def _packaging_only_title(title):
+    """Détecte « Boîte Minecraft/PS5 » sans bloquer « avec le jeu/console »."""
+    if not _starts_with_term(title, PACKAGING_START_TERMS):
+        return False
+    return not any(
+        term_present(title, marker) for marker in PRODUCT_INCLUDED_MARKERS
+    )
+
 def infer_product_type(source_search, rule):
     """Retourne le type explicite, ou l'infère sans modifier config.json."""
     explicit = str(
@@ -834,6 +867,8 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         return True, ""
     if any(term_present(title, word) for word in EMPTY_PACKAGING_TERMS):
         return False, "emballage vide"
+    if _packaging_only_title(title):
+        return False, "annonce centrée sur la boîte, produit non confirmé"
 
     product_type = infer_product_type(source_search, rule)
     if product_type == "CONSOLE":
@@ -851,7 +886,9 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
             _starts_with_term(title, CONSOLE_ACCESSORY_TERMS)
             or any(term_present(title, word) for word in ACCESSORY_ONLY_MARKERS)
         )
-        if accessory_hit and not has_console_word and accessory_only:
+        # « Manette PS5 pour console » reste un accessoire même si le mot
+        # console figure dans le titre. « Console PS5 avec manette » est admis.
+        if accessory_hit and accessory_only:
             return False, "accessoire, pas console"
     elif product_type == "GAME":
         if any(term_present(title, word) for word in GAME_ACCESSORY_TERMS):
