@@ -8,7 +8,6 @@ import csv
 import json
 import logging
 import os
-import random
 import re
 import sys
 import time
@@ -17,6 +16,25 @@ import urllib.parse
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+
+from monitoring import build_workflow_report
+from photo_condition import PhotoConditionAnalyzer, enrich_rows_with_photos
+from product_classifier import (
+    CLASSIFIER_SCHEMA,
+    build_rule_vocabulary,
+    canonicalize_product_title,
+    vocabulary_size,
+)
+from scanner_runtime import (
+    ApiBudgetExceeded,
+    ApiCostController,
+    TokenBucketRateLimiter,
+    dns_healthcheck,
+    managed_http_session,
+    run_async,
+)
+from search_cache import load_rule_index, save_rule_index, search_fingerprint
+from sold_listings import SoldListingsProvider
 
 # ---------- Configuration ----------
 ROOT = Path(__file__).resolve().parent
@@ -32,6 +50,11 @@ SEEN_META_PATH = DATA_DIR / "annonces_vues_meta.json"
 ALERTS_CSV = DATA_DIR / "alertes.csv"
 SCAN_CURSOR_PATH = DATA_DIR / "scan_cursor.json"
 CYCLE_STATE_PATH = DATA_DIR / "cycle_state.json"
+PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
+SEARCH_CACHE_PATH = DATA_DIR / "searches_cache.json"
+SOLD_LISTINGS_PATH = DATA_DIR / "sold_listings_cache.json"
+REPORT_PATH = DATA_DIR / "rapport.json"
+CONFIRMED_REJECTIONS_PATH = ROOT / "rejets.txt"
 
 ALERT_FIELDS = [
     "timestamp", "category", "product_type", "search", "brand", "model", "size",
@@ -39,7 +62,8 @@ ALERT_FIELDS = [
     "view_count", "favourite_count", "seller_type", "previous_price",
     "price_drop_pct", "image_url", "listing_price", "total_buy_est",
     "resale_low", "resale_high", "margin_low", "margin_high", "roi_low",
-    "demand_score", "target_price", "price_zone", "risk", "reason", "url", "item_id",
+    "demand_score", "target_price", "price_zone", "photo_condition",
+    "photo_confidence", "photo_risk", "risk", "reason", "url", "item_id",
 ]
 
 logging.basicConfig(
@@ -72,6 +96,35 @@ def load_json(path, default=None):
         return default
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def apply_confirmed_rejections(path, blacklist):
+    """Ajoute uniquement des rejets explicitement classés par l'utilisateur."""
+    mapping = {
+        "hard": "hard_blacklist",
+        "fake": "fake_blacklist",
+        "accessory": "accessory_blacklist",
+        "title": "title_accessory_blacklist",
+    }
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    added = 0
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        prefix, term = line.split(":", 1)
+        group = mapping.get(prefix.strip().lower())
+        term = term.strip()
+        if not group or len(term) < 3:
+            continue
+        values = blacklist.setdefault(group, [])
+        if term not in values:
+            values.append(term)
+            added += 1
+    return added
 
 def save_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -196,57 +249,19 @@ def freshness_label(age_hours, cfg):
         return f"publiée il y a {minutes} min"
     return f"publiée il y a {age_hours:.1f}h"
 
-# ---------- Rate Limiter ----------
-class AsyncRateLimiter:
+# ---------- Compatibilité de l'ancien nom ----------
+class AsyncRateLimiter(TokenBucketRateLimiter):
+    """Ancien constructeur conservé pour les installations existantes."""
+
     def __init__(self, min_sec, max_sec, max_backoff=60):
-        self.min = float(min_sec)
-        self.max = float(max_sec)
-        self.max_backoff = float(max_backoff)
-        self._next_allowed = 0.0
-        self._blocked_until = 0.0
-        self._consecutive = 0
-        self._lock = asyncio.Lock()
-
-    async def wait(self, kind="request"):
-        async with self._lock:
-            now = time.monotonic()
-            wait_until = max(self._next_allowed, self._blocked_until)
-            remaining = wait_until - now
-            if remaining > 0:
-                await asyncio.sleep(remaining)
-            delay = random.uniform(self.min, self.max)
-            self._next_allowed = time.monotonic() + delay
-
-    async def register_response(self, status, headers=None, kind="request"):
-        try:
-            status = int(status)
-        except (TypeError, ValueError):
-            return 0.0
-        async with self._lock:
-            now = time.monotonic()
-            if status == 429:
-                self._consecutive += 1
-                exp = self.max * (2 ** self._consecutive)
-                retry_after = self._parse_retry_after(headers) or 0.0
-                delay = max(min(self.max_backoff, exp), retry_after)
-                self._blocked_until = max(self._blocked_until, now + delay)
-                LOGGER.warning("HTTP 429 | %s | backoff %.1f s", kind, delay)
-                return delay
-            if 200 <= status < 400 and now >= self._blocked_until:
-                self._consecutive = 0
-            return 0.0
-
-    @staticmethod
-    def _parse_retry_after(headers):
-        if not headers:
-            return None
-        raw = headers.get("Retry-After") or headers.get("retry-after")
-        if raw is None:
-            return None
-        try:
-            return max(0.0, float(str(raw).strip()))
-        except ValueError:
-            return None
+        maximum = max(float(min_sec), float(max_sec), 0.05)
+        super().__init__(
+            capacity=1,
+            refill_per_second=1.0 / maximum,
+            min_jitter=float(min_sec),
+            max_jitter=float(max_sec),
+            max_backoff=float(max_backoff),
+        )
 
 # ---------- Gestion état ----------
 def search_seen_key(search, item_id):
@@ -294,7 +309,40 @@ def prune_seen_state(seen_ids, seen_meta, retention_days=30, now=None):
             removed += 1
     return removed
 
-def save_cycle_state(seen_ids, seen_meta, cursor=0):
+def prune_price_history(price_history, retention_days=30, now=None):
+    current = float(now if now is not None else time.time())
+    cutoff = current - max(1, int(retention_days)) * 86400
+    for item_id in list(price_history):
+        row = price_history.get(item_id)
+        try:
+            updated_at = float(row.get("updated_at", 0)) if isinstance(row, dict) else 0
+        except (TypeError, ValueError):
+            updated_at = 0
+        if updated_at < cutoff:
+            price_history.pop(item_id, None)
+
+
+def price_drop_event(price_history, item_id, price, cfg, title="", now=None):
+    """Met à jour l'historique et renvoie (ancien prix, baisse %, événement)."""
+    item_id = str(item_id)
+    current = float(now if now is not None else time.time())
+    previous_row = price_history.get(item_id, {})
+    previous_price = _positive_price(
+        previous_row.get("price") if isinstance(previous_row, dict) else None
+    )
+    drop_pct = 0.0
+    if previous_price and price < previous_price:
+        drop_pct = (previous_price - price) / previous_price * 100
+    threshold = max(1.0, float(cfg.get("price_drop_alert_pct", 20)))
+    price_history[item_id] = {
+        "price": round(float(price), 2),
+        "updated_at": current,
+        "title": str(title)[:180],
+    }
+    return previous_price, round(drop_pct, 1), drop_pct >= threshold
+
+
+def save_cycle_state(seen_ids, seen_meta, cursor=0, price_history=None):
     """Une seule écriture atomique pour tout l'état persistant du cycle."""
     keys = sorted(str(k) for k in seen_ids)
     meta = {k: float(seen_meta.get(k, time.time())) for k in keys}
@@ -304,6 +352,8 @@ def save_cycle_state(seen_ids, seen_meta, cursor=0):
         "seen_meta": meta,
         "scan_cursor": int(cursor),
     })
+    if price_history is not None:
+        save_json(PRICE_HISTORY_PATH, price_history)
 
 def convert_personal_filter(entry):
     if not isinstance(entry, dict) or not entry.get("actif", True):
@@ -366,7 +416,16 @@ def apply_personal_filters(cfg, blacklist):
             blacklist["title_accessory_blacklist"].append(word)
     searches = []
     for entry in data.get("articles_a_surveille", []):
-        searches.extend(convert_personal_filter(entry))
+        converted = convert_personal_filter(entry)
+        if (not cfg.get("include_personal_console_filters", False)
+                and any(infer_product_type(search, rule) == "CONSOLE"
+                        for search in converted for rule in search.get("rules", []))):
+            LOGGER.info(
+                "Filtre console personnel ignoré au profit du profil contrôlé: %s",
+                entry.get("nom", "sans nom"),
+            )
+            continue
+        searches.extend(converted)
     cfg["searches"] = searches + list(cfg.get("searches", []))
     return len(searches)
 
@@ -523,6 +582,8 @@ def candidate_rank(row):
         + float(row.get("demand_score") or 0) * 10
         + min(float(row.get("margin_low") or 0), 200) * 0.10
         + (35 if row.get("price_zone") == "JACKPOT" else 0)
+        + min(float(row.get("price_drop_pct") or 0), 50) * 2
+        - float(row.get("photo_condition_penalty") or 0)
         - age * 0.50
         - views * 0.05
         - favourites * 0.50
@@ -662,6 +723,11 @@ async def ntfy_send(row, session):
             f"{row['resale_low']:.0f}-{row['resale_high']:.0f} EUR | "
             f"bénéfice prudent {row['margin_low']:.2f} EUR | {row['reason']}"
             f"{risk_suffix}")
+    if row.get("price_drop_pct"):
+        body = (
+            f"🔥 BAISSE -{float(row['price_drop_pct']):.0f}% | "
+            f"ancien prix {float(row['previous_price']):.2f} EUR | " + body
+        )
     headers = {
         "Title": f"Vinted {type_label} {row['opportunity_score']}/10",
         "Priority": "high" if row["opportunity_score"] >= 8 else "default",
@@ -723,23 +789,33 @@ PRODUCT_INCLUDED_MARKERS = frozenset((
 
 CONSOLE_ACCESSORY_TERMS = frozenset((
     "manette", "manettes", "controller", "controllers", "mando", "mandos",
-    "comando", "comandos",
+    "controler", "controlers", "comando", "comandos", "gâchette", "gachette",
+    "trigger", "triggers",
     "gamepad", "gamepads", "joy-con", "joycon", "joystick", "joysticks",
-    "dock", "chargeur",
-    "charger", "câble", "cable", "coque", "housse", "étui", "etui",
-    "pochette", "cover", "covers", "protection", "protective cover",
+    "dock", "chargeur", "charger", "carregador", "cargador", "caricatore",
+    "ladegerät", "ladegerat", "oplader", "câble", "cable", "coque",
+    "housse", "étui", "etui", "pochette", "sac", "sacoche", "transport bag",
+    "carry bag", "carrying case", "borsa", "bolsa", "carcasa", "cover",
+    "covers", "protection", "protective cover",
     "protective case", "shell", "skin", "sleeve", "funda", "custodia",
     "capa", "hoes", "hoesje", "beschermhoes", "schutzhülle",
     "schutzhulle", "support", "stand", "batterie", "battery", "batterij",
     "accu", "akku", "batería", "bateria", "batteria", "écran", "ecran",
     "joystick", "lecteur seul", "carte mémoire", "carte memoire",
-    "micro sd", "microsd", "adaptateur", "alimentation",
+    "micro sd", "microsd", "adaptateur", "adapter", "ac adapter",
+    "power adapter", "adaptador", "adattatore", "lector nfc", "lecteur nfc",
+    "nfc reader", "alimentation", "stylet", "stylets", "stylus", "ar card",
+    "carte ar", "thumb grip", "thumb grips", "button cap", "button caps",
+    "grip cap", "keychain", "key chain", "porte-clés", "porte cles",
+    "portachiavi", "schlüsselanhänger", "schlusselanhanger",
 ))
 
 GAME_ACCESSORY_TERMS = frozenset((
     "steelbook", "poster", "figurine", "amiibo", "goodies", "artbook",
     "guide", "manuel seul", "manual only", "porte-clés", "porte cles",
-    "code seul", "download code only", "jaquette seule", "cover only",
+    "keychain", "key chain", "portachiavi", "schlüsselanhänger",
+    "schlusselanhanger", "code seul", "download code only", "jaquette seule",
+    "cover only",
 ))
 
 GAME_HARDWARE_TERMS = frozenset((
@@ -774,6 +850,8 @@ ACCESSORY_PART_TERMS = frozenset((
     "replacement buttons", "joystick de rechange", "replacement joystick",
     "pédalier seul", "pedal set only", "levier seul", "shifter only",
     "câble seul", "cable only", "adaptateur seul", "adapter only",
+    "stylet", "stylets", "stylus", "thumb grip", "thumb grips",
+    "button cap", "button caps", "grip cap", "ar card", "carte ar",
 ))
 
 ACCESSORY_ONLY_MARKERS = frozenset((
@@ -786,7 +864,9 @@ PROTECTIVE_COVER_TERMS = frozenset((
     "coque", "housse", "étui", "etui", "pochette", "cover", "covers",
     "protection", "protective cover", "protective case", "case", "shell",
     "skin", "sleeve", "funda", "custodia", "capa", "hoes", "hoesje",
-    "beschermhoes", "schutzhülle", "schutzhulle",
+    "beschermhoes", "schutzhülle", "schutzhulle", "sac", "sacoche",
+    "transport bag", "carry bag", "carrying case", "borsa", "bolsa",
+    "carcasa",
 ))
 
 ACCESSORY_INCLUDED_MARKERS = frozenset((
@@ -816,6 +896,14 @@ KNOWN_GAME_TITLE_TERMS = frozenset((
     "metroid", "xenoblade", "elden ring", "spider-man", "spider man",
     "god of war", "gran turismo", "horizon", "last of us", "returnal",
     "stellar blade", "silent hill", "ratchet", "final fantasy",
+    "switch sports", "mario party", "top gun", "michael jackson",
+    "inazuma eleven", "yo-kai", "yokai", "dragon ball", "pilotwings",
+    "mind quiz", "sonic boom", "nintendo tennis", "nes tennis",
+    "house of ashes", "trials rising", "trial rising", "assassin's creed",
+    "assassins creed", "hogwarts", "notruf 112", "tekken",
+    "ben 10 omniverse", "mario tennis", "mario & luigi", "mario and luigi",
+    "superstar saga", "ring fit", "rampage world tour", "smash football",
+    "arkham origins", "starfox",
 ))
 
 PLATFORM_FAMILIES = {
@@ -919,7 +1007,8 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         ))
         game_words = (
             "jeu", "jeux", "game", "games", "juego", "juegos",
-            "gioco", "giochi", "spiel", "spiele", "spel", "jogo", "jogos",
+            "gioco", "giochi", "spiel", "spiele", "spel", "spelletjes",
+            "jogo", "jogos", "cartouche", "cartuccia", "cartridge",
         )
         if any(term_present(title, word) for word in game_words) and not has_console_word:
             return False, "jeu, pas console"
@@ -952,6 +1041,14 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         if accessory_hit and accessory_only:
             return False, "accessoire, pas console"
     elif product_type == "GAME":
+        protective_cover_hit = any(
+            term_present(title, word) for word in PROTECTIVE_COVER_TERMS
+        )
+        protective_cover_included = any(
+            term_present(title, marker) for marker in ACCESSORY_INCLUDED_MARKERS
+        )
+        if protective_cover_hit and not protective_cover_included:
+            return False, "protection ou pochette, pas jeu"
         if any(term_present(title, word) for word in GAME_ACCESSORY_TERMS):
             return False, "accessoire de jeu"
         if any(term_present(title, word) for word in GAME_HARDWARE_TERMS):
@@ -1062,12 +1159,18 @@ def build_rule_index(searches, cfg):
 
 def choose_known_product(rule_index, title, price, cfg=None):
     """Reconnaît le meilleur produit rentable dans une annonce découverte."""
+    cfg = cfg or {}
+    vocabulary = cfg.get("_fuzzy_vocabulary")
+    if not vocabulary:
+        vocabulary = build_rule_vocabulary(rule_index)
+    classification_title = canonicalize_product_title(str(title), vocabulary)
     title_matches = []
     for source_search, rule in rule_index:
-        if not rule_match(rule, title, title, deep=False):
+        if not rule_match(
+                rule, classification_title, classification_title, deep=False):
             continue
         type_ok, _ = strict_product_type_check(
-            source_search, rule, title, cfg,
+            source_search, rule, classification_title, cfg,
         )
         if not type_ok:
             continue
@@ -1080,7 +1183,7 @@ def choose_known_product(rule_index, title, price, cfg=None):
     # La classification se fait avant le filtre de prix. Ainsi un jeu PS5 trop
     # cher n'est jamais recyclé en fausse « console PS5 à 20 EUR ».
     has_console_intent = any(
-        term_present(title, term) for term in CONSOLE_INTENT_TERMS
+        term_present(classification_title, term) for term in CONSOLE_INTENT_TERMS
     )
     matched_types = {item[0] for item in title_matches}
     if "GAME" in matched_types and not has_console_intent:
@@ -1112,24 +1215,36 @@ def choose_known_product(rule_index, title, price, cfg=None):
 
 # ---------- Appels API ----------
 async def catalog_items(query, price_to, base_url, limiter, session, headers,
-                        per_page=50, stats=None):
+                        per_page=50, page=1, stats=None, api_budget=None):
     request_started = time.perf_counter()
     url = f"{base_url}/api/v2/catalog/items"
     params = {
         "search_text": query,
         "order": "newest_first",
         "per_page": max(1, min(int(per_page), 50)),
+        "page": max(1, int(page)),
     }
     if price_to is not None:
         params["price_to"] = float(price_to)
-    await limiter.wait("catalog")
+    if api_budget is not None:
+        try:
+            await api_budget.spend(1.0, "catalog")
+        except ApiBudgetExceeded as exc:
+            if stats is not None:
+                stats["catalog_budget_blocked"] += 1
+            LOGGER.warning("%s", exc)
+            return []
+    await limiter.wait("catalog", cost=1.0)
     if stats is not None:
         stats["catalog_requested"] += 1
     try:
         async with session.get(url, params=params, headers=headers, timeout=10) as resp:
             await limiter.register_response(resp.status, resp.headers, "catalog")
             if resp.status != 200:
-                LOGGER.warning("Catalogue HTTP %s pour %s", resp.status, query)
+                LOGGER.warning(
+                    "Catalogue HTTP %s pour %s page %s",
+                    resp.status, query, page,
+                )
                 return []
             data = await resp.json()
             items = data.get("items", [])
@@ -1147,7 +1262,7 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
 # ---------- Scan principal ----------
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                       limiter, session, base_url, headers, stats,
-                      rule_index=None):
+                      rule_index=None, price_history=None, api_budget=None):
     query = search["query"]
     name = search.get("name", query)
     LOGGER.info(f"\n[API-TEST] {name} → {query}")
@@ -1156,10 +1271,36 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
         int(search.get("max_items", cfg.get("max_items_per_search", 50))),
         int(cfg.get("max_items_per_search", 50)),
     )
-    items = await catalog_items(
-        query, search.get("price_to"), base_url, limiter, session,
-        headers, per_page=int(cfg.get("catalog_per_page", 50)), stats=stats,
+    per_page = int(cfg.get("catalog_per_page", 50))
+    max_pages = (
+        max(1, min(int(cfg.get("snipe_max_pages", 2)), 4))
+        if cfg.get("snipe_mode", True) else 1
     )
+    items = []
+    known_ids = set()
+    for page in range(1, max_pages + 1):
+        page_items = await catalog_items(
+            query, search.get("price_to"), base_url, limiter, session,
+            headers, per_page=per_page, page=page, stats=stats,
+            api_budget=api_budget,
+        )
+        if not page_items:
+            break
+        for item in page_items:
+            item_id = str(item.get("id"))
+            if item_id not in known_ids:
+                known_ids.add(item_id)
+                items.append(item)
+        if len(page_items) < per_page:
+            break
+        last_age = listing_age_hours(catalog_timestamp(page_items[-1]))
+        if (last_age is not None and
+                last_age > float(cfg.get("max_listing_age_hours", 0.5))):
+            LOGGER.info(
+                "SNIPE arrêt page %s | dernier article %.1f min",
+                page, last_age * 60,
+            )
+            break
     if not items:
         return []
 
@@ -1174,6 +1315,11 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             stats["rejected_price"] += 1
             continue
 
+        previous_price, drop_pct, is_price_drop = price_drop_event(
+            price_history if price_history is not None else {},
+            item_id, price, cfg, title,
+        )
+
         # 1. Vérifier âge
         created = catalog_timestamp(item)
         # Aucun appel détail : l'âge provient uniquement du catalogue/photo.
@@ -1185,14 +1331,16 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                 continue
             age = float(cfg.get("max_listing_age_hours", 0.5))
         stats["age_known"] += 1
-        if age > float(cfg.get("max_listing_age_hours", 0.5)):
+        price_drop_max_age = float(cfg.get("price_drop_max_age_hours", 168))
+        if (age > float(cfg.get("max_listing_age_hours", 0.5)) and
+                not (is_price_drop and age <= price_drop_max_age)):
             stats["rejected_old"] += 1
             LOGGER.debug("  X Âge | %.1fh", age)
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
         # 2. Vérifier vu (sauf si baisse de prix, simplifié ici)
-        if item_already_seen(seen_ids, search, item_id):
+        if item_already_seen(seen_ids, search, item_id) and not is_price_drop:
             stats["rejected_seen"] += 1
             continue
 
@@ -1220,12 +1368,11 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                 rule_index, title, price, cfg,
             )
         else:
-            matched_search = search
-            matched_rule = next(
-                (rule for rule in search.get("rules", [])
-                 if rule_match(rule, title, title)
-                 and strict_product_type_check(search, rule, title, cfg)[0]),
-                None,
+            # Les recherches spécifiques profitent du même Levenshtein que
+            # le mode découverte ; aucun second classificateur divergent.
+            local_index = [(search, rule) for rule in search.get("rules", [])]
+            matched_search, matched_rule = choose_known_product(
+                local_index, title, price, cfg,
             )
         if matched_rule is None or matched_search is None:
             stats["rejected_rule"] += 1
@@ -1288,6 +1435,10 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
         published_at = published_dt.isoformat(timespec="seconds") if published_dt else ""
 
         risk_parts = list(filter_risks)
+        if is_price_drop:
+            risk_parts.append(
+                f"baisse de prix {previous_price:.2f} → {price:.2f} EUR (-{drop_pct:.0f}%)"
+            )
         if seller.get("is_business") or seller.get("is_pro"):
             risk_parts.append("vendeur professionnel")
         suspicious_below = float(matched_rule.get("suspicious_below", 0) or 0)
@@ -1314,6 +1465,8 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "favourite_count": fav_count if fav_count is not None else "",
             "view_count": view_count if view_count is not None else "",
             "seller_type": "pro" if seller.get("is_business") else "particulier",
+            "previous_price": previous_price if previous_price is not None else "",
+            "price_drop_pct": drop_pct if is_price_drop else "",
             "image_url": item.get("photo", {}).get("url", ""),
             "listing_price": round(price, 2),
             "total_buy_est": total,
@@ -1354,14 +1507,58 @@ async def main_async():
         return
 
     blacklist = load_json(BLACKLIST_PATH, {})
+    rejection_terms = apply_confirmed_rejections(
+        CONFIRMED_REJECTIONS_PATH, blacklist,
+    )
+    if rejection_terms:
+        LOGGER.info("Rejets confirmés ajoutés à la blacklist: %s", rejection_terms)
     target_searches = load_target_products()
-    cfg["searches"] = target_searches + list(cfg.get("searches", []))
+    legacy_searches = list(cfg.get("searches", []))
+    use_legacy = bool(cfg.get("use_legacy_search_rules", False))
+    cfg["searches"] = target_searches + (legacy_searches if use_legacy else [])
     LOGGER.info("Profil marché: %s produits cibles chargés", len(target_searches))
+    if legacy_searches and not use_legacy:
+        LOGGER.info(
+            "%s anciennes recherches ignorées pour éviter les faux positifs",
+            len(legacy_searches),
+        )
     personal_count = apply_personal_filters(cfg, blacklist)
     LOGGER.info("%s recherches personnelles ajoutées", personal_count)
     product_searches = list(cfg.get("searches", []))
-    rule_index = build_rule_index(product_searches, cfg)
-    LOGGER.info("Profil demande chargé | %s produits reconnus", len(rule_index))
+    sold_provider = SoldListingsProvider(
+        SOLD_LISTINGS_PATH,
+        cfg.get("sold_listings_max_age_days", 30),
+        cfg.get("sold_listings_min_samples", 3),
+    )
+    sold_enriched = sold_provider.enrich(product_searches)
+    if sold_enriched:
+        LOGGER.info("Données de ventes réalisées | %s produits enrichis", sold_enriched)
+    cache_fingerprint = search_fingerprint(product_searches, {
+        "min_demand_score": cfg.get("min_demand_score", 4),
+        "strict_product_type": cfg.get("strict_product_type", True),
+        "classifier_schema": CLASSIFIER_SCHEMA,
+    })
+    rule_index = load_rule_index(SEARCH_CACHE_PATH, cache_fingerprint)
+    if rule_index is None:
+        rule_index = build_rule_index(product_searches, cfg)
+        save_rule_index(SEARCH_CACHE_PATH, cache_fingerprint, rule_index)
+        cache_status = "reconstruit"
+    else:
+        cache_status = "réutilisé"
+    classifier_terms = (
+        CONSOLE_ACCESSORY_TERMS | GAME_ACCESSORY_TERMS |
+        PROTECTIVE_COVER_TERMS | KNOWN_GAME_TITLE_TERMS |
+        EMPTY_PACKAGING_TERMS
+    )
+    cfg["_fuzzy_vocabulary"] = build_rule_vocabulary(
+        rule_index, classifier_terms,
+    )
+    LOGGER.info(
+        "Profil demande chargé | %s produits reconnus | cache %s | "
+        "vocabulaire Levenshtein %s termes",
+        len(rule_index), cache_status,
+        vocabulary_size(cfg["_fuzzy_vocabulary"]),
+    )
 
     # Charger l'état agrégé, avec migration automatique de l'ancien format.
     seen_ids = set()
@@ -1385,12 +1582,24 @@ async def main_async():
         if isinstance(meta, dict):
             seen_meta = meta
 
-    prune_seen_state(seen_ids, seen_meta, cfg.get("seen_retention_days", 30))
+    raw_prices = load_json(PRICE_HISTORY_PATH, {})
+    price_history = raw_prices if isinstance(raw_prices, dict) else {}
 
-    limiter = AsyncRateLimiter(
-        cfg.get("request_delay_min_seconds", 1.0),
-        cfg.get("request_delay_max_seconds", 3.0),
-        cfg.get("backoff_max_seconds", 60.0),
+    prune_seen_state(seen_ids, seen_meta, cfg.get("seen_retention_days", 30))
+    prune_price_history(
+        price_history, cfg.get("price_history_retention_days", 30),
+    )
+
+    limiter = TokenBucketRateLimiter(
+        capacity=cfg.get("token_bucket_capacity", 3),
+        refill_per_second=cfg.get("token_bucket_refill_per_second", 1.0),
+        min_jitter=cfg.get("request_delay_min_seconds", 0.15),
+        max_jitter=cfg.get("request_delay_max_seconds", 0.50),
+        max_backoff=cfg.get("backoff_max_seconds", 60.0),
+    )
+    api_budget = ApiCostController(
+        cfg.get("api_budget_max_requests_per_cycle", 20),
+        cfg.get("api_budget_max_units_per_cycle", 20),
     )
 
     base_url = cfg.get("base_url", "https://www.vinted.be").rstrip("/")
@@ -1407,25 +1616,20 @@ async def main_async():
         "notifications_sent", "candidates", "rejected_price",
         "rejected_old", "rejected_seen", "rejected_pro",
         "rejected_blacklist", "rejected_rule", "rejected_profit",
-        "rejected_score",
+        "rejected_score", "catalog_budget_blocked",
+        "photo_analysed", "photo_failed", "photo_flagged",
     )}
 
     concurrency = max(1, int(cfg.get("api_max_concurrency", 3)))
-    connector = aiohttp.TCPConnector(
-        limit=max(4, concurrency * 2), ttl_dns_cache=300,
+    dns_status = await dns_healthcheck(
+        base_url, cfg.get("dns_healthcheck_timeout_seconds", 3),
     )
-    timeout = aiohttp.ClientTimeout(total=15, connect=5)
-    async with aiohttp.ClientSession(
-            connector=connector, timeout=timeout) as session:
-        # Crée les cookies de session avant l'API. Un échec ici est informatif,
-        # mais les appels catalogue décideront de l'état de santé réel.
-        try:
-            async with session.get(base_url + "/", headers={
-                **headers, "Accept": "text/html,application/xhtml+xml"
-            }, timeout=12) as resp:
-                LOGGER.info("Initialisation session HTTP %s", resp.status)
-        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
-            LOGGER.warning("Initialisation session impossible: %s", exc)
+    LOGGER.info(
+        "Santé DNS | %s | %.1f ms | %s",
+        dns_status["host"], dns_status["latency_ms"],
+        ", ".join(dns_status["addresses"][:2]),
+    )
+    async with managed_http_session(base_url, cfg, headers) as session:
 
         discovery_mode = bool(cfg.get("discovery_mode", True))
         all_searches = (
@@ -1456,6 +1660,8 @@ async def main_async():
                         search, cfg, blacklist, seen_ids, seen_meta,
                         limiter, session, base_url, headers, stats,
                         rule_index=rule_index if discovery_mode else None,
+                        price_history=price_history,
+                        api_budget=api_budget,
                     )
                     stats["searches_completed"] += 1
                     return rows
@@ -1471,10 +1677,13 @@ async def main_async():
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         candidates = []
-        for res in results:
+        for search, res in zip(searches, results):
             if isinstance(res, Exception):
                 stats["searches_failed"] += 1
-                LOGGER.error("Erreur recherche: %s", res)
+                LOGGER.error(
+                    "Erreur recherche %s: %s",
+                    search.get("query", "?"), res,
+                )
             else:
                 candidates.extend(res)
 
@@ -1489,6 +1698,40 @@ async def main_async():
         candidates = sorted(
             best_by_item.values(), key=candidate_rank, reverse=True,
         )
+
+        photo_summary = {
+            "analysed": 0, "failed": 0, "flagged": 0, "model_used": False,
+        }
+        if cfg.get("photo_analysis_enabled", True) and candidates:
+            configured_model = Path(cfg.get(
+                "photo_condition_model_path", "models/condition_classifier.onnx",
+            ))
+            if not configured_model.is_absolute():
+                configured_model = ROOT / configured_model
+            analyzer = PhotoConditionAnalyzer(
+                model_path=configured_model,
+                labels=cfg.get("photo_condition_labels", ()),
+                confidence_threshold=cfg.get("photo_condition_min_confidence", 0.70),
+                min_resolution=cfg.get("photo_min_resolution", 320),
+                blur_threshold=cfg.get("photo_blur_threshold", 4.0),
+                max_download_bytes=cfg.get("photo_max_download_bytes", 5_000_000),
+            )
+            photo_summary = await enrich_rows_with_photos(
+                candidates, session, analyzer,
+                max_images=cfg.get("photo_analysis_max_candidates", 6),
+                concurrency=cfg.get("photo_analysis_concurrency", 2),
+                timeout_seconds=cfg.get("photo_analysis_timeout_seconds", 5),
+            )
+            stats["photo_analysed"] += photo_summary["analysed"]
+            stats["photo_failed"] += photo_summary["failed"]
+            stats["photo_flagged"] += photo_summary["flagged"]
+            candidates.sort(key=candidate_rank, reverse=True)
+            LOGGER.info(
+                "Photos | %s analysées | %s signalées | %s échecs | ONNX %s",
+                photo_summary["analysed"], photo_summary["flagged"],
+                photo_summary["failed"],
+                "actif" if photo_summary["model_used"] else "absent (heuristiques)",
+            )
         selected = candidates[:max(1, int(cfg.get("max_alerts_per_run", 5)))]
         selected_ids = {str(row.get("item_id")) for row in selected}
 
@@ -1518,6 +1761,7 @@ async def main_async():
         state_started = time.perf_counter()
         save_cycle_state(
             seen_ids, seen_meta, cfg.get("_next_scan_cursor", scan_cursor),
+            price_history,
         )
         state_seconds = time.perf_counter() - state_started
         cycle_seconds = time.perf_counter() - cycle_started
@@ -1545,6 +1789,13 @@ async def main_async():
             cycle_seconds, throughput, stats["catalog_seconds"], state_seconds,
             stats["searches_completed"], stats["searches_failed"],
         )
+        budget_status = api_budget.snapshot()
+        LOGGER.info(
+            "Budget API | %s/%s requêtes | %.1f/%.1f unités | %s bloquée(s)",
+            budget_status["requests"], budget_status["max_requests"],
+            budget_status["units"], budget_status["max_units"],
+            budget_status["blocked"],
+        )
 
         requested = stats["catalog_requested"]
         if requested and stats["catalog_success"] / requested < 0.5:
@@ -1554,6 +1805,26 @@ async def main_async():
         sampled_ages = stats["age_known"] + stats["age_unknown"]
         if sampled_ages >= 3 and stats["age_known"] == 0:
             raise RuntimeError("Aucun âge lisible dans le catalogue: scan invalide")
+
+        top_opportunities = [{
+            "item_id": row.get("item_id"),
+            "title": row.get("title"),
+            "url": row.get("url"),
+            "product_type": row.get("product_type"),
+            "listing_price": row.get("listing_price"),
+            "margin_low": row.get("margin_low"),
+            "price_drop_pct": row.get("price_drop_pct", ""),
+            "photo_condition": row.get("photo_condition", "unknown"),
+            "photo_risk": row.get("photo_risk", ""),
+            "rank_score": round(candidate_rank(row), 2),
+        } for row in selected]
+        return {
+            "stats": dict(stats),
+            "top_opportunities": top_opportunities,
+            "dns": dns_status,
+            "api_budget": budget_status,
+            "duration_seconds": round(cycle_seconds, 3),
+        }
 
 async def run_workflow_session():
     """Répète plusieurs cycles courts pendant un même workflow GitHub."""
@@ -1566,15 +1837,37 @@ async def run_workflow_session():
         cycles, pause_seconds, alert_limit,
     )
 
+    cycle_results = []
     for cycle_number in range(1, cycles + 1):
         LOGGER.info("Démarrage cycle %s/%s", cycle_number, cycles)
-        await main_async()
+        result = await main_async()
+        if isinstance(result, dict):
+            cycle_results.append(result)
         if cycle_number < cycles:
             LOGGER.info("Prochain cycle dans %.0f secondes", pause_seconds)
             await asyncio.sleep(pause_seconds)
 
+    previous_report = load_json(REPORT_PATH, {})
+    report = build_workflow_report(
+        cycle_results, previous_report,
+        history_days=cfg.get("report_history_days", 30),
+    )
+    save_json(REPORT_PATH, report)
+    LOGGER.info(
+        "Rapport workflow | %s annonces | %s notifications | %.1f articles/s | %s",
+        report["summary"]["listings_examined"],
+        report["summary"]["notifications_sent"],
+        report["performance"]["items_per_second"], REPORT_PATH,
+    )
+    regression = report["performance"]["throughput_regression_pct"]
+    if regression >= float(cfg.get("performance_regression_warning_pct", 30)):
+        LOGGER.warning(
+            "PERF régression | débit inférieur de %.1f%% à la moyenne 30 jours",
+            regression,
+        )
+
 if __name__ == "__main__":
     try:
-        asyncio.run(run_workflow_session())
+        run_async(run_workflow_session)
     except KeyboardInterrupt:
         LOGGER.info("Arrêt demandé")

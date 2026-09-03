@@ -10,6 +10,11 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import vinted_api_light as bot
+from monitoring import build_workflow_report
+from product_classifier import canonicalize_product_title
+from scanner_runtime import ApiBudgetExceeded, ApiCostController
+from search_cache import load_rule_index, save_rule_index, search_fingerprint
+from sold_listings import SoldListingsProvider
 
 
 class ApiOnlyTests(unittest.TestCase):
@@ -37,10 +42,13 @@ class ApiOnlyTests(unittest.TestCase):
     def test_fast_catalog_configuration_reads_fifty_per_search(self):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
         self.assertEqual(cfg["catalog_per_page"], 50)
-        self.assertEqual(cfg["max_items_per_search"], 50)
-        self.assertEqual(cfg["max_catalog_items_per_run"], 500)
+        self.assertEqual(cfg["max_items_per_search"], 100)
+        self.assertEqual(cfg["max_catalog_items_per_run"], 1000)
         self.assertEqual(cfg["max_searches_per_run"], 10)
-        self.assertEqual(cfg["max_alerts_per_run"], 10)
+        self.assertEqual(cfg["max_alerts_per_run"], 12)
+        self.assertTrue(cfg["snipe_mode"])
+        self.assertEqual(cfg["snipe_max_pages"], 2)
+        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 20)
         self.assertEqual(cfg["min_candidate_score"], 2.5)
         self.assertEqual(cfg["popularity_penalty_cap"], 1.0)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
@@ -460,9 +468,268 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 77)
+        self.assertEqual(len(searches), 79)
         types = {search["product_type"] for search in searches}
         self.assertEqual(types, {"CONSOLE", "GAME", "ACCESSORY"})
+
+    def test_discovery_profile_ignores_legacy_and_broad_console_filters(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        legacy = list(cfg.get("searches", []))
+        cfg["searches"] = bot.load_target_products()
+        blacklist = {"accessory_blacklist": [], "title_accessory_blacklist": []}
+        bot.apply_personal_filters(cfg, blacklist)
+        names = {search.get("name") for search in cfg["searches"]}
+        self.assertTrue(legacy)
+        self.assertNotIn("JEU_RETRO - Pokemon Game Boy", names)
+        self.assertFalse(any(
+            name and name.startswith("FILTRE - Nintendo 3DS /")
+            for name in names
+        ))
+
+    def test_logged_false_positives_no_longer_match_a_product(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        cfg["searches"] = bot.load_target_products()
+        blacklist = bot.load_json(Path(bot.__file__).with_name("blacklist.json"), {})
+        bot.apply_personal_filters(cfg, blacklist)
+        index = bot.build_rule_index(cfg["searches"], cfg)
+        false_positives = (
+            ("gachette R nintendo switch retrogaming", 3),
+            ("Pochette transport switch mario odyssey", 5),
+            ("nintendo switch ac adapter", 22),
+            ("Nintendo nes tennis", 8),
+            ("Mario party star rush Nintendo 3DS nuovo", 15),
+            ("Ps vita michael jackson", 7),
+            ("inazuma eleven go luce per nintendo 3ds cartuccia", 13.9),
+            ("Lector NFC Nintendo 3ds", 15),
+            ("nintendo 3ds spelletjes", 10),
+            ("Nintendo switch Sports", 25),
+            ("Nintendo NES top gun second mission", 10),
+        )
+        for title, price in false_positives:
+            self.assertEqual(
+                bot.choose_known_product(index, title, price, cfg),
+                (None, None), title,
+            )
+        self.assertTrue(bot.blacklist_check(
+            "Pokemon Gameboy Rot Reproduktion", "", blacklist,
+        )[0])
+
+    def test_latest_run_accessories_never_inherit_console_value(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        accessories = (
+            ("Mini sac pour Nintendo DS Lite DSi", 8),
+            ("Nintendo 3DS Sacoche Disney Frozen", 10),
+            ("Carregador PS Vita", 7),
+            ("Pack stylets 3DS XL 2DS", 6),
+            ("Nintendo 3DS AR card", 4),
+            ("Nintendo Switch Thumb Grip & Button Cap", 5),
+            ("Starfox Nintendo Switch 2 keychain", 39),
+            ("Carcasa New Nintendo 3DS XL", 15),
+            ("Ps4 pro controler", 30),
+        )
+        for title, price in accessories:
+            self.assertEqual(
+                bot.choose_known_product(index, title, price, cfg),
+                (None, None), title,
+            )
+
+    def test_latest_run_games_never_inherit_console_value(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        games_without_a_curated_resale_profile = (
+            ("House of Ashes Xbox One X", 10),
+            ("Trials Rising Nintendo Switch", 9),
+            ("Mario Tennis Open Nintendo 3DS", 10),
+            ("Mario & Luigi Superstar Saga Nintendo 3DS", 15),
+            ("Assassin's Creed Shadows Xbox Series X", 20),
+            ("Nintendo Switch Ring Fit", 7),
+            ("Nintendo 64 Rampage World Tour", 30),
+            ("Batman Arkham Origins Blackgate para 3DS", 25),
+            ("Nintendo Switch 2 Hogwarts", 20),
+        )
+        for title, price in games_without_a_curated_resale_profile:
+            self.assertEqual(
+                bot.choose_known_product(index, title, price, cfg),
+                (None, None), title,
+            )
+
+    def test_mario_kart_remains_a_profitable_game(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        source, rule = bot.choose_known_product(
+            index, "Mario Kart 8 Deluxe Nintendo Switch", 7, cfg,
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(bot.infer_product_type(source, rule), "GAME")
+        self.assertEqual(rule["model"], "Mario Kart 8 Deluxe")
+        self.assertGreater(bot.score_candidate(rule, 7, cfg)[3], 8)
+
+    def test_plain_console_model_remains_a_candidate(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        for title, price in (("Xbox One S", 35), ("PS4 slim", 40)):
+            source, rule = bot.choose_known_product(index, title, price, cfg)
+            self.assertIsNotNone(rule, title)
+            self.assertEqual(bot.infer_product_type(source, rule), "CONSOLE")
+
+    def test_controlled_typo_detection_finds_hidden_products(self):
+        self.assertEqual(
+            canonicalize_product_title(
+                "Nitendo Mariokart 8 Deluxe", ("nintendo", "mario kart"),
+            ),
+            "nintendo mario kart 8 deluxe",
+        )
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        source, rule = bot.choose_known_product(
+            index, "Nitendo Mariokart 8 Deluxe Switch", 7, cfg,
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(bot.infer_product_type(source, rule), "GAME")
+
+    def test_price_drop_event_bypasses_only_after_twenty_percent(self):
+        history = {}
+        cfg = {"price_drop_alert_pct": 20}
+        self.assertEqual(
+            bot.price_drop_event(history, "42", 100, cfg)[:2],
+            (None, 0.0),
+        )
+        previous, drop, event = bot.price_drop_event(history, "42", 85, cfg)
+        self.assertEqual((previous, drop, event), (100.0, 15.0, False))
+        previous, drop, event = bot.price_drop_event(history, "42", 60, cfg)
+        self.assertEqual(previous, 85.0)
+        self.assertAlmostEqual(drop, 29.4)
+        self.assertTrue(event)
+
+    def test_api_cost_controller_stops_excess_requests(self):
+        async def run():
+            controller = ApiCostController(2, 2)
+            await controller.spend(1, "catalog")
+            await controller.spend(1, "catalog")
+            with self.assertRaises(ApiBudgetExceeded):
+                await controller.spend(1, "catalog")
+            return controller.snapshot()
+
+        snapshot = asyncio.run(run())
+        self.assertEqual(snapshot["requests"], 2)
+        self.assertEqual(snapshot["blocked"], 1)
+
+    def test_confirmed_rejections_require_an_explicit_category(self):
+        blacklist = {}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rejets.txt"
+            path.write_text(
+                "# commentaire\naccessory:keychain\nfake:reproduktion\nligne dangereuse\n",
+                encoding="utf-8",
+            )
+            added = bot.apply_confirmed_rejections(path, blacklist)
+        self.assertEqual(added, 2)
+        self.assertEqual(blacklist["accessory_blacklist"], ["keychain"])
+        self.assertEqual(blacklist["fake_blacklist"], ["reproduktion"])
+
+    def test_snipe_pagination_requests_page_two_only_while_fresh(self):
+        async def run(last_age_minutes):
+            now = datetime.now(timezone.utc)
+            items = []
+            for index in range(50):
+                age = last_age_minutes if index == 49 else 1
+                items.append({
+                    "id": index + 1,
+                    "title": f"Article inconnu {index}",
+                    "price": {"amount": "10"},
+                    "created_at_ts": (now - timedelta(minutes=age)).timestamp(),
+                    "user": {},
+                })
+            stats = {key: 0 for key in (
+                "catalog_requested", "catalog_success", "catalog_items",
+                "catalog_seconds", "items_examined", "age_known", "age_unknown",
+                "notifications_sent", "candidates", "rejected_price",
+                "rejected_old", "rejected_seen", "rejected_pro",
+                "rejected_blacklist", "rejected_rule", "rejected_profit",
+                "rejected_score", "catalog_budget_blocked",
+            )}
+            cfg = {
+                "catalog_per_page": 50, "max_items_per_search": 100,
+                "max_listing_age_hours": 0.5, "snipe_mode": True,
+                "snipe_max_pages": 2, "reject_unknown_listing_age": True,
+            }
+            mocked = AsyncMock(side_effect=[items, []])
+            with patch.object(bot, "catalog_items", mocked):
+                await bot.scan_search(
+                    {"name": "Snipe", "query": "test"}, cfg,
+                    {"hard_blacklist": [], "fake_blacklist": []},
+                    set(), {}, object(), object(), "https://www.vinted.be",
+                    {}, stats, rule_index=[], price_history={},
+                )
+            return mocked.await_count
+
+        self.assertEqual(asyncio.run(run(1)), 2)
+        self.assertEqual(asyncio.run(run(31)), 1)
+
+    def test_rule_index_local_cache_round_trip(self):
+        searches = [{"name": "A", "rules": [{"model": "B"}]}]
+        fingerprint = search_fingerprint(searches, {"min": 4})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "searches_cache.json"
+            index = [(searches[0], searches[0]["rules"][0])]
+            save_rule_index(path, fingerprint, index)
+            loaded = load_rule_index(path, fingerprint)
+            self.assertEqual(loaded, index)
+            self.assertIsNone(load_rule_index(path, "autre"))
+
+    def test_sold_listings_reference_is_conservative_and_recent(self):
+        now = datetime.now(timezone.utc).timestamp()
+        data = {"products": {"Mario Kart 8 Deluxe": {
+            "source": "test autorisé",
+            "samples": [
+                {"price": 32, "sold_at": now},
+                {"price": 34, "sold_at": now},
+                {"price": 36, "sold_at": now},
+            ],
+        }}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sold.json"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            provider = SoldListingsProvider(path, 30, 3)
+            searches = [{"rules": [{
+                "model": "Mario Kart 8 Deluxe", "resale_low": 30,
+            }]}]
+            self.assertEqual(provider.enrich(searches), 1)
+        self.assertEqual(searches[0]["rules"][0]["market_avg"], 30)
+        self.assertEqual(searches[0]["rules"][0]["sold_samples"], 3)
+
+    def test_workflow_report_contains_rejections_top_and_history(self):
+        cycle = {
+            "stats": {
+                "items_examined": 100, "catalog_items": 120,
+                "candidates": 3, "notifications_sent": 2,
+                "rejected_rule": 70, "rejected_old": 20,
+                "catalog_requested": 10, "catalog_success": 10,
+            },
+            "top_opportunities": [{
+                "item_id": "1", "title": "Mario Kart", "url": "https://example/1",
+                "rank_score": 900,
+            }],
+        }
+        report = build_workflow_report([cycle])
+        self.assertEqual(report["summary"]["listings_examined"], 100)
+        self.assertEqual(report["rejection_rates"]["rule"]["rate_pct"], 70)
+        self.assertEqual(report["best_opportunities"][0]["url"], "https://example/1")
+        self.assertEqual(len(report["history_30_days"]), 1)
+
+    def test_authentic_high_demand_gba_games_remain_targets(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        searches = bot.load_target_products()
+        index = bot.build_rule_index(searches, cfg)
+        for title, price in (
+            ("Pokemon Émeraude GBA", 12),
+            ("Pokemon FireRed GBA original", 11),
+            ("Pokemon Saphir GBA", 11),
+        ):
+            source, rule = bot.choose_known_product(index, title, price, cfg)
+            self.assertIsNotNone(rule, title)
+            self.assertEqual(bot.infer_product_type(source, rule), "GAME")
 
     def test_scan_allows_named_accessory_but_rejects_console_false_positive(self):
         async def run():

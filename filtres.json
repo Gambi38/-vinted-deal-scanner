@@ -1,18 +1,8 @@
 {
   "_mode_emploi": [
-    "Tu peux ajouter un nouvel article en copiant un bloc dans articles_a_surveille.",
-    "actif: true = filtre utilisé ; false = filtre désactivé.",
-    "prix_recherche_max = prix maximum affiché dans la recherche Vinted.",
-    "revente_prudente = prix réaliste auquel tu penses pouvoir revendre rapidement.",
-    "ratio_achat_max = part maximale du prix de revente acceptée à l'achat (0.40 = 40%).",
-    "marge_minimum = bénéfice minimum estimé après frais.",
-    "mots_exclus sert à bloquer les boîtes vides, pièces, accessoires ou mauvaises variantes.",
-    "prioritaire: true = ce filtre est vérifié à chaque passage avant les recherches générales."
-  ],
-  "_exemples_que_tu_as_donnes": [
-    "https://www.vinted.be/items/9856997431-nintendo-3ds",
-    "https://www.vinted.be/items/9856944285-ds-lite-rouge",
-    "https://www.vinted.be/items/9856513452-super-mario-party"
+    "Ce fichier sert aux filtres manuels détaillés.",
+    "Pour apprendre au bot avec de simples liens, utilise exemples.txt : un lien par ligne.",
+    "config.json reste la grande base de produits ; filtres.json ne la remplace pas."
   ],
   "mots_a_exclure": [
     "boite vide",
@@ -42,7 +32,11 @@
       "prioritaire": true,
       "nom": "Nintendo 3DS",
       "categorie": "CONSOLE",
-      "recherche_vinted": "nintendo 3ds",
+      "recherches_vinted": [
+        "3ds",
+        "nintendo 3ds",
+        "nintedo 3ds"
+      ],
       "prix_recherche_max": 55,
       "marque": "Nintendo",
       "modele": "3DS",
@@ -81,14 +75,19 @@
       "marge_minimum": 20,
       "roi_minimum": 35,
       "score_demande": 5,
-      "nombre_annonces_a_lire": 40
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
     },
     {
       "actif": true,
       "prioritaire": true,
       "nom": "Nintendo DS Lite",
       "categorie": "CONSOLE",
-      "recherche_vinted": "nintendo ds lite",
+      "recherches_vinted": [
+        "ds lite",
+        "nintendo ds lite",
+        "ds litte"
+      ],
       "prix_recherche_max": 28,
       "marque": "Nintendo",
       "modele": "DS Lite",
@@ -127,14 +126,19 @@
       "marge_minimum": 12,
       "roi_minimum": 35,
       "score_demande": 4,
-      "nombre_annonces_a_lire": 40
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
     },
     {
       "actif": true,
       "prioritaire": true,
       "nom": "Super Mario Party Switch",
       "categorie": "JEU_SWITCH",
-      "recherche_vinted": "super mario party switch",
+      "recherches_vinted": [
+        "super mario party",
+        "mario party",
+        "mario parti"
+      ],
       "prix_recherche_max": 14,
       "marque": "Nintendo",
       "modele": "Super Mario Party",
@@ -166,15 +170,67 @@
       "marge_minimum": 5,
       "roi_minimum": 25,
       "score_demande": 5,
-      "nombre_annonces_a_lire": 40
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
+    },
+    {
+      "actif": true,
+      "prioritaire": true,
+      "nom": "New Super Mario Bros U Deluxe",
+      "categorie": "JEU_SWITCH",
+      "recherches_vinted": [
+        "super mario bros u deluxe",
+        "mario bros u deluxe",
+        "mario brosu deluxe",
+        "mario u deluxe"
+      ],
+      "prix_recherche_max": 16,
+      "marque": "Nintendo",
+      "modele": "New Super Mario Bros U Deluxe",
+      "mots_obligatoires": [
+        "mario",
+        "deluxe"
+      ],
+      "un_des_mots": [
+        "bros u",
+        "brosu",
+        "mario u",
+        "super mario bros"
+      ],
+      "mots_plateforme": [
+        "switch",
+        "nintendo switch"
+      ],
+      "mots_exclus": [
+        "boite vide",
+        "boîte vide",
+        "case only",
+        "steelbook",
+        "poster",
+        "figurine",
+        "goodies",
+        "sans jeu",
+        "wii u"
+      ],
+      "revente_prudente": 30,
+      "revente_haute": 35,
+      "ratio_achat_max": 0.5,
+      "marge_minimum": 8,
+      "roi_minimum": 30,
+      "score_demande": 5,
+      "nombre_annonces_a_lire": 40,
+      "tolerer_fautes": true
     }
   ],
   "_modele_a_copier": {
     "actif": false,
     "prioritaire": true,
     "nom": "NOM DE TON ARTICLE",
-    "categorie": "CONSOLE",
-    "recherche_vinted": "mots à taper sur Vinted",
+    "categorie": "JEU_SWITCH",
+    "recherches_vinted": [
+      "recherche principale",
+      "variante ou faute fréquente"
+    ],
     "prix_recherche_max": 30,
     "marque": "",
     "modele": "",
@@ -196,6 +252,7 @@
     "marge_minimum": 15,
     "roi_minimum": 30,
     "score_demande": 4,
-    "nombre_annonces_a_lire": 40
+    "nombre_annonces_a_lire": 40,
+    "tolerer_fautes": true
   }
 }

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "products": {
+    "Mario Kart 8 Deluxe": {
+      "source": "nom de votre source autorisée",
+      "samples": []
+    }
+  }
+}

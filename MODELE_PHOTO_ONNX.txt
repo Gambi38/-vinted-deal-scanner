@@ -1,0 +1,36 @@
+MODÈLE PHOTO ONNX — MODE D'EMPLOI
+=================================
+
+Le scanner fonctionne immédiatement sans modèle entraîné : il mesure la
+résolution, la luminosité, le contraste et le flou des photos. Dans ce mode,
+photo_condition reste "unknown" et aucune estimation artificielle de l'état
+physique n'est inventée.
+
+Pour activer la classification d'état, ajoute dans le dépôt :
+
+    models/condition_classifier.onnx
+
+Le chemin est configurable avec photo_condition_model_path dans config.json.
+
+Entrée attendue
+---------------
+- image float32, valeurs 0..1 ;
+- forme NCHW [1, 3, H, W] ou NHWC [1, H, W, 3] ;
+- une entrée à un canal est également acceptée ;
+- les dimensions dynamiques utilisent 224 x 224.
+
+Sortie attendue
+---------------
+- un vecteur de logits ou de probabilités ;
+- ordre par défaut : damaged, used, good, new ;
+- adapte photo_condition_labels dans config.json si ton modèle utilise un
+  autre ordre.
+
+Important
+---------
+Pillow, NumPy et ONNX Runtime exécutent le modèle mais ne remplacent pas ses
+poids. Il faut entraîner ou fournir un modèle avec des photos étiquetées pour
+reconnaître réellement les rayures, écrans cassés et objets incomplets.
+
+Le scanner analyse seulement les meilleurs candidats (6 par défaut) afin de
+ne pas multiplier les téléchargements et le risque de blocage.

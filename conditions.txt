@@ -1,1 +1,5 @@
-aiohttp>=3.9,<4
+aiohttp>=3.10,<4
+uvloop>=0.21,<1; platform_system != "Windows"
+Pillow>=10,<13
+numpy>=1.26,<3
+onnxruntime>=1.18,<2; platform_machine == "x86_64"

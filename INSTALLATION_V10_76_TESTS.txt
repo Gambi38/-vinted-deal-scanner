@@ -1,0 +1,53 @@
+VINTED SNIPE V10 — INSTALLATION
+===============================
+
+1. Remplace les fichiers du dépôt par ceux du paquet, sans modifier les noms.
+2. Place vinted-scan.yml dans .github/workflows/vinted-scan.yml.
+3. Conserve ton secret GitHub NTFY_TOPIC.
+4. Lance Actions > Vinted Scan > Run workflow.
+
+Nouveautés
+----------
+- correction dynamique des fautes par distance de Levenshtein ;
+- protection des références courtes/chiffrées : PS4 ne devient jamais PS5 ;
+- normalisation des apostrophes pour reconnaître Assassin's Creed comme jeu ;
+- analyse de qualité photo et inférence ONNX optionnelle ;
+- cache des règles persistant dans runtime_data/searches_cache.json ;
+- rapport de performance avec débit, temps réseau cumulé et régression 30 j ;
+- 76 tests unitaires validés.
+
+Fichiers du paquet
+------------------
+vinted_api_light.py
+product_classifier.py
+photo_condition.py
+search_cache.py
+monitoring.py
+scanner_runtime.py
+sold_listings.py
+config.json
+conditions.txt
+test_api_light.py
+test_product_classifier.py
+test_photo_condition.py
+vinted-scan.yml
+MODELE_PHOTO_ONNX.txt
+
+À ne pas ajouter au dépôt
+-------------------------
+runtime_data/
+__pycache__/
+*.pyc
+.env
+
+Validation attendue dans GitHub Actions
+---------------------------------------
+Ran 76 tests
+OK
+
+Dans les logs du scan, contrôle surtout :
+- PERF cycle
+- Santé API
+- Analyse photos
+- Rapport workflow
+- PERF régression (uniquement si le débit baisse fortement)

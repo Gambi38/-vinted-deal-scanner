@@ -1,14 +1,12 @@
-# FAUX POSITIFS UNIQUEMENT — un lien Vinted par ligne.
-# Ces annonces servent seulement à apprendre ce qu'il faut rejeter.
-# Elles ne deviennent jamais des recherches ni des produits à acheter.
-https://www.vinted.be/items/9615873222-gba-fr-pokemon-emeraude
-https://www.vinted.be/items/9859197529-caja-para-guardar-juegos
-https://www.vinted.be/items/9851375887-boite-vide-mario-and-sonic-aux-jeux-olympiques-tokyo-2020
-https://www.vinted.be/items/9542930655-pokemon-cristal-de-jade-gba-fr
-https://www.vinted.be/items/9843204658-videogame-leeg-origineel-nintendo-switch-doosje-crash-bandicoot-n-sane-trilogy
-https://www.vinted.be/items/9430589965-eeg-origineel-nintendo-switch-doosje-luigis-mansion-3
-https://www.vinted.be/items/9819266770-nintendo-switch-v2-console-seule
-https://www.vinted.be/items/9745385272-joystick-spider-man-2-playstation-2-bw0108
-https://www.vinted.be/items/7560413022-zelda-skyward-sword-edition-limitee-boite-et-notices-uniquement
-https://www.vinted.be/items/9853916547-pokemon-advanced-kanto-gba-fr
-https://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switchhttps://www.vinted.be/items/9332112171-caratula-new-super-mario-bros-u-deluxe-switch
+# Rejets confirmés par l'utilisateur.
+# Formats autorisés : accessory:, title:, fake: ou hard:
+# Une ligne sans préfixe est volontairement ignorée pour éviter un faux blocage.
+accessory:keychain
+accessory:carcasa
+accessory:mini sac
+accessory:sacoche
+accessory:stylets
+accessory:ar card
+accessory:thumb grip
+accessory:button cap
+accessory:carregador
