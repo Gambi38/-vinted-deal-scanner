@@ -1,0 +1,59 @@
+name,product_type,category,brand,aliases,query,price_max,hot_buy,resale_low,resale_high,demand_score,sales_volume,description,exclude
+iPhone 11,SMARTPHONE,SMARTPHONE,Apple,iphone 11,iphone,120,95,190,230,5,0,iPhone 11 débloqué avec batterie et compte iCloud vérifiés,pro|pro max
+iPhone 12,SMARTPHONE,SMARTPHONE,Apple,iphone 12,iphone,150,120,240,285,5,0,iPhone 12 débloqué avec Face ID et batterie vérifiés,mini|pro|pro max
+iPhone 12 mini,SMARTPHONE,SMARTPHONE,Apple,iphone 12 mini,iphone,135,105,210,250,4,0,iPhone 12 mini débloqué avec Face ID et batterie vérifiés,pro
+iPhone 13,SMARTPHONE,SMARTPHONE,Apple,iphone 13,iphone,180,145,260,310,5,0,iPhone 13 débloqué avec Face ID et batterie vérifiés,mini|pro|pro max
+iPhone 13 mini,SMARTPHONE,SMARTPHONE,Apple,iphone 13 mini,iphone,170,135,250,290,5,0,iPhone 13 mini débloqué avec Face ID et batterie vérifiés,pro
+iPhone 13 Pro,SMARTPHONE,SMARTPHONE,Apple,iphone 13 pro,iphone,260,215,390,450,5,0,iPhone 13 Pro débloqué avec Face ID et batterie vérifiés,max
+iPhone 13 Pro Max,SMARTPHONE,SMARTPHONE,Apple,iphone 13 pro max,iphone,310,260,445,530,5,0,iPhone 13 Pro Max débloqué avec Face ID et batterie vérifiés,
+iPhone 14,SMARTPHONE,SMARTPHONE,Apple,iphone 14,iphone,260,215,390,460,5,0,iPhone 14 débloqué avec Face ID et batterie vérifiés,plus|pro|pro max
+iPhone 14 Pro,SMARTPHONE,SMARTPHONE,Apple,iphone 14 pro,iphone,350,295,520,620,5,0,iPhone 14 Pro débloqué avec Face ID et batterie vérifiés,max
+iPhone 15,SMARTPHONE,SMARTPHONE,Apple,iphone 15,iphone,350,295,520,620,5,0,iPhone 15 débloqué avec Face ID et batterie vérifiés,plus|pro|pro max
+iPhone 15 Pro,SMARTPHONE,SMARTPHONE,Apple,iphone 15 pro,iphone,480,410,680,780,5,0,iPhone 15 Pro débloqué avec Face ID et batterie vérifiés,max
+iPhone SE 2022,SMARTPHONE,SMARTPHONE,Apple,iphone se 2022|iphone se 3,iphone,100,80,165,200,4,0,iPhone SE troisième génération débloqué et batterie vérifiée,2020|2 generation
+Samsung Galaxy S21,SMARTPHONE,SMARTPHONE,Samsung,galaxy s21|samsung s21,samsung galaxy,120,95,190,230,5,0,Galaxy S21 fonctionnel et compte Google supprimé,plus|ultra|fe
+Samsung Galaxy S22,SMARTPHONE,SMARTPHONE,Samsung,galaxy s22|samsung s22,samsung galaxy,155,125,240,290,5,0,Galaxy S22 fonctionnel et compte Google supprimé,plus|ultra
+Samsung Galaxy S23,SMARTPHONE,SMARTPHONE,Samsung,galaxy s23|samsung s23,samsung galaxy,240,195,360,430,5,0,Galaxy S23 fonctionnel et compte Google supprimé,plus|ultra|fe
+Samsung Galaxy A54 5G,SMARTPHONE,SMARTPHONE,Samsung,galaxy a54|samsung a54,samsung galaxy,100,80,160,200,4,0,Galaxy A54 5G fonctionnel et compte Google supprimé,a53|a55
+Samsung Galaxy Z Flip4,SMARTPHONE,SMARTPHONE,Samsung,z flip4|z flip 4|galaxy flip4,samsung galaxy,180,145,300,360,4,0,Galaxy Z Flip4 fonctionnel avec charnière et écran vérifiés,flip3|flip5
+Google Pixel 7,SMARTPHONE,SMARTPHONE,Google,google pixel 7|pixel 7,google pixel,140,110,220,270,4,0,Google Pixel 7 fonctionnel et compte supprimé,pro|7a
+Google Pixel 8,SMARTPHONE,SMARTPHONE,Google,google pixel 8|pixel 8,google pixel,220,175,340,410,5,0,Google Pixel 8 fonctionnel et compte supprimé,pro|8a
+
+iPad 9e génération, TABLET,TABLET,Apple,ipad 9 generation|ipad 9e generation|ipad 2021,ipad,150,120,230,280,5,0,iPad 9e génération sans verrouillage iCloud et batterie vérifiée,pro|air|mini|10 generation
+iPad 10e génération,TABLET,TABLET,Apple,ipad 10 generation|ipad 10e generation|ipad 2022,ipad,220,180,330,390,5,0,iPad 10e génération sans verrouillage iCloud et batterie vérifiée,pro|air|mini|9 generation
+iPad Air 4,TABLET,TABLET,Apple,ipad air 4|ipad air 2020,ipad air,240,195,360,430,5,0,iPad Air 4 sans verrouillage iCloud et batterie vérifiée,air 5|m1
+iPad Air 5 M1,TABLET,TABLET,Apple,ipad air 5|ipad air m1|ipad air 2022,ipad air,320,260,470,550,5,0,iPad Air 5 M1 sans verrouillage iCloud et batterie vérifiée,air 4
+iPad mini 6,TABLET,TABLET,Apple,ipad mini 6|ipad mini 2021,ipad mini,280,225,420,500,5,0,iPad mini 6 sans verrouillage iCloud et batterie vérifiée,mini 5
+iPad Pro 11 2020,TABLET,TABLET,Apple,ipad pro 11 2020|ipad pro 2 generation,ipad pro,330,270,500,600,5,0,iPad Pro 11 2020 sans verrouillage iCloud et écran vérifié,2021|m1|2022|m2
+iPad Pro 11 M1 2021,TABLET,TABLET,Apple,ipad pro 11 m1|ipad pro 11 2021,ipad pro,430,350,650,750,5,0,iPad Pro 11 M1 sans verrouillage iCloud et écran vérifié,2020|m2|2022
+Samsung Galaxy Tab S7,TABLET,TABLET,Samsung,galaxy tab s7|tab s7,samsung tab,180,145,280,340,4,0,Galaxy Tab S7 fonctionnelle avec écran et compte vérifiés,fe|plus|s8
+Samsung Galaxy Tab S8,TABLET,TABLET,Samsung,galaxy tab s8|tab s8,samsung tab,260,210,400,480,5,0,Galaxy Tab S8 fonctionnelle avec écran et compte vérifiés,plus|ultra|s7
+Samsung Galaxy Tab A8,TABLET,TABLET,Samsung,galaxy tab a8|tab a8,samsung tab,85,65,140,175,4,0,Galaxy Tab A8 fonctionnelle avec écran et compte vérifiés,a7|a9
+Microsoft Surface Pro 7,TABLET,TABLET,Microsoft,surface pro 7,microsoft surface,220,175,340,420,4,0,Surface Pro 7 fonctionnelle avec écran batterie et compte vérifiés,pro 8|pro 9
+
+MacBook Air M1 2020,LAPTOP,COMPUTER,Apple,macbook air m1|macbook air 2020 m1,macbook,350,290,520,620,5,0,MacBook Air M1 sans verrouillage iCloud et batterie vérifiée,intel|m2
+MacBook Air M2,LAPTOP,COMPUTER,Apple,macbook air m2|macbook air 2022,macbook,520,430,750,880,5,0,MacBook Air M2 sans verrouillage iCloud et batterie vérifiée,m1|intel
+MacBook Pro 13 M1,LAPTOP,COMPUTER,Apple,macbook pro 13 m1|macbook pro m1 2020,macbook,450,370,650,760,5,0,MacBook Pro 13 M1 sans verrouillage iCloud et batterie vérifiée,intel|m2|max
+Mac mini M1,DESKTOP,COMPUTER,Apple,mac mini m1|macmini m1,mac mini,280,225,430,520,5,0,Mac mini M1 sans verrouillage iCloud avec alimentation,m2|intel
+Lenovo ThinkPad T480,LAPTOP,COMPUTER,Lenovo,thinkpad t480|lenovo t480,thinkpad,100,80,170,220,4,0,ThinkPad T480 fonctionnel avec batterie chargeur RAM et SSD vérifiés,t480s|t490
+Lenovo ThinkPad T490,LAPTOP,COMPUTER,Lenovo,thinkpad t490|lenovo t490,thinkpad,130,105,210,260,4,0,ThinkPad T490 fonctionnel avec batterie chargeur RAM et SSD vérifiés,t480|t490s
+Lenovo ThinkPad X1 Carbon Gen 8,LAPTOP,COMPUTER,Lenovo,x1 carbon gen 8|x1 carbon 8th|20u9,thinkpad x1,230,185,350,430,4,0,ThinkPad X1 Carbon Gen 8 fonctionnel avec batterie et SSD vérifiés,gen 7|gen 9
+Dell Latitude 5420,LAPTOP,COMPUTER,Dell,dell latitude 5420|latitude 5420,dell latitude,220,175,340,420,4,0,Dell Latitude 5420 fonctionnel avec batterie chargeur RAM et SSD vérifiés,5421|5520
+HP EliteBook 840 G8,LAPTOP,COMPUTER,HP,hp elitebook 840 g8|elitebook 840 g8,hp elitebook,240,195,370,450,4,0,HP EliteBook 840 G8 fonctionnel avec batterie chargeur RAM et SSD vérifiés,g7|g9
+Nvidia RTX 3060 12GB,ELECTRONICS,PC_COMPONENT,Nvidia,rtx 3060 12gb|rtx3060 12gb,carte graphique,150,120,220,260,5,0,Carte graphique RTX 3060 12GB testée avec sorties vidéo fonctionnelles,ti|laptop|ventilateur
+Nvidia RTX 3070,ELECTRONICS,PC_COMPONENT,Nvidia,rtx 3070|rtx3070,carte graphique,190,155,280,330,5,0,Carte graphique RTX 3070 testée avec sorties vidéo fonctionnelles,ti|laptop|ventilateur
+Nvidia RTX 4070,ELECTRONICS,PC_COMPONENT,Nvidia,rtx 4070|rtx4070,carte graphique,350,290,500,580,5,0,Carte graphique RTX 4070 testée avec sorties vidéo fonctionnelles,ti|super|laptop|ventilateur
+AMD Radeon RX 6700 XT,ELECTRONICS,PC_COMPONENT,AMD,rx 6700 xt|rx6700xt,carte graphique,180,145,270,320,4,0,Carte graphique RX 6700 XT testée avec sorties vidéo fonctionnelles,ventilateur|waterblock
+
+Makita DHP484,TOOL,TOOL,Makita,makita dhp484|dhp484,makita 18v,45,35,75,95,5,0,Perceuse visseuse Makita DHP484 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|mandrin seul|pieces
+Makita DTD153,TOOL,TOOL,Makita,makita dtd153|dtd153,makita 18v,45,35,75,95,5,0,Visseuse à chocs Makita DTD153 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|pieces
+Makita DHR171,TOOL,TOOL,Makita,makita dhr171|dhr171,makita 18v,65,50,105,135,4,0,Perforateur Makita DHR171 fonctionnel avec numéro de série vérifié,batterie seule|chargeur seul|pieces
+Bosch Professional GSR 18V-55,TOOL,TOOL,Bosch,bosch gsr 18v 55|gsr 18v 55,bosch professional 18v,50,40,85,110,4,0,Perceuse Bosch Professional GSR 18V-55 fonctionnelle,batterie seule|chargeur seul|pieces
+Bosch Professional GWS 18V-10,TOOL,TOOL,Bosch,bosch gws 18v 10|gws 18v 10,bosch professional 18v,65,50,110,145,4,0,Meuleuse Bosch Professional GWS 18V-10 fonctionnelle,batterie seule|chargeur seul|disque seul|pieces
+DeWalt DCD796,TOOL,TOOL,DeWalt,dewalt dcd796|dcd796,dewalt 18v,50,40,85,110,5,0,Perceuse DeWalt DCD796 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|mandrin seul|pieces
+DeWalt DCF887,TOOL,TOOL,DeWalt,dewalt dcf887|dcf887,dewalt 18v,45,35,80,105,5,0,Visseuse à chocs DeWalt DCF887 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|pieces
+Milwaukee M18 FPD2,TOOL,TOOL,Milwaukee,milwaukee m18 fpd2|m18 fpd2,milwaukee m18,80,65,130,170,4,0,Perceuse Milwaukee M18 FPD2 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|mandrin seul|pieces
+Milwaukee M18 FID2,TOOL,TOOL,Milwaukee,milwaukee m18 fid2|m18 fid2,milwaukee m18,80,65,130,170,4,0,Visseuse à chocs Milwaukee M18 FID2 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|pieces
+Festool TS 55 REBQ,TOOL,TOOL,Festool,festool ts 55 rebq|ts55 rebq,festool ts 55,260,215,420,520,4,0,Scie plongeante Festool TS 55 REBQ fonctionnelle avec rail à vérifier,rail seul|lame seule|pieces
+Karcher K5 Premium,TOOL,TOOL,Karcher,karcher k5 premium|karcher k5,karcher k5,100,80,170,220,4,0,Nettoyeur haute pression Karcher K5 fonctionnel avec flexible et pistolet,flexible seul|pistolet seul|pieces
+Fluke 117,TOOL,TOOL,Fluke,fluke 117,multimetre fluke,110,90,180,230,4,0,Multimètre Fluke 117 original fonctionnel avec pointes de touche,housse seule|pointes seules|fake

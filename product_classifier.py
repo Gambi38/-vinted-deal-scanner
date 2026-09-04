@@ -12,7 +12,7 @@ import unicodedata
 from functools import lru_cache
 
 
-CLASSIFIER_SCHEMA = 2
+CLASSIFIER_SCHEMA = 3
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
@@ -75,9 +75,14 @@ def build_rule_vocabulary(rule_index, extra_terms=()) -> tuple[str, ...]:
         ))
         for key in (
             "must_contain", "any_contain", "platform_any",
-            "hardware_any", "title_prefix_any", "exclude",
+            "hardware_any", "title_prefix_any", "exclude", "identity_any",
         ):
             terms.extend(rule.get(key, []))
+        for group in rule.get("match_groups", []):
+            if isinstance(group, (list, tuple)):
+                terms.extend(group)
+            else:
+                terms.append(group)
     return _normalise_vocabulary(terms)
 
 

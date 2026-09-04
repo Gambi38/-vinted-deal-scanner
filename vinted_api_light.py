@@ -19,6 +19,7 @@ from pathlib import Path
 
 from monitoring import build_workflow_report
 from photo_condition import PhotoConditionAnalyzer, enrich_rows_with_photos
+from pricecharting_catalog import ReferenceCatalog
 from product_classifier import (
     CLASSIFIER_SCHEMA,
     build_rule_vocabulary,
@@ -35,6 +36,7 @@ from scanner_runtime import (
 )
 from search_cache import load_rule_index, save_rule_index, search_fingerprint
 from sold_listings import SoldListingsProvider
+from universal_catalog import DeviceCatalog
 
 # ---------- Configuration ----------
 ROOT = Path(__file__).resolve().parent
@@ -45,6 +47,8 @@ CONFIG_PATH = ROOT / "config.json"
 BLACKLIST_PATH = ROOT / "blacklist.json"
 FILTRES_PATH = ROOT / "filtres.json"
 TARGETS_PATH = ROOT / "produits_cibles.json"
+CONSOLES_TARGETS_PATH = ROOT / "consoles_cibles.json"
+ELECTRONICS_TARGETS_PATH = ROOT / "electroniques_cibles.json"
 SEEN_PATH = DATA_DIR / "annonces_vues.json"
 SEEN_META_PATH = DATA_DIR / "annonces_vues_meta.json"
 ALERTS_CSV = DATA_DIR / "alertes.csv"
@@ -54,10 +58,13 @@ PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
 SEARCH_CACHE_PATH = DATA_DIR / "searches_cache.json"
 SOLD_LISTINGS_PATH = DATA_DIR / "sold_listings_cache.json"
 REPORT_PATH = DATA_DIR / "rapport.json"
+PRICECHARTING_CATALOG_PATH = DATA_DIR / "pricecharting_catalog.json"
+DEVICE_CATALOG_PATH = DATA_DIR / "device_catalog.json"
 CONFIRMED_REJECTIONS_PATH = ROOT / "rejets.txt"
 
 ALERT_FIELDS = [
     "timestamp", "category", "product_type", "search", "brand", "model", "size",
+    "catalog_description", "reference_source", "sales_volume", "match_confidence",
     "opportunity_score", "title", "published_at", "age_minutes",
     "view_count", "favourite_count", "seller_type", "previous_price",
     "price_drop_pct", "image_url", "listing_price", "total_buy_est",
@@ -438,7 +445,13 @@ def convert_target_product(entry):
     query = str(entry.get("query") or name).strip()
     price_max = _positive_price(entry.get("price_max"))
     resale_low = _positive_price(entry.get("resale_low"))
-    if not name or not product_type or not query or price_max is None or resale_low is None:
+    supported_types = {
+        "CONSOLE", "GAME", "ACCESSORY", "ELECTRONICS", "CALCULATOR",
+        "CAMERA", "ACTION_CAMERA", "MINI_PC", "AUDIO", "EREADER",
+        "STREAMING", "SMARTWATCH", "DRAWING_TABLET",
+    }
+    if (not name or product_type not in supported_types
+            or not query or price_max is None or resale_low is None):
         return None
     category = str(entry.get("category", "")).strip()
     if not category:
@@ -453,10 +466,21 @@ def convert_target_product(entry):
             "controller", "controllers",
         }
         exclusions = [word for word in exclusions if norm(word) not in bundle_words]
+    description = str(entry.get("description", "")).strip()
+    if not description:
+        description = {
+            "CONSOLE": f"Console {name} complète et fonctionnelle.",
+            "GAME": f"Jeu original {name}; vérifier la plateforme et l'état.",
+            "ACCESSORY": f"Accessoire original {name}; vérifier qu'il est complet.",
+        }.get(
+            product_type,
+            f"{name} complet et fonctionnel; vérifier le modèle et l'état.",
+        )
     rule = {
         "label": name,
         "brand": str(entry.get("brand", "")).strip(),
         "model": str(entry.get("model") or name).strip(),
+        "description": description,
         "product_type": product_type,
         "accessory_type": str(entry.get("accessory_type", "")).strip().upper(),
         "must_contain": list(entry.get("must", [])),
@@ -475,6 +499,11 @@ def convert_target_product(entry):
         "allow_loose": bool(entry.get("allow_loose", False)),
         "manual_review": bool(entry.get("manual_review", False)),
         "bundle_min_items": int(entry.get("bundle_min_items", 0) or 0),
+        "identity_any": list(entry.get("identity_any", [])),
+        "match_groups": list(entry.get("match_groups", [])),
+        "match_threshold": float(entry.get("match_threshold", 1.0)),
+        "min_match_groups": int(entry.get("min_match_groups", 0) or 0),
+        "external_source": str(entry.get("reference_source", "catalogue contrôlé")),
     }
     return {
         "name": f"CIBLE - {name}",
@@ -485,25 +514,44 @@ def convert_target_product(entry):
         "rules": [rule],
     }
 
-def load_target_products(path=TARGETS_PATH):
-    """Charge la liste de prix séparément du code et ignore les lignes invalides."""
-    try:
-        data = load_json(path, {})
-    except (OSError, json.JSONDecodeError) as exc:
-        LOGGER.error("Profil produits illisible: %s", exc)
-        return []
-    entries = data.get("products", []) if isinstance(data, dict) else []
-    searches = []
+def load_target_products(path=TARGETS_PATH, console_path=None, electronics_path=None):
+    """Charge le catalogue contrôlé, avec priorité aux fichiers dédiés.
+
+    produits_cibles.json reste compatible. Lors du chargement normal, une
+    console portant le même nom dans consoles_cibles.json remplace sa version
+    générale : il n'existe donc qu'un seul prix de référence par modèle.
+    """
+    main_path = Path(path)
+    paths = [main_path]
+    if main_path.resolve() == TARGETS_PATH.resolve():
+        dedicated_paths = [
+            Path(console_path) if console_path else CONSOLES_TARGETS_PATH,
+            Path(electronics_path) if electronics_path else ELECTRONICS_TARGETS_PATH,
+        ]
+        for dedicated in reversed(dedicated_paths):
+            if dedicated.exists():
+                paths.insert(0, dedicated)
+    searches_by_identity = {}
     invalid = 0
-    for entry in entries:
-        search = convert_target_product(entry)
-        if search is None:
-            invalid += 1
-        else:
-            searches.append(search)
+    for profile_path in paths:
+        try:
+            data = load_json(profile_path, {})
+        except (OSError, json.JSONDecodeError) as exc:
+            LOGGER.error("Profil produits illisible (%s): %s", profile_path.name, exc)
+            continue
+        entries = data.get("products", []) if isinstance(data, dict) else []
+        for entry in entries:
+            search = convert_target_product(entry)
+            if search is None:
+                invalid += 1
+                continue
+            rule = search["rules"][0]
+            identity = (search["product_type"], norm(rule.get("model", "")))
+            # Le fichier dédié est parcouru en premier et reste prioritaire.
+            searches_by_identity.setdefault(identity, search)
     if invalid:
         LOGGER.warning("Profil produits: %s lignes invalides ignorées", invalid)
-    return searches
+    return list(searches_by_identity.values())
 
 def _merge_searches(searches):
     """Fusionne les requêtes identiques pour économiser des appels HTTP."""
@@ -588,6 +636,23 @@ def candidate_rank(row):
         - views * 0.05
         - favourites * 0.50
     )
+
+
+def select_diverse_candidates(candidates, max_total, max_per_category):
+    """Conserve les meilleurs scores sans laisser une famille monopoliser les alertes."""
+    selected = []
+    counts = {}
+    total_limit = max(1, int(max_total))
+    family_limit = max(1, int(max_per_category))
+    for row in candidates:
+        family = str(row.get("category") or row.get("product_type") or "AUTRE")
+        if counts.get(family, 0) >= family_limit:
+            continue
+        selected.append(row)
+        counts[family] = counts.get(family, 0) + 1
+        if len(selected) >= total_limit:
+            break
+    return selected
 
 # ---------- Scoring ----------
 def fee_estimate(price, cfg):
@@ -717,8 +782,17 @@ async def ntfy_send(row, session):
     zone = " JACKPOT" if row.get("price_zone") == "JACKPOT" else ""
     type_label = {
         "CONSOLE": "CONSOLE", "GAME": "JEU", "ACCESSORY": "ACCESSOIRE",
+        "SMARTPHONE": "SMARTPHONE", "TABLET": "TABLETTE",
+        "LAPTOP": "ORDINATEUR", "DESKTOP": "ORDINATEUR",
+        "COMPUTER": "ORDINATEUR", "TOOL": "OUTIL",
     }.get(str(row.get("product_type", "")).upper(), "ARTICLE")
+    reference = f"Référence {row.get('model', '?')}"
+    if row.get("catalog_description"):
+        reference += f" — {row['catalog_description']}"
+    if row.get("reference_source"):
+        reference += f" — source {row['reference_source']}"
     body = (f"[{type_label}] [{row['opportunity_score']}/10]{zone} {row['title']} | "
+            f"{reference} | "
             f"Achat {row['listing_price']:.2f} EUR | revente "
             f"{row['resale_low']:.0f}-{row['resale_high']:.0f} EUR | "
             f"bénéfice prudent {row['margin_low']:.2f} EUR | {row['reason']}"
@@ -825,10 +899,28 @@ GAME_HARDWARE_TERMS = frozenset((
 ))
 
 ELECTRONICS_ACCESSORY_TERMS = frozenset((
-    "chargeur seul", "charger only", "câble seul", "cable only",
-    "coque", "housse", "étui", "etui", "batterie seule", "battery only",
-    "objectif seul", "lens only", "écran seul", "ecran seul",
-    "adaptateur seul", "power adapter only", "boitier vide", "boîtier vide",
+    "chargeur", "charger", "câble", "cable", "coque", "housse", "étui",
+    "etui", "batterie", "battery", "objectif", "lens", "écran", "ecran",
+    "adaptateur", "power adapter", "boitier vide", "boîtier vide",
+    "télécommande", "telecommande", "remote", "bracelet", "watch band",
+    "wristband", "strap", "station de charge", "charging dock",
+    "verre trempé", "verre trempe", "screen protector", "protection écran",
+    "protection ecran", "skin", "shell", "case only", "courroie",
+    "sacoche", "pochette", "support mural", "wall mount", "trépied",
+    "trepied", "tripod", "micro sd", "carte mémoire", "carte memoire",
+    "memory card", "ear pads", "coussinets", "pièce détachée",
+    "piece detachee", "replacement part",
+))
+
+ELECTRONICS_INCLUDED_MARKERS = frozenset((
+    "avec chargeur", "chargeur inclus", "with charger", "+ chargeur",
+    "avec câble", "avec cable", "câble inclus", "cable included", "+ cable",
+    "avec batterie", "batterie incluse", "with battery", "+ batterie",
+    "avec objectif", "objectif inclus", "with lens", "+ objectif", "+ lens",
+    "avec télécommande", "avec telecommande", "remote included", "+ remote",
+    "+ télécommande", "+ telecommande", "avec bracelet", "bracelet inclus",
+    "avec étui", "avec etui", "avec housse", "avec pochette", "with case",
+    "+ housse", "+ coque", "avec carte mémoire", "avec carte memoire",
 ))
 
 UNSAFE_CONDITION_TERMS = frozenset((
@@ -1037,6 +1129,11 @@ def infer_product_type(source_search, rule):
         "AUDIO": "AUDIO", "ELECTRONIQUE": "ELECTRONICS",
         "ELECTRONICS": "ELECTRONICS", "ACCESSOIRE": "ACCESSORY",
         "ACCESSORY": "ACCESSORY",
+        "ACTION_CAMERA": "ACTION_CAMERA", "CAMERA_ACTION": "ACTION_CAMERA",
+        "LISEUSE": "EREADER", "EREADER": "EREADER",
+        "STREAMING": "STREAMING", "BOITIER_STREAMING": "STREAMING",
+        "SMARTWATCH": "SMARTWATCH", "MONTRE_CONNECTEE": "SMARTWATCH",
+        "DRAWING_TABLET": "DRAWING_TABLET", "TABLETTE_GRAPHIQUE": "DRAWING_TABLET",
     }
     if explicit:
         return aliases.get(explicit, explicit)
@@ -1149,7 +1246,17 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
                 term_present(title, word) for word in ("jeu", "game", "support volant")):
             return False, "jeu ou support, pas volant"
     else:
-        if any(term_present(title, word) for word in ELECTRONICS_ACCESSORY_TERMS):
+        accessory_hit = any(
+            term_present(title, word) for word in ELECTRONICS_ACCESSORY_TERMS
+        )
+        included = any(
+            term_present(title, marker) for marker in ELECTRONICS_INCLUDED_MARKERS
+        )
+        accessory_only = (
+            _starts_with_term(title, ELECTRONICS_ACCESSORY_TERMS)
+            or any(term_present(title, marker) for marker in ACCESSORY_ONLY_MARKERS)
+        )
+        if accessory_hit and (accessory_only or not included):
             return False, "accessoire électronique"
     return True, ""
 
@@ -1180,29 +1287,81 @@ def soft_filter_risks(source_search, rule, title, blacklist=None):
             risks.append("annonce à contrôler: " + ", ".join(suspicious[:2]))
     return list(dict.fromkeys(risks))
 
-def rule_match(rule, title, text, deep=False):
+def rule_match_confidence(rule, title, text, deep=False):
+    """Correspondance exacte ou souple, toujours ancrée sur le modèle.
+
+    Les références électroniques peuvent définir des groupes de synonymes.
+    Elles ne doivent pas atteindre 100 %, mais un identifiant distinctif reste
+    obligatoire. Les codes alphanumériques ne sont jamais corrigés comme des
+    fautes de frappe, ce qui empêche A1842 de devenir A1843 ou XM4 de devenir XM5.
+    """
     title_n = norm(title)
     full = norm(f"{title} {text}")
     must = frozenset(rule.get("must_contain", []))
     any_kw = frozenset(rule.get("any_contain", []))
     exclude = frozenset(rule.get("exclude", []))
-    if must and not all(term_present_normalized(title_n, word) for word in must):
-        return False
-    if any_kw and not any(term_present_normalized(title_n, word) for word in any_kw):
-        return False
-    if exclude and any(term_present_normalized(full, word) for word in exclude):
-        return False
+    excluded_hits = [
+        word for word in exclude if term_present_normalized(full, word)
+    ]
+    if excluded_hits:
+        product_type = str(rule.get("product_type", "")).upper()
+        electronic_type = product_type not in {"CONSOLE", "GAME", "ACCESSORY"}
+        included_accessory = electronic_type and any(
+            term_present_normalized(full, marker)
+            for marker in ELECTRONICS_INCLUDED_MARKERS
+        )
+        accessory_norms = {norm(word) for word in ELECTRONICS_ACCESSORY_TERMS}
+        blocking_hits = [
+            word for word in excluded_hits
+            if not included_accessory or norm(word) not in accessory_norms
+        ]
+        if blocking_hits:
+            return False, 0.0
+
+    identity = tuple(rule.get("identity_any", []))
+    groups = tuple(rule.get("match_groups", []))
+    if identity or groups:
+        if identity and not any(
+                term_present_normalized(title_n, alias) for alias in identity):
+            return False, 0.0
+        normalised_groups = []
+        for group in groups:
+            aliases = group if isinstance(group, (list, tuple)) else [group]
+            aliases = tuple(alias for alias in aliases if norm(alias))
+            if aliases:
+                normalised_groups.append(aliases)
+        matched = sum(
+            any(term_present_normalized(title_n, alias) for alias in aliases)
+            for aliases in normalised_groups
+        )
+        total = len(normalised_groups)
+        confidence = matched / total if total else 1.0
+        threshold = min(0.95, max(0.50, float(rule.get("match_threshold", 0.75))))
+        minimum = int(rule.get("min_match_groups", 2) or 2)
+        if total and (matched < min(minimum, total) or confidence < threshold):
+            return False, confidence
+    else:
+        if must and not all(term_present_normalized(title_n, word) for word in must):
+            return False, 0.0
+        if any_kw and not any(term_present_normalized(title_n, word) for word in any_kw):
+            return False, 0.0
+        confidence = 1.0 if must or any_kw else 0.5
+
     if not deep:
-        return True
+        return True, confidence
     platform = rule.get("platform_any", [])
     hardware = rule.get("hardware_any", [])
     if platform and not any(term_present_normalized(full, word) for word in platform):
-        return False
+        return False, confidence
     if hardware:
         hardware_text = title_n if rule.get("hardware_in_title") else full
         if not any(term_present_normalized(hardware_text, word) for word in hardware):
-            return False
-    return True
+            return False, confidence
+    return True, confidence
+
+
+def rule_match(rule, title, text, deep=False):
+    return rule_match_confidence(rule, title, text, deep)[0]
 
 def build_rule_index(searches, cfg):
     """Index mondial des produits connus à forte demande."""
@@ -1232,8 +1391,10 @@ def choose_known_product(rule_index, title, price, cfg=None):
     classification_title = canonicalize_product_title(str(title), vocabulary)
     title_matches = []
     for source_search, rule in rule_index:
-        if not rule_match(
-                rule, classification_title, classification_title, deep=False):
+        matched, confidence = rule_match_confidence(
+            rule, classification_title, classification_title, deep=False,
+        )
+        if not matched:
             continue
         type_ok, _ = strict_product_type_check(
             source_search, rule, classification_title, cfg,
@@ -1241,7 +1402,7 @@ def choose_known_product(rule_index, title, price, cfg=None):
         if not type_ok:
             continue
         title_matches.append((
-            infer_product_type(source_search, rule), source_search, rule,
+            infer_product_type(source_search, rule), source_search, rule, confidence,
         ))
     if not title_matches:
         return None, None
@@ -1258,7 +1419,7 @@ def choose_known_product(rule_index, title, price, cfg=None):
         title_matches = [item for item in title_matches if item[0] == "CONSOLE"]
 
     matches = []
-    for product_type, source_search, rule in title_matches:
+    for product_type, source_search, rule, confidence in title_matches:
         price_limit = source_search.get("price_to")
         resale_low = rule.get("resale_low")
         ratio = float(rule.get("max_buy_ratio", 0.50))
@@ -1267,6 +1428,7 @@ def choose_known_product(rule_index, title, price, cfg=None):
         if effective_limit is not None and float(price) > float(effective_limit):
             continue
         priority = (
+            round(float(confidence), 4),
             int(rule.get("profile_priority", 0)),
             int(rule.get("demand_score", 0)),
             len(rule.get("must_contain", [])) + len(rule.get("any_contain", [])),
@@ -1328,7 +1490,8 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
 # ---------- Scan principal ----------
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                       limiter, session, base_url, headers, stats,
-                      rule_index=None, price_history=None, api_budget=None):
+                      rule_index=None, price_history=None, api_budget=None,
+                      reference_catalog=None, device_catalog=None):
     query = search["query"]
     name = search.get("name", query)
     LOGGER.info(f"\n[API-TEST] {name} → {query}")
@@ -1429,11 +1592,31 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             continue
 
         # 5. Trouver la règle
-        if rule_index is not None:
+        # Une correspondance PriceCharting exige le titre exact ET la
+        # plateforme. Elle est évaluée avant les règles générales : un jeu
+        # « Nintendo 64 Rampage » ne peut donc plus hériter du prix N64.
+        matched_search, matched_rule = (None, None)
+        if reference_catalog is not None:
+            matched_search, matched_rule = reference_catalog.match(title, price)
+            if matched_rule is not None:
+                type_ok, _ = strict_product_type_check(
+                    matched_search, matched_rule, title, cfg,
+                )
+                if not type_ok:
+                    matched_search, matched_rule = (None, None)
+        if matched_rule is None and device_catalog is not None:
+            matched_search, matched_rule = device_catalog.match(title, price)
+            if matched_rule is not None:
+                type_ok, _ = strict_product_type_check(
+                    matched_search, matched_rule, title, cfg,
+                )
+                if not type_ok:
+                    matched_search, matched_rule = (None, None)
+        if matched_rule is None and rule_index is not None:
             matched_search, matched_rule = choose_known_product(
                 rule_index, title, price, cfg,
             )
-        else:
+        elif matched_rule is None:
             # Les recherches spécifiques profitent du même Levenshtein que
             # le mode découverte ; aucun second classificateur divergent.
             local_index = [(search, rule) for rule in search.get("rules", [])]
@@ -1523,6 +1706,18 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                       + " / " + matched_rule.get("label", ""),
             "brand": matched_rule.get("brand", ""),
             "model": matched_rule.get("model", ""),
+            "catalog_description": matched_rule.get("description", ""),
+            "reference_source": matched_rule.get("external_source", "catalogue contrôlé"),
+            "sales_volume": matched_rule.get("sales_volume", ""),
+            "match_confidence": round(
+                rule_match_confidence(
+                    matched_rule,
+                    canonicalize_product_title(
+                        title, cfg.get("_fuzzy_vocabulary", ()),
+                    ),
+                    title,
+                )[1] * 100,
+            ),
             "size": size,
             "opportunity_score": score,
             "title": title,
@@ -1579,10 +1774,26 @@ async def main_async():
     if rejection_terms:
         LOGGER.info("Rejets confirmés ajoutés à la blacklist: %s", rejection_terms)
     target_searches = load_target_products()
+    reference_catalog = ReferenceCatalog.load(PRICECHARTING_CATALOG_PATH)
+    device_catalog = DeviceCatalog.load(DEVICE_CATALOG_PATH)
     legacy_searches = list(cfg.get("searches", []))
     use_legacy = bool(cfg.get("use_legacy_search_rules", False))
     cfg["searches"] = target_searches + (legacy_searches if use_legacy else [])
     LOGGER.info("Profil marché: %s produits cibles chargés", len(target_searches))
+    if reference_catalog:
+        LOGGER.info(
+            "PriceCharting: %s références rapides indexées localement",
+            len(reference_catalog),
+        )
+    else:
+        LOGGER.info("PriceCharting: cache absent, catalogue contrôlé utilisé")
+    if device_catalog:
+        LOGGER.info(
+            "Appareils et outils: %s références indexées localement",
+            len(device_catalog),
+        )
+    else:
+        LOGGER.info("Appareils et outils: cache absent, catalogue manuel utilisé")
     if legacy_searches and not use_legacy:
         LOGGER.info(
             "%s anciennes recherches ignorées pour éviter les faux positifs",
@@ -1700,6 +1911,12 @@ async def main_async():
         discovery_mode = bool(cfg.get("discovery_mode", True))
         all_searches = (
             list(cfg.get("discovery_searches", []))
+            + reference_catalog.discovery_searches(
+                cfg.get("pricecharting_discovery_max_price", 300),
+            )
+            + device_catalog.discovery_searches(
+                cfg.get("device_catalog_discovery_max_price", 800),
+            )
             if discovery_mode
             else product_searches
         )
@@ -1728,6 +1945,8 @@ async def main_async():
                         rule_index=rule_index if discovery_mode else None,
                         price_history=price_history,
                         api_budget=api_budget,
+                        reference_catalog=reference_catalog,
+                        device_catalog=device_catalog,
                     )
                     stats["searches_completed"] += 1
                     return rows
@@ -1798,7 +2017,11 @@ async def main_async():
                 photo_summary["failed"],
                 "actif" if photo_summary["model_used"] else "absent (heuristiques)",
             )
-        selected = candidates[:max(1, int(cfg.get("max_alerts_per_run", 5)))]
+        selected = select_diverse_candidates(
+            candidates,
+            cfg.get("max_alerts_per_run", 5),
+            cfg.get("max_alerts_per_category", 4),
+        )
         selected_ids = {str(row.get("item_id")) for row in selected}
 
         # Les candidats non retenus ont été analysés mais ne doivent pas

@@ -43,12 +43,12 @@ class ApiOnlyTests(unittest.TestCase):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
         self.assertEqual(cfg["catalog_per_page"], 50)
         self.assertEqual(cfg["max_items_per_search"], 100)
-        self.assertEqual(cfg["max_catalog_items_per_run"], 1000)
-        self.assertEqual(cfg["max_searches_per_run"], 10)
+        self.assertEqual(cfg["max_catalog_items_per_run"], 1200)
+        self.assertEqual(cfg["max_searches_per_run"], 12)
         self.assertEqual(cfg["max_alerts_per_run"], 12)
         self.assertTrue(cfg["snipe_mode"])
         self.assertEqual(cfg["snipe_max_pages"], 2)
-        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 20)
+        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 24)
         self.assertEqual(cfg["min_candidate_score"], 2.5)
         self.assertEqual(cfg["popularity_penalty_cap"], 1.0)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
@@ -151,6 +151,20 @@ class ApiOnlyTests(unittest.TestCase):
         fresh = {**base, "age_minutes": 2}
         old = {**base, "age_minutes": 25}
         self.assertGreater(bot.candidate_rank(fresh), bot.candidate_rank(old))
+
+    def test_notification_selection_limits_one_category_without_losing_diversity(self):
+        candidates = [
+            {"item_id": str(index), "category": category}
+            for index, category in enumerate(
+                ["SMARTPHONE"] * 7 + ["JEU_SWITCH"] * 4 + ["TOOL"] * 4
+            )
+        ]
+        selected = bot.select_diverse_candidates(candidates, 12, 4)
+        self.assertEqual(len(selected), 12)
+        self.assertEqual(
+            sum(row["category"] == "SMARTPHONE" for row in selected),
+            4,
+        )
 
     def test_zero_minute_listing_is_not_treated_as_unknown_age(self):
         base = {"opportunity_score": 8, "demand_score": 5,
@@ -500,9 +514,43 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 79)
+        self.assertEqual(len(searches), 113)
         types = {search["product_type"] for search in searches}
-        self.assertEqual(types, {"CONSOLE", "GAME", "ACCESSORY"})
+        self.assertTrue({"CONSOLE", "GAME", "ACCESSORY"}.issubset(types))
+
+    def test_dedicated_console_catalog_has_prices_and_descriptions(self):
+        data = bot.load_json(bot.CONSOLES_TARGETS_PATH, {})
+        products = data.get("products", [])
+        self.assertEqual(len(products), 24)
+        for product in products:
+            self.assertEqual(product.get("type"), "CONSOLE", product.get("name"))
+            self.assertTrue(product.get("description"), product.get("name"))
+            self.assertGreater(float(product.get("price_max", 0)), 0)
+            self.assertGreaterEqual(
+                float(product.get("resale_low", 0)),
+                float(product.get("price_max", 0)),
+            )
+
+    def test_console_catalog_overrides_general_duplicate(self):
+        searches = bot.load_target_products()
+        switch = next(
+            search for search in searches
+            if search["rules"][0].get("model") == "Nintendo Switch LCD"
+        )
+        rule = switch["rules"][0]
+        self.assertEqual(rule["resale_low"], 110)
+        self.assertIn("tablette", rule["description"].lower())
+
+    def test_every_catalog_rule_has_explicit_type_description_and_price(self):
+        for search in bot.load_target_products():
+            for rule in search.get("rules", []):
+                self.assertIn(rule.get("product_type"), {
+                    "CONSOLE", "GAME", "ACCESSORY", "CALCULATOR", "CAMERA",
+                    "ACTION_CAMERA", "MINI_PC", "AUDIO", "EREADER",
+                    "STREAMING", "SMARTWATCH", "DRAWING_TABLET",
+                })
+                self.assertTrue(rule.get("description"), rule.get("model"))
+                self.assertGreater(float(rule.get("resale_low", 0)), 0)
 
     def test_discovery_profile_ignores_legacy_and_broad_console_filters(self):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
