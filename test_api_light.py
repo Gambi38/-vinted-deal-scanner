@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import unittest
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -490,6 +491,82 @@ class ApiOnlyTests(unittest.TestCase):
             "Manette DualSense", "", blacklist, check_accessories=False,
         )[0])
 
+    def test_phone_cases_and_screen_protectors_are_not_phones(self):
+        source = {"category": "SMARTPHONE", "product_type": "SMARTPHONE"}
+        rule = {"product_type": "SMARTPHONE", "must_contain": ["iphone 13 pro"]}
+        accessories = (
+            "Coque transparente iPhone 13 Pro",
+            "iPhone 13 Pro tempered glass",
+            "Film hydrogel iPhone 13 Pro",
+            "Cristal templado para iPhone 13 Pro",
+            "Vetro temperato iPhone 13 Pro",
+            "Panzerglas iPhone 13 Pro",
+            "Telefoonhoesje iPhone 13 Pro",
+            "Szkło hartowane iPhone 13 Pro",
+        )
+        for title in accessories:
+            self.assertFalse(
+                bot.strict_product_type_check(source, rule, title)[0], title,
+            )
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "iPhone 13 Pro 128 Go avec coque",
+        )[0])
+
+    def test_off_platform_payment_is_blocked_without_blocking_its_refusal(self):
+        blacklist = bot.load_json(bot.BLACKLIST_PATH, {})
+        unsafe = (
+            "Pas de paiement Vinted, PayPal uniquement",
+            "Paiement par PayPal entre proches",
+            "Contactez-moi pour un virement bancaire",
+            "No Vinted payment, bank transfer only",
+            "Paiement en dehors de Vinted via Revolut",
+            "Bonifico bancario solamente",
+        )
+        for text in unsafe:
+            blocked, group, _, _ = bot.blacklist_check(
+                "iPhone 13 Pro", text, blacklist, check_accessories=False,
+            )
+            self.assertTrue(blocked, text)
+            self.assertEqual(group, "off_platform_payment_blacklist", text)
+
+        safe = (
+            "Paiement Vinted uniquement, pas de PayPal",
+            "Aucun virement bancaire, achat uniquement via Vinted",
+        )
+        for text in safe:
+            self.assertFalse(bot.blacklist_check(
+                "iPhone 13 Pro", text, blacklist, check_accessories=False,
+            )[0], text)
+
+    def test_catalog_description_rejects_payment_outside_vinted(self):
+        async def run():
+            now = datetime.now(timezone.utc).timestamp()
+            item = {
+                "id": 777, "title": "iPhone 13 Pro 128 Go",
+                "description": "Pas de paiement Vinted, PayPal uniquement",
+                "price": {"amount": "180"}, "created_at_ts": now,
+                "user": {}, "view_count": 0, "favourite_count": 0,
+            }
+            cfg = {
+                "catalog_per_page": 50, "max_items_per_search": 50,
+                "max_listing_age_hours": 0.5,
+                "exclude_professional_sellers": False,
+                "reject_unknown_listing_age": True,
+            }
+            stats = defaultdict(int)
+            blacklist = bot.load_json(bot.BLACKLIST_PATH, {})
+            with patch.object(bot, "catalog_items", AsyncMock(return_value=[item])):
+                rows = await bot.scan_search(
+                    {"name": "Téléphones", "query": "iphone", "price_to": 300},
+                    cfg, blacklist, set(), {}, object(), object(),
+                    "https://www.vinted.be", {}, stats, rule_index=[],
+                )
+            return rows, stats
+
+        rows, stats = asyncio.run(run())
+        self.assertEqual(rows, [])
+        self.assertEqual(stats["rejected_unsafe_payment"], 1)
+
     def test_loose_retro_game_exception_does_not_allow_empty_boxes(self):
         blacklist = {"hard_blacklist": [], "fake_blacklist": [],
                      "accessory_blacklist": ["cartouche seule", "boite vide"]}
@@ -771,13 +848,17 @@ class ApiOnlyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "rejets.txt"
             path.write_text(
-                "# commentaire\naccessory:keychain\nfake:reproduktion\nligne dangereuse\n",
+                "# commentaire\naccessory:keychain\nfake:reproduktion\n"
+                "payment:paypal uniquement\nligne dangereuse\n",
                 encoding="utf-8",
             )
             added = bot.apply_confirmed_rejections(path, blacklist)
-        self.assertEqual(added, 2)
+        self.assertEqual(added, 3)
         self.assertEqual(blacklist["accessory_blacklist"], ["keychain"])
         self.assertEqual(blacklist["fake_blacklist"], ["reproduktion"])
+        self.assertEqual(
+            blacklist["off_platform_payment_blacklist"], ["paypal uniquement"],
+        )
 
     def test_snipe_pagination_requests_page_two_only_while_fresh(self):
         async def run(last_age_minutes):

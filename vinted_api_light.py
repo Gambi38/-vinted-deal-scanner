@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V11_CATALOG_ONLY
+# VINTED_API_AIOHTTP_V12_CATALOG_ONLY
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -112,6 +112,7 @@ def apply_confirmed_rejections(path, blacklist):
         "fake": "fake_blacklist",
         "accessory": "accessory_blacklist",
         "title": "title_accessory_blacklist",
+        "payment": "off_platform_payment_blacklist",
     }
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -846,6 +847,78 @@ async def ntfy_send(row, session):
     return False
 
 # ---------- Filtres simplifiés ----------
+OFF_PLATFORM_PAYMENT_FALLBACK_TERMS = frozenset((
+    "pas de paiement vinted", "pas de payement vinted",
+    "paiement vinted refusé", "paiement vinted refuse",
+    "payement vinted refusé", "payement vinted refuse",
+    "no vinted payment", "vinted payment not accepted",
+    "do not pay via vinted", "dont pay via vinted",
+    "paiement hors vinted", "payement hors vinted",
+    "paiement en dehors de vinted", "payment outside vinted",
+    "paypal uniquement", "paypal seulement", "paypal only",
+    "paiement par paypal", "payement par paypal", "payment by paypal",
+    "paypal accepté", "paypal accepte", "paypal accepted",
+    "paypal entre proches", "paypal amis et famille",
+    "paypal friends and family", "paypal f&f",
+    "virement bancaire", "versement bancaire", "bank transfer",
+    "banküberweisung", "bankuberweisung", "überweisung", "uberweisung",
+    "bonifico bancario", "transferencia bancaria",
+    "overschrijving", "bankoverschrijving",
+    "paiement par revolut", "payement par revolut", "revolut only",
+    "paiement par wise", "payement par wise", "wise only",
+    "western union", "paiement en crypto", "payment in crypto",
+    "paiement bitcoin", "payment bitcoin", "bizum uniquement",
+    "paiement par bizum", "cash app only", "cashapp only",
+))
+
+PAYPAL_REJECTION_MARKERS = frozenset((
+    "pas de paypal", "paypal refusé", "paypal refuse",
+    "paypal non accepté", "paypal non accepte", "no paypal",
+    "paypal not accepted",
+))
+
+BANK_TRANSFER_REJECTION_MARKERS = frozenset((
+    "pas de virement", "virement refusé", "virement refuse",
+    "aucun virement", "sans virement",
+    "no bank transfer", "bank transfer not accepted",
+    "keine überweisung", "keine uberweisung",
+))
+
+
+def catalog_item_text(item):
+    """Texte de sécurité disponible sans appeler l'endpoint détail."""
+    values = []
+    for key in ("title", "description", "subtitle", "content", "status_message"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            values.append(value.strip())
+    return " ".join(dict.fromkeys(values))
+
+
+def off_platform_payment_hits(text, blacklist):
+    """Repère un paiement imposé hors Vinted sans bloquer son refus explicite."""
+    configured = blacklist.get("off_platform_payment_blacklist", ())
+    terms = tuple(configured) if configured else OFF_PLATFORM_PAYMENT_FALLBACK_TERMS
+    hits = matching_terms(text, terms)
+    if not hits:
+        return []
+    paypal_refused = any(term_present(text, marker)
+                         for marker in PAYPAL_REJECTION_MARKERS)
+    transfer_refused = any(term_present(text, marker)
+                           for marker in BANK_TRANSFER_REJECTION_MARKERS)
+    safe_hits = []
+    for hit in hits:
+        hit_n = norm(hit)
+        if paypal_refused and "paypal" in hit_n:
+            continue
+        if transfer_refused and any(word in hit_n for word in (
+                "virement", "versement", "bank transfer", "uberweisung",
+                "bonifico", "transferencia", "overschrijving")):
+            continue
+        safe_hits.append(hit)
+    return safe_hits
+
+
 def blacklist_check(title, text, blacklist, check_accessories=True,
                     ignored_accessory_terms=()):
     combined = f"{title} {text}"
@@ -862,6 +935,9 @@ def blacklist_check(title, text, blacklist, check_accessories=True,
                     if norm(w) not in ignored]
         if hits:
             return True, group, hits[:3], []
+    payment_hits = off_platform_payment_hits(combined, blacklist)
+    if payment_hits:
+        return True, "off_platform_payment_blacklist", payment_hits[:3], []
     risks = matching_terms(combined, blacklist.get("suspicious_words", []))
     return False, "", [], risks[:3]
 
@@ -930,7 +1006,18 @@ ELECTRONICS_ACCESSORY_TERMS = frozenset((
     "télécommande", "telecommande", "remote", "bracelet", "watch band",
     "wristband", "strap", "station de charge", "charging dock",
     "verre trempé", "verre trempe", "screen protector", "protection écran",
-    "protection ecran", "skin", "shell", "case only", "courroie",
+    "protection ecran", "vitre de protection", "film de protection",
+    "film hydrogel", "protecteur écran", "protecteur ecran",
+    "tempered glass", "screen guard", "privacy glass", "hydrogel film",
+    "camera lens protector", "phone case", "iphone case", "silicone case",
+    "clear case", "bumper case", "cristal templado", "vidrio templado",
+    "protector de pantalla", "vetro temperato", "pellicola protettiva",
+    "handyhülle", "handyhulle", "panzerglas", "displayschutz",
+    "schutzglas", "telefoonhoesje", "screenprotector", "beschermglas",
+    "película de vidro", "pelicula de vidro", "vidro temperado",
+    "protetor de tela", "szkło hartowane", "szklo hartowane",
+    "folia ochronna", "funda", "carcasa", "custodia", "capa", "hoesje",
+    "schutzhülle", "schutzhulle", "skin", "shell", "case only", "courroie",
     "sacoche", "pochette", "support mural", "wall mount", "trépied",
     "trepied", "tripod", "micro sd", "carte mémoire", "carte memoire",
     "memory card", "ear pads", "coussinets", "pièce détachée",
@@ -944,8 +1031,9 @@ ELECTRONICS_INCLUDED_MARKERS = frozenset((
     "avec objectif", "objectif inclus", "with lens", "+ objectif", "+ lens",
     "avec télécommande", "avec telecommande", "remote included", "+ remote",
     "+ télécommande", "+ telecommande", "avec bracelet", "bracelet inclus",
-    "avec étui", "avec etui", "avec housse", "avec pochette", "with case",
-    "+ housse", "+ coque", "avec carte mémoire", "avec carte memoire",
+    "avec étui", "avec etui", "avec housse", "avec coque", "avec pochette",
+    "with case", "+ housse", "+ coque", "avec carte mémoire",
+    "avec carte memoire",
 ))
 
 UNSAFE_CONDITION_TERMS = frozenset((
@@ -1674,12 +1762,22 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             continue
 
         # 4. Filtres rapides
-        blocked, _, _, _ = blacklist_check(
-            title, title, blacklist, check_accessories=False,
+        item_text = catalog_item_text(item)
+        blocked, blocked_group, blocked_hits, _ = blacklist_check(
+            title, item_text, blacklist, check_accessories=False,
         )
         if blocked:
-            stats["rejected_blacklist"] += 1
-            LOGGER.debug("  X Blacklist | %s", title[:60])
+            if blocked_group == "off_platform_payment_blacklist":
+                stats["rejected_unsafe_payment"] = (
+                    stats.get("rejected_unsafe_payment", 0) + 1
+                )
+                LOGGER.info(
+                    "  X Paiement hors Vinted | %s | %s",
+                    ", ".join(blocked_hits), title[:60],
+                )
+            else:
+                stats["rejected_blacklist"] += 1
+                LOGGER.debug("  X Blacklist | %s", title[:60])
             mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
@@ -1984,7 +2082,7 @@ async def main_async():
         "notifications_sent", "candidates", "rejected_price",
         "rejected_old", "rejected_seen", "rejected_pro",
         "rejected_blacklist", "rejected_rule", "rejected_profit",
-        "rejected_score", "catalog_budget_blocked",
+        "rejected_score", "rejected_unsafe_payment", "catalog_budget_blocked",
         "photo_analysed", "photo_failed", "photo_flagged",
     )}
 
@@ -2154,10 +2252,11 @@ async def main_async():
                     stats["notifications_sent"])
         LOGGER.info(
             "Rejets | anciens %s | déjà vus %s | règle %s | rentabilité %s | "
-            "score %s | filtres durs %s | pro %s",
+            "score %s | filtres durs %s | paiement hors Vinted %s | pro %s",
             stats["rejected_old"], stats["rejected_seen"],
             stats["rejected_rule"], stats["rejected_profit"],
-            stats["rejected_score"], stats["rejected_blacklist"], stats["rejected_pro"],
+            stats["rejected_score"], stats["rejected_blacklist"],
+            stats["rejected_unsafe_payment"], stats["rejected_pro"],
         )
         LOGGER.info(
             "\n[API] Terminé : %s candidats, Top %s, %s notifications envoyées.",

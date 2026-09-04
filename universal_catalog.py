@@ -39,7 +39,19 @@ NOISE = {
 }
 ACCESSORY_STARTS = (
     "coque", "housse", "etui", "étui", "case", "cover", "protection",
-    "ecran", "écran", "screen", "vitre", "batterie", "battery", "chargeur",
+    "ecran", "écran", "screen", "vitre", "verre trempé", "verre trempe",
+    "vitre de protection", "film de protection", "film hydrogel",
+    "protecteur écran", "protecteur ecran", "tempered glass", "screen protector",
+    "screen guard", "privacy glass", "hydrogel film", "phone case",
+    "iphone case", "silicone case", "clear case", "bumper case",
+    "cristal templado", "vidrio templado", "protector de pantalla",
+    "vetro temperato", "pellicola protettiva", "handyhülle", "handyhulle",
+    "panzerglas", "displayschutz", "schutzglas", "telefoonhoesje",
+    "screenprotector", "beschermglas", "película de vidro",
+    "pelicula de vidro", "vidro temperado", "protetor de tela",
+    "szkło hartowane", "szklo hartowane", "folia ochronna",
+    "funda", "carcasa", "custodia", "capa", "hoesje", "schutzhülle",
+    "schutzhulle", "batterie", "battery", "chargeur",
     "charger", "cable", "câble", "clavier", "keyboard", "stylet", "pencil",
     "bracelet", "strap", "telecommande", "télécommande", "remote",
     "objectif", "lens", "sacoche", "support", "dock", "adaptateur",
@@ -55,12 +67,12 @@ ACCESSORY_ONLY = (
     "pièces uniquement", "pieces uniquement", "spare part", "spare parts",
 )
 INCLUDED = (
-    "avec chargeur", "chargeur inclus", "with charger", "+ chargeur",
-    "avec batterie", "batterie incluse", "with battery", "+ batterie",
-    "avec clavier", "clavier inclus", "with keyboard", "+ clavier",
-    "avec stylet", "stylet inclus", "with pencil", "+ pencil",
-    "avec objectif", "objectif inclus", "with lens", "+ objectif",
-    "avec housse", "avec coque", "with case", "+ housse",
+    "avec chargeur", "chargeur inclus", "with charger",
+    "avec batterie", "batterie incluse", "with battery",
+    "avec clavier", "clavier inclus", "with keyboard",
+    "avec stylet", "stylet inclus", "with pencil",
+    "avec objectif", "objectif inclus", "with lens",
+    "avec housse", "avec coque", "with case",
 )
 
 
@@ -238,11 +250,10 @@ class DeviceCatalog:
     @staticmethod
     def _accessory_only(title: str) -> bool:
         title_n = normalise(title)
-        starts = any(title_n == normalise(term) or title_n.startswith(normalise(term) + " ")
-                     for term in ACCESSORY_STARTS)
+        accessory_hit = any(_contains(title_n, term) for term in ACCESSORY_STARTS)
         included = any(_contains(title_n, term) for term in INCLUDED)
         explicit_only = any(_contains(title_n, term) for term in ACCESSORY_ONLY)
-        return starts or (explicit_only and not included)
+        return (accessory_hit or explicit_only) and not included
 
     def match(self, title: str, price: float):
         title_n = normalise(title)

@@ -30,6 +30,12 @@ class UniversalCatalogTests(unittest.TestCase):
     def test_accessories_never_inherit_device_value(self):
         examples = (
             ("Coque iPhone 13", 10),
+            ("iPhone 13 Pro Max tempered glass", 10),
+            ("iPhone 15 Pro film hydrogel", 8),
+            ("Cristal templado iPhone 14 Pro", 7),
+            ("Panzerglas Samsung Galaxy S23 Ultra", 9),
+            ("Telefoonhoesje Google Pixel 8 Pro", 12),
+            ("Szkło hartowane iPhone 12 Pro", 6),
             ("Écran iPad Air 5 M1", 80),
             ("Chargeur MacBook Air M1", 25),
             ("Batterie Makita DHP484", 25),
@@ -46,6 +52,7 @@ class UniversalCatalogTests(unittest.TestCase):
             ("Makita DHP484 avec batterie", 40, "Makita DHP484"),
             ("MacBook Air M1 avec chargeur", 330, "MacBook Air M1 2020"),
             ("iPad Pro 11 M1 avec clavier", 420, "iPad Pro 11 M1 2021"),
+            ("iPhone 13 Pro avec coque", 220, "iPhone 13 Pro"),
         )
         for title, price, expected in examples:
             source, rule = self.catalog.match(title, price)

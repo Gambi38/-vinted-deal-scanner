@@ -1,5 +1,5 @@
 # Rejets confirmés par l'utilisateur.
-# Formats autorisés : accessory:, title:, fake: ou hard:
+# Formats autorisés : accessory:, title:, fake:, hard: ou payment:
 # Une ligne sans préfixe est volontairement ignorée pour éviter un faux blocage.
 accessory:keychain
 accessory:carcasa

@@ -7,7 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 REJECTION_KEYS = (
     "rejected_price", "rejected_old", "rejected_seen", "rejected_pro",
-    "rejected_blacklist", "rejected_rule", "rejected_profit", "rejected_score",
+    "rejected_blacklist", "rejected_unsafe_payment", "rejected_rule",
+    "rejected_profit", "rejected_score",
 )
 
 
