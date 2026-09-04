@@ -12,7 +12,7 @@ import unicodedata
 from functools import lru_cache
 
 
-CLASSIFIER_SCHEMA = 3
+CLASSIFIER_SCHEMA = 4
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 

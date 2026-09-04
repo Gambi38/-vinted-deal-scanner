@@ -45,7 +45,8 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertEqual(cfg["max_items_per_search"], 100)
         self.assertEqual(cfg["max_catalog_items_per_run"], 1200)
         self.assertEqual(cfg["max_searches_per_run"], 12)
-        self.assertEqual(cfg["max_alerts_per_run"], 12)
+        self.assertEqual(cfg["max_alerts_per_run"], 15)
+        self.assertEqual(cfg["max_alerts_per_category"], 8)
         self.assertTrue(cfg["snipe_mode"])
         self.assertEqual(cfg["snipe_max_pages"], 2)
         self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 24)
@@ -514,14 +515,14 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 113)
+        self.assertEqual(len(searches), 147)
         types = {search["product_type"] for search in searches}
         self.assertTrue({"CONSOLE", "GAME", "ACCESSORY"}.issubset(types))
 
     def test_dedicated_console_catalog_has_prices_and_descriptions(self):
         data = bot.load_json(bot.CONSOLES_TARGETS_PATH, {})
         products = data.get("products", [])
-        self.assertEqual(len(products), 24)
+        self.assertEqual(len(products), 34)
         for product in products:
             self.assertEqual(product.get("type"), "CONSOLE", product.get("name"))
             self.assertTrue(product.get("description"), product.get("name"))
@@ -644,6 +645,76 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertEqual(bot.infer_product_type(source, rule), "GAME")
         self.assertEqual(rule["model"], "Mario Kart 8 Deluxe")
         self.assertGreater(bot.score_candidate(rule, 7, cfg)[3], 8)
+
+    def test_switch_game_five_euros_is_super_jackpot(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        rule = {
+            "product_type": "GAME",
+            "platform_any": ["switch", "nintendo switch"],
+            "hot_buy_price": 13,
+        }
+        self.assertEqual(
+            bot.candidate_price_zone(rule, "GAME", 5, cfg),
+            "SUPER_JACKPOT",
+        )
+        self.assertEqual(
+            bot.candidate_price_zone(rule, "GAME", 9.99, cfg),
+            "JACKPOT",
+        )
+        self.assertEqual(
+            bot.candidate_price_zone(rule, "CONSOLE", 5, cfg),
+            "JACKPOT",
+        )
+
+    def test_new_switch_deals_are_games_not_consoles(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        examples = (
+            "Super Mario Bros Wonder Nintendo Switch",
+            "Pokémon Épée Nintendo Switch",
+            "Kirby et le Monde Oublié Switch",
+            "Pikmin 4 Nintendo Switch",
+            "Little Nightmares II Nintendo Switch",
+            "Digimon Survive Nintendo Switch",
+        )
+        for title in examples:
+            source, rule = bot.choose_known_product(index, title, 5, cfg)
+            self.assertIsNotNone(rule, title)
+            self.assertEqual(bot.infer_product_type(source, rule), "GAME", title)
+
+    def test_switch_two_does_not_use_switch_lcd_value(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        source, rule = bot.choose_known_product(
+            index, "Nintendo Switch 2 console complète", 250, cfg,
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(rule["model"], "Nintendo Switch 2")
+
+    def test_unknown_game_structure_never_inherits_console_price(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        index = bot.build_rule_index(bot.load_target_products(), cfg)
+        examples = (
+            "Nintendo Switch Farming Simulator 23",
+            "PS Vita Uncharted Golden Abyss",
+            "Nintendo 64 GoldenEye 007",
+            "Nintendo 3DS Professor Layton",
+        )
+        for title in examples:
+            self.assertEqual(
+                bot.choose_known_product(index, title, 5, cfg),
+                (None, None), title,
+            )
+
+    def test_low_turnover_searches_are_not_active(self):
+        cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
+        active = cfg.get("always_search_queries", []) + [
+            row.get("query", "") for row in cfg.get("discovery_searches", [])
+        ]
+        profile = [search.get("query", "") for search in bot.load_target_products()]
+        combined = " ".join(active + profile).lower()
+        for unwanted in ("calculatrice", "walkman", "wacom"):
+            self.assertNotIn(unwanted, combined)
 
     def test_plain_console_model_remains_a_candidate(self):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})

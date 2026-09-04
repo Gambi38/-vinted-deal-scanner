@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import os
@@ -42,11 +43,16 @@ ACCESSORY_STARTS = (
     "charger", "cable", "câble", "clavier", "keyboard", "stylet", "pencil",
     "bracelet", "strap", "telecommande", "télécommande", "remote",
     "objectif", "lens", "sacoche", "support", "dock", "adaptateur",
+    "coussinet", "coussinets", "earpad", "earpads", "ear pad", "ear pads",
+    "arceau", "headband", "embout", "embouts", "ear tip", "ear tips",
+    "charnière", "charniere", "hinge", "nappe", "flex cable", "châssis",
+    "chassis", "dos", "back glass", "vitre arrière", "vitre arriere",
 )
 ACCESSORY_ONLY = (
     "seul", "seule", "only", "pour iphone", "pour ipad", "pour macbook",
     "compatible avec", "replacement", "piece detachee", "pièce détachée",
     "sans appareil", "sans telephone", "sans téléphone", "sans outil",
+    "pièces uniquement", "pieces uniquement", "spare part", "spare parts",
 )
 INCLUDED = (
     "avec chargeur", "chargeur inclus", "with charger", "+ chargeur",
@@ -156,23 +162,39 @@ def _download(url: str, timeout: float = 30.0) -> bytes:
         return response.read()
 
 
-def _fresh(path: Path, max_age_hours: float) -> bool:
+def _source_fingerprint(paths, source_url: str, min_demand: int) -> str:
+    digest = hashlib.sha256()
+    digest.update(f"schema={SCHEMA};min_demand={int(min_demand)}".encode())
+    for path in sorted((Path(value) for value in paths), key=lambda value: str(value)):
+        digest.update(str(path).encode("utf-8", errors="replace"))
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"<missing>")
+    digest.update(str(source_url or "").encode("utf-8", errors="replace"))
+    return digest.hexdigest()
+
+
+def _fresh(path: Path, max_age_hours: float, source_fingerprint: str = "") -> bool:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return (data.get("schema") == SCHEMA
+                and (not source_fingerprint
+                     or data.get("source_fingerprint") == source_fingerprint)
                 and time.time() - float(data.get("imported_at", 0))
                 <= max(0.0, max_age_hours) * 3600)
     except (OSError, ValueError, TypeError):
         return False
 
 
-def save_catalog(path: Path, references: list[dict]) -> None:
+def save_catalog(path: Path, references: list[dict], source_fingerprint: str = "") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps({
         "schema": SCHEMA,
         "imported_at": time.time(),
         "currency": "EUR",
+        "source_fingerprint": source_fingerprint,
         "reference_count": len(references),
         "references": references,
     }, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -297,7 +319,11 @@ def main(argv=None) -> int:
     parser.add_argument("--min-demand", type=int, default=4)
     parser.add_argument("--allow-missing", action="store_true")
     args = parser.parse_args(argv)
-    if _fresh(args.output, args.max_age_hours):
+    source_url = (args.url or os.getenv("DEVICE_CATALOG_CSV_URL", "")).strip()
+    source_fingerprint = _source_fingerprint(
+        args.input, source_url, args.min_demand,
+    )
+    if _fresh(args.output, args.max_age_hours, source_fingerprint):
         print(f"Appareils: cache récent conservé ({args.output})")
         return 0
     references = {}
@@ -306,7 +332,6 @@ def main(argv=None) -> int:
             for row in import_csv(path.read_bytes(), min_demand=args.min_demand,
                                   source=f"catalogue contrôlé {path.name}"):
                 references[(row["product_type"], normalise(row["name"]))] = row
-        source_url = (args.url or os.getenv("DEVICE_CATALOG_CSV_URL", "")).strip()
         if source_url:
             for row in import_csv(_download(source_url), min_demand=args.min_demand,
                                   source="catalogue appareils externe"):
@@ -320,7 +345,10 @@ def main(argv=None) -> int:
             print("Appareils: aucune référence, ancien cache conservé")
             return 0
         parser.error("aucune référence valide")
-    save_catalog(args.output, list(references.values()))
+    save_catalog(
+        args.output, list(references.values()),
+        source_fingerprint=source_fingerprint,
+    )
     print(f"Appareils: {len(references)} références indexées")
     return 0
 

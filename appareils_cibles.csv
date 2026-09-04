@@ -56,4 +56,33 @@ Milwaukee M18 FPD2,TOOL,TOOL,Milwaukee,milwaukee m18 fpd2|m18 fpd2,milwaukee m18
 Milwaukee M18 FID2,TOOL,TOOL,Milwaukee,milwaukee m18 fid2|m18 fid2,milwaukee m18,80,65,130,170,4,0,Visseuse à chocs Milwaukee M18 FID2 fonctionnelle avec numéro de série vérifié,batterie seule|chargeur seul|pieces
 Festool TS 55 REBQ,TOOL,TOOL,Festool,festool ts 55 rebq|ts55 rebq,festool ts 55,260,215,420,520,4,0,Scie plongeante Festool TS 55 REBQ fonctionnelle avec rail à vérifier,rail seul|lame seule|pieces
 Karcher K5 Premium,TOOL,TOOL,Karcher,karcher k5 premium|karcher k5,karcher k5,100,80,170,220,4,0,Nettoyeur haute pression Karcher K5 fonctionnel avec flexible et pistolet,flexible seul|pistolet seul|pieces
-Fluke 117,TOOL,TOOL,Fluke,fluke 117,multimetre fluke,110,90,180,230,4,0,Multimètre Fluke 117 original fonctionnel avec pointes de touche,housse seule|pointes seules|fake
+iPhone 11 Pro,SMARTPHONE,SMARTPHONE,Apple,iphone 11 pro,iphone,155,125,235,285,5,0,iPhone 11 Pro débloqué avec Face ID batterie et iCloud vérifiés,max|coque|écran seul
+iPhone 12 Pro,SMARTPHONE,SMARTPHONE,Apple,iphone 12 pro,iphone,210,170,310,370,5,0,iPhone 12 Pro débloqué avec Face ID batterie et iCloud vérifiés,max|mini|coque|écran seul
+iPhone 12 Pro Max,SMARTPHONE,SMARTPHONE,Apple,iphone 12 pro max,iphone,245,200,360,430,5,0,iPhone 12 Pro Max débloqué avec Face ID batterie et iCloud vérifiés,mini|coque|écran seul
+iPhone 14 Pro Max,SMARTPHONE,SMARTPHONE,Apple,iphone 14 pro max,iphone,420,350,610,710,5,0,iPhone 14 Pro Max débloqué avec Face ID batterie et iCloud vérifiés,plus|coque|écran seul
+iPhone 15 Pro Max,SMARTPHONE,SMARTPHONE,Apple,iphone 15 pro max,iphone,560,475,780,900,5,0,iPhone 15 Pro Max débloqué avec Face ID batterie et iCloud vérifiés,plus|coque|écran seul
+Samsung Galaxy S21 Ultra,SMARTPHONE,SMARTPHONE,Samsung,galaxy s21 ultra|samsung s21 ultra,samsung galaxy,175,140,260,320,5,0,Galaxy S21 Ultra fonctionnel avec écran batterie et compte vérifiés,plus|fe|coque|écran seul
+Samsung Galaxy S22 Ultra,SMARTPHONE,SMARTPHONE,Samsung,galaxy s22 ultra|samsung s22 ultra,samsung galaxy,235,190,350,420,5,0,Galaxy S22 Ultra fonctionnel avec écran batterie S Pen et compte vérifiés,plus|coque|écran seul
+Samsung Galaxy S23 Ultra,SMARTPHONE,SMARTPHONE,Samsung,galaxy s23 ultra|samsung s23 ultra,samsung galaxy,360,300,520,620,5,0,Galaxy S23 Ultra fonctionnel avec écran batterie S Pen et compte vérifiés,plus|fe|coque|écran seul
+Samsung Galaxy A55 5G,SMARTPHONE,SMARTPHONE,Samsung,galaxy a55|samsung a55,samsung galaxy,130,100,200,245,5,0,Galaxy A55 5G fonctionnel avec écran batterie et compte vérifiés,a54|coque|écran seul
+Samsung Galaxy Z Flip5,SMARTPHONE,SMARTPHONE,Samsung,z flip5|z flip 5|galaxy flip5,samsung galaxy,260,215,390,470,5,0,Galaxy Z Flip5 fonctionnel avec charnière écrans et compte vérifiés,flip4|flip6|coque|écran seul
+Google Pixel 7a,SMARTPHONE,SMARTPHONE,Google,google pixel 7a|pixel 7a,google pixel,120,95,190,230,5,0,Google Pixel 7a fonctionnel avec écran batterie et compte vérifiés,pro|pixel 7|coque|écran seul
+Google Pixel 8 Pro,SMARTPHONE,SMARTPHONE,Google,google pixel 8 pro|pixel 8 pro,google pixel,300,245,440,520,5,0,Google Pixel 8 Pro fonctionnel avec écran batterie et compte vérifiés,8a|pixel 8|coque|écran seul
+OnePlus 11 5G,SMARTPHONE,SMARTPHONE,OnePlus,oneplus 11|one plus 11,oneplus,220,175,330,400,4,0,OnePlus 11 fonctionnel avec écran batterie et compte vérifiés,11r|coque|écran seul
+iPad 8e génération,TABLET,TABLET,Apple,ipad 8 generation|ipad 8e generation|ipad 2020,ipad,115,90,180,225,5,0,iPad 8e génération sans verrouillage iCloud et batterie vérifiée,pro|air|mini|9 generation|coque|écran seul
+iPad mini 5,TABLET,TABLET,Apple,ipad mini 5|ipad mini 2019,ipad mini,145,115,225,275,4,0,iPad mini 5 sans verrouillage iCloud et batterie vérifiée,mini 6|coque|écran seul
+iPad Pro 12.9 M1 2021,TABLET,TABLET,Apple,ipad pro 12 9 m1|ipad pro 12.9 2021,ipad pro,480,390,700,820,5,0,iPad Pro 12.9 M1 sans verrouillage iCloud et écran vérifié,2020|m2|coque|écran seul
+Samsung Galaxy Tab S6 Lite 2022,TABLET,TABLET,Samsung,galaxy tab s6 lite 2022|tab s6 lite 2022,samsung tab,115,90,180,225,5,0,Galaxy Tab S6 Lite 2022 fonctionnelle avec écran S Pen et compte vérifiés,2020|coque|écran seul
+Samsung Galaxy Tab S9,TABLET,TABLET,Samsung,galaxy tab s9|tab s9,samsung tab,330,270,490,580,5,0,Galaxy Tab S9 fonctionnelle avec écran S Pen batterie et compte vérifiés,plus|ultra|fe|coque|écran seul
+Samsung Galaxy Tab A9 Plus,TABLET,TABLET,Samsung,galaxy tab a9 plus|tab a9+|tab a9 plus,samsung tab,120,95,190,230,5,0,Galaxy Tab A9 Plus fonctionnelle avec écran batterie et compte vérifiés,a8|coque|écran seul
+MacBook Pro 14 M1 Pro,LAPTOP,COMPUTER,Apple,macbook pro 14 m1 pro|macbook pro a2442,macbook,700,590,980,1150,5,0,MacBook Pro 14 M1 Pro sans verrouillage iCloud avec batterie écran et chargeur vérifiés,m2|m3|coque|écran seul
+Mac mini M2,DESKTOP,COMPUTER,Apple,mac mini m2|macmini m2,mac mini,350,285,520,620,5,0,Mac mini M2 sans verrouillage iCloud avec alimentation,m1|intel|boitier vide
+Lenovo ThinkPad T14 Gen 2,LAPTOP,COMPUTER,Lenovo,thinkpad t14 gen 2|lenovo t14 g2,thinkpad,220,175,340,420,5,0,ThinkPad T14 Gen 2 fonctionnel avec batterie chargeur RAM et SSD vérifiés,gen 1|gen 3|coque|écran seul
+Dell Latitude 7420,LAPTOP,COMPUTER,Dell,dell latitude 7420|latitude 7420,dell latitude,230,185,350,430,4,0,Dell Latitude 7420 fonctionnel avec batterie chargeur RAM et SSD vérifiés,7410|7430|coque|écran seul
+HP EliteBook 845 G8,LAPTOP,COMPUTER,HP,hp elitebook 845 g8|elitebook 845 g8,hp elitebook,230,185,350,430,4,0,HP EliteBook 845 G8 fonctionnel avec batterie chargeur RAM et SSD vérifiés,g7|g9|coque|écran seul
+Microsoft Surface Laptop 4,LAPTOP,COMPUTER,Microsoft,surface laptop 4,microsoft surface,240,195,370,450,4,0,Surface Laptop 4 fonctionnel avec écran batterie chargeur et compte vérifiés,laptop 3|laptop 5|coque|écran seul
+Kindle Oasis 10e génération,EREADER,EREADER,Amazon,kindle oasis 10 generation|kindle oasis 2019,kindle oasis,80,62,125,155,5,0,Kindle Oasis 10e génération fonctionnel avec écran batterie et compte vérifiés,coque|housse|écran seul
+Kobo Libra 2,EREADER,EREADER,Kobo,kobo libra 2|libra 2,kobo libra,70,55,110,140,5,0,Kobo Libra 2 fonctionnelle avec écran batterie et compte vérifiés,coque|housse|écran seul
+Sony WH-1000XM3,AUDIO,AUDIO,Sony,sony wh 1000xm3|wh-1000xm3|wh1000xm3,sony wh 1000xm,55,42,90,115,5,0,Casque Sony WH-1000XM3 original avec batterie Bluetooth et arceau vérifiés,wf 1000xm3|coussinets|ear pads|coque
+Bose Headphones 700,AUDIO,AUDIO,Bose,bose 700|bose headphones 700,bose casque,85,68,130,165,4,0,Casque Bose 700 original avec batterie Bluetooth et arceau vérifiés,coussinets|ear pads|coque|lunettes
+Sennheiser Momentum 4 Wireless,AUDIO,AUDIO,Sennheiser,sennheiser momentum 4|momentum 4 wireless,sennheiser casque,120,95,180,230,5,0,Casque Sennheiser Momentum 4 original avec batterie Bluetooth et arceau vérifiés,coussinets|ear pads|coque

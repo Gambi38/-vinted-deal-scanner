@@ -18,12 +18,14 @@
   "max_items_per_search": 100,
   "max_catalog_items_per_run": 1200,
   "max_searches_per_run": 12,
-  "max_alerts_per_run": 12,
-  "max_alerts_per_category": 4,
-  "always_search_queries": ["nintendo", "playstation", "calculatrice graphique", "apple tv 4k"],
+  "max_alerts_per_run": 15,
+  "max_alerts_per_category": 8,
+  "always_search_queries": ["nintendo", "nintendo switch", "playstation", "iphone", "ipad"],
   "candidate_min_margin": 8,
   "candidate_min_roi_pct": 20,
   "min_candidate_score": 2.5,
+  "switch_game_jackpot_eur": 10,
+  "switch_game_super_jackpot_eur": 5,
   "discovery_mode": true,
   "use_legacy_search_rules": false,
   "include_personal_console_filters": false,
@@ -31,6 +33,7 @@
   "require_game_platform_in_title": false,
   "discovery_searches": [
     {"name": "DECOUVERTE - Nintendo", "category": "DISCOVERY", "query": "nintendo", "price_to": 200},
+    {"name": "DECOUVERTE - Jeux Switch sous 10 EUR", "category": "DISCOVERY", "query": "nintendo switch", "price_to": 10},
     {"name": "DECOUVERTE - PlayStation", "category": "DISCOVERY", "query": "playstation", "price_to": 300},
     {"name": "DECOUVERTE - Xbox", "category": "DISCOVERY", "query": "xbox", "price_to": 220},
     {"name": "DECOUVERTE - Consoles", "category": "DISCOVERY", "query": "console", "price_to": 300},
@@ -42,7 +45,6 @@
     {"name": "DECOUVERTE - DualSense", "category": "DISCOVERY", "query": "dualsense", "price_to": 35},
     {"name": "DECOUVERTE - Joy-Con", "category": "DISCOVERY", "query": "joy con", "price_to": 40},
     {"name": "DECOUVERTE - Volants", "category": "DISCOVERY", "query": "volant logitech", "price_to": 110},
-    {"name": "DECOUVERTE - Calculatrices", "category": "DISCOVERY", "query": "calculatrice graphique", "price_to": 60},
     {"name": "DECOUVERTE - Appareils photo", "category": "DISCOVERY", "query": "appareil photo", "price_to": 200},
     {"name": "DECOUVERTE - Mini PC", "category": "DISCOVERY", "query": "mini pc", "price_to": 140},
     {"name": "DECOUVERTE - Liseuses Kindle", "category": "DISCOVERY", "query": "kindle paperwhite", "price_to": 60},
@@ -51,8 +53,7 @@
     {"name": "DECOUVERTE - Nvidia Shield", "category": "DISCOVERY", "query": "nvidia shield tv", "price_to": 100},
     {"name": "DECOUVERTE - Casques premium", "category": "DISCOVERY", "query": "sony wh 1000xm", "price_to": 140},
     {"name": "DECOUVERTE - Cameras action", "category": "DISCOVERY", "query": "gopro hero", "price_to": 160},
-    {"name": "DECOUVERTE - Montres Garmin", "category": "DISCOVERY", "query": "garmin forerunner", "price_to": 140},
-    {"name": "DECOUVERTE - Wacom", "category": "DISCOVERY", "query": "wacom intuos", "price_to": 100}
+    {"name": "DECOUVERTE - Montres Garmin", "category": "DISCOVERY", "query": "garmin forerunner", "price_to": 140}
   ],
   "max_listing_age_hours": 0.5,
   "reject_unknown_listing_age": true,
@@ -1874,120 +1875,6 @@
       ]
     },
     {
-      "name": "ELECTRONIQUE - TI-84 Plus CE",
-      "category": "ELECTRONIQUE",
-      "query": "ti 84 plus ce",
-      "price_to": 35,
-      "rules": [
-        {
-          "label": "TI-84 Plus CE",
-          "brand": "Texas Instruments",
-          "model": "TI-84 Plus CE",
-          "must_contain": [
-            "ti",
-            "84"
-          ],
-          "any_contain": [
-            "plus ce",
-            "84 ce"
-          ],
-          "hardware_any": [
-            "calculatrice",
-            "calculator",
-            "graphique"
-          ],
-          "exclude": [
-            "pour pièces",
-            "pour pieces",
-            "for parts",
-            "hs",
-            "not working",
-            "broken",
-            "écran fissuré",
-            "ecran fissure",
-            "écran cassé",
-            "ecran casse",
-            "corrosion",
-            "oxydation",
-            "rouille",
-            "water damage",
-            "liquid damage",
-            "chargeur seul",
-            "charger only",
-            "câble seul",
-            "cable only",
-            "boite vide",
-            "boîte vide",
-            "empty box",
-            "box only"
-          ],
-          "resale_low": 90,
-          "resale_high": 120,
-          "max_buy_ratio": 0.4,
-          "min_margin": 30.0,
-          "min_roi_pct": 50,
-          "demand_score": 5
-        }
-      ]
-    },
-    {
-      "name": "ELECTRONIQUE - TI-Nspire CX II",
-      "category": "ELECTRONIQUE",
-      "query": "ti nspire cx ii",
-      "price_to": 45,
-      "rules": [
-        {
-          "label": "TI-Nspire CX II",
-          "brand": "Texas Instruments",
-          "model": "TI-Nspire CX II",
-          "must_contain": [
-            "nspire",
-            "cx"
-          ],
-          "any_contain": [
-            "ii",
-            "2"
-          ],
-          "hardware_any": [
-            "calculatrice",
-            "calculator",
-            "graphique"
-          ],
-          "exclude": [
-            "pour pièces",
-            "pour pieces",
-            "for parts",
-            "hs",
-            "not working",
-            "broken",
-            "écran fissuré",
-            "ecran fissure",
-            "écran cassé",
-            "ecran casse",
-            "corrosion",
-            "oxydation",
-            "rouille",
-            "water damage",
-            "liquid damage",
-            "chargeur seul",
-            "charger only",
-            "câble seul",
-            "cable only",
-            "boite vide",
-            "boîte vide",
-            "empty box",
-            "box only"
-          ],
-          "resale_low": 120,
-          "resale_high": 160,
-          "max_buy_ratio": 0.4,
-          "min_margin": 30.0,
-          "min_roi_pct": 45,
-          "demand_score": 5
-        }
-      ]
-    },
-    {
       "name": "ELECTRONIQUE - Sony A6000",
       "category": "ELECTRONIQUE",
       "query": "sony a6000 appareil photo",
@@ -2099,65 +1986,6 @@
           "min_margin": 30.0,
           "min_roi_pct": 30,
           "demand_score": 5
-        }
-      ]
-    },
-    {
-      "name": "ELECTRONIQUE - Sony Walkman cassette",
-      "category": "ELECTRONIQUE",
-      "query": "sony walkman cassette vintage",
-      "price_to": 30,
-      "rules": [
-        {
-          "label": "Sony Walkman Cassette Vintage",
-          "brand": "Sony",
-          "model": "Walkman Cassette",
-          "must_contain": [
-            "sony",
-            "walkman"
-          ],
-          "any_contain": [
-            "cassette",
-            "wm-",
-            "vintage"
-          ],
-          "hardware_any": [
-            "walkman",
-            "baladeur",
-            "cassette"
-          ],
-          "exclude": [
-            "pour pièces",
-            "pour pieces",
-            "for parts",
-            "hs",
-            "not working",
-            "broken",
-            "écran fissuré",
-            "ecran fissure",
-            "écran cassé",
-            "ecran casse",
-            "corrosion",
-            "oxydation",
-            "rouille",
-            "water damage",
-            "liquid damage",
-            "chargeur seul",
-            "charger only",
-            "câble seul",
-            "cable only",
-            "boite vide",
-            "boîte vide",
-            "empty box",
-            "box only"
-          ],
-          "resale_low": 80,
-          "resale_high": 180,
-          "max_buy_ratio": 0.4,
-          "min_margin": 30.0,
-          "min_roi_pct": 50,
-          "demand_score": 4,
-          "rare_collectible": true
         }
       ]
     },

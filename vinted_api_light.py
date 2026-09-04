@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V8_CATALOG_ONLY
+# VINTED_API_AIOHTTP_V11_CATALOG_ONLY
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -629,7 +629,7 @@ def candidate_rank(row):
         float(row.get("opportunity_score") or 0) * 100
         + float(row.get("demand_score") or 0) * 10
         + min(float(row.get("margin_low") or 0), 200) * 0.10
-        + (35 if row.get("price_zone") == "JACKPOT" else 0)
+        + ({"JACKPOT": 35, "SUPER_JACKPOT": 75}.get(row.get("price_zone"), 0))
         + min(float(row.get("price_drop_pct") or 0), 50) * 2
         - float(row.get("photo_condition_penalty") or 0)
         - age * 0.50
@@ -673,6 +673,25 @@ def score_candidate(rule, price, cfg):
     margin_high = high - total
     roi = (margin_low / total * 100) if total > 0 else 0
     return total, low, high, round(margin_low, 2), round(margin_high, 2), round(roi, 1)
+
+def candidate_price_zone(rule, product_type, price, cfg):
+    """Donne une priorité spéciale aux vrais jeux Switch très bon marché.
+
+    Cette règle intervient uniquement après la classification stricte. Une
+    housse, une boîte ou une console ne peut donc jamais gagner ce bonus.
+    """
+    platforms = " ".join(str(value) for value in rule.get("platform_any", []))
+    is_switch_game = (
+        product_type == "GAME"
+        and "SWITCH" in _platform_families_in(platforms)
+    )
+    if is_switch_game:
+        if float(price) <= float(cfg.get("switch_game_super_jackpot_eur", 5)):
+            return "SUPER_JACKPOT"
+        if float(price) <= float(cfg.get("switch_game_jackpot_eur", 10)):
+            return "JACKPOT"
+    hot_buy_price = float(rule.get("hot_buy_price", 0) or 0)
+    return "JACKPOT" if hot_buy_price and float(price) <= hot_buy_price else "CIBLE"
 
 def _optional_count(value):
     try:
@@ -779,7 +798,10 @@ async def ntfy_send(row, session):
     server = os.getenv("NTFY_SERVER", "https://ntfy.sh").rstrip("/")
     url = f"{server}/{urllib.parse.quote(topic, safe='')}"
     risk_suffix = f" | ATTENTION: {row['risk']}" if row.get("risk") else ""
-    zone = " JACKPOT" if row.get("price_zone") == "JACKPOT" else ""
+    zone = {
+        "JACKPOT": " JACKPOT",
+        "SUPER_JACKPOT": " SUPER JACKPOT ≤5€",
+    }.get(row.get("price_zone"), "")
     type_label = {
         "CONSOLE": "CONSOLE", "GAME": "JEU", "ACCESSORY": "ACCESSOIRE",
         "SMARTPHONE": "SMARTPHONE", "TABLET": "TABLETTE",
@@ -804,7 +826,10 @@ async def ntfy_send(row, session):
         )
     headers = {
         "Title": f"Vinted {type_label} {row['opportunity_score']}/10",
-        "Priority": "high" if row["opportunity_score"] >= 8 else "default",
+        "Priority": (
+            "max" if row.get("price_zone") == "SUPER_JACKPOT"
+            else "high" if row["opportunity_score"] >= 8 else "default"
+        ),
         "Tags": "moneybag,shopping_cart", "Click": row["url"],
         "Actions": f"view, Ouvrir Vinted, {row['url']}",
     }
@@ -1037,6 +1062,33 @@ CONSOLE_LISTING_PREFIX_WORDS = frozenset((
     "playstation", "xbox", "new",
 ))
 
+# Descripteurs matériels admis après le nom de la console. Un autre mot après
+# « Nintendo Switch », « PS Vita », « Nintendo 64 », etc. est généralement le
+# titre d'un jeu : « Nintendo Switch Ring Fit » ne doit pas devenir une console.
+CONSOLE_LISTING_SUFFIX_WORDS = frozenset((
+    "console", "consola", "konsole", "fat", "slim", "pro", "digital",
+    "disc", "disque", "lecteur", "oled", "lcd", "lite", "v1", "v2",
+    "series", "one", "x", "s", "new", "xl", "2ds", "3ds", "3000",
+    "3004", "go", "gbc", "gba", "sp", "nes", "snes", "gamecube",
+    "noir", "noire", "black", "blanc", "blanche", "white", "bleu",
+    "blue", "rouge", "red", "gris", "grise", "grey", "gray", "neon",
+    "néon", "rose", "pink", "violet", "purple", "jaune", "yellow",
+    "vert", "green", "edition", "édition", "speciale", "spéciale",
+    "collector", "limitee", "limitée", "standard", "originale",
+    "original", "fonctionnelle", "fonctionnel", "testee", "testée",
+    "marche", "parfait", "parfaite", "etat", "état", "bon", "bonne",
+    "comme", "neuf", "neuve", "occasion", "complete", "complète",
+    "seule", "seul", "avec", "sans", "plus", "lot", "pack", "bundle",
+    "manette", "manettes", "controller", "controllers", "joycon",
+    "joy", "con", "dock", "chargeur", "cable", "câble", "hdmi",
+    "alimentation", "batterie", "battery", "batterij", "akku", "bateria",
+    "batteria", "incluse", "inclus", "included", "neuve", "neuf",
+    "boite", "boîte", "carton", "garantie", "facture",
+    "stockage", "ssd", "hdd", "to", "tb", "go", "gb", "512", "500",
+    "256", "128", "64", "32", "1", "2", "jailbreak", "moddee",
+    "moddée", "craquee", "craquée",
+))
+
 
 def _platform_families_in(text):
     text_n = norm(text)
@@ -1097,6 +1149,43 @@ def _console_platform_preceded_by_product_name(title, rule):
         not word.isdigit() and word not in allowed
         for word in prefix_words
     )
+
+
+def _console_platform_followed_by_product_name(title, rule):
+    """Repère un titre de jeu placé après le nom de la plateforme."""
+    title_n = norm(title)
+    identity = " ".join((
+        str(rule.get("brand", "")), str(rule.get("model", "")),
+        " ".join(str(value) for value in rule.get("must_contain", [])),
+    ))
+    families = _platform_families_in(identity)
+    aliases = sorted(
+        {
+            norm(alias)
+            for family in families
+            for alias in PLATFORM_FAMILIES.get(family, ())
+            if norm(alias)
+        },
+        key=len, reverse=True,
+    )
+    for alias in aliases:
+        match = re.search(rf"(?:^|\s){re.escape(alias)}(?:\s|$)", title_n)
+        if not match:
+            continue
+        suffix = title_n[match.end():].strip()
+        if not suffix:
+            continue
+        words = suffix.split()
+        # « édition Zelda/Mario » décrit souvent une console en édition
+        # spéciale ; on la garde, tout en laissant un avertissement souple.
+        if any(word in {"edition", "édition", "speciale", "spéciale"} for word in words):
+            return False
+        if any(
+            not word.isdigit() and word not in CONSOLE_LISTING_SUFFIX_WORDS
+            for word in words
+        ):
+            return True
+    return False
 
 
 def _starts_with_term(title, terms):
@@ -1168,6 +1257,9 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         if (not has_console_word and
                 _console_platform_preceded_by_product_name(title, rule)):
             return False, "nom de produit avant la plateforme: probablement un jeu"
+        if (not has_console_word and
+                _console_platform_followed_by_product_name(title, rule)):
+            return False, "nom de produit après la plateforme: probablement un jeu"
         game_words = (
             "jeu", "jeux", "game", "games", "juego", "juegos",
             "gioco", "giochi", "spiel", "spiele", "spel", "spelletjes",
@@ -1665,9 +1757,8 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             age_hours=age, favourite_count=fav_count,
             view_count=view_count, cfg=cfg,
         )
-        hot_buy_price = float(matched_rule.get("hot_buy_price", 0) or 0)
-        price_zone = "JACKPOT" if hot_buy_price and price <= hot_buy_price else "CIBLE"
-        if price_zone == "JACKPOT":
+        price_zone = candidate_price_zone(matched_rule, product_type, price, cfg)
+        if price_zone in {"JACKPOT", "SUPER_JACKPOT"}:
             score = min(10, score + 1)
         score -= min(
             float(cfg.get("soft_risk_penalty_cap", 1.0)),

@@ -15,9 +15,11 @@ class UniversalCatalogTests(unittest.TestCase):
         cls.catalog = DeviceCatalog(cls.rows)
 
     def test_seed_catalog_covers_requested_families(self):
-        self.assertEqual(len(self.rows), 55)
+        self.assertEqual(len(self.rows), 84)
         types = {row["product_type"] for row in self.rows}
-        self.assertTrue({"SMARTPHONE", "TABLET", "LAPTOP", "TOOL"}.issubset(types))
+        self.assertTrue({
+            "SMARTPHONE", "TABLET", "LAPTOP", "TOOL", "EREADER", "AUDIO",
+        }.issubset(types))
 
     def test_specific_phone_wins_over_base_model(self):
         source, rule = self.catalog.match("iPhone 13 Pro 128 Go", 250)
@@ -32,6 +34,9 @@ class UniversalCatalogTests(unittest.TestCase):
             ("Chargeur MacBook Air M1", 25),
             ("Batterie Makita DHP484", 25),
             ("Clavier pour Surface Pro 7", 40),
+            ("Coussinets Sony WH-1000XM3", 12),
+            ("Back glass iPhone 15 Pro Max", 25),
+            ("Housse Kindle Oasis 10 génération", 15),
         )
         for title, price in examples:
             self.assertEqual(self.catalog.match(title, price), (None, None), title)
@@ -89,7 +94,44 @@ class UniversalCatalogTests(unittest.TestCase):
                 "--max-age-hours", "0",
             ]), 0)
             data = json.loads(target.read_text(encoding="utf-8"))
-            self.assertEqual(data["reference_count"], 55)
+            self.assertEqual(data["reference_count"], 84)
+            self.assertTrue(data["source_fingerprint"])
+
+    def test_changed_local_seed_invalidates_recent_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            source = directory / "devices.csv"
+            target = directory / "catalog.json"
+            header = (
+                "name,product_type,category,brand,aliases,query,price_max,"
+                "hot_buy,resale_low,resale_high,demand_score,sales_volume,"
+                "description,exclude\n"
+            )
+            source.write_text(
+                header + "Phone 123,SMARTPHONE,SMARTPHONE,X,phone 123,phone,"
+                "50,40,100,120,5,0,Test,\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(main([
+                "--input", str(source), "--output", str(target),
+                "--max-age-hours", "24",
+            ]), 0)
+            source.write_text(
+                header + "Phone 456,SMARTPHONE,SMARTPHONE,X,phone 456,phone,"
+                "60,45,110,130,5,0,Test,\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(main([
+                "--input", str(source), "--output", str(target),
+                "--max-age-hours", "24",
+            ]), 0)
+            data = json.loads(target.read_text(encoding="utf-8"))
+            self.assertEqual(data["references"][0]["name"], "Phone 456")
+
+    def test_low_turnover_seed_items_are_removed(self):
+        names = " ".join(row["name"].lower() for row in self.rows)
+        for unwanted in ("calculatrice", "walkman", "fluke", "wacom"):
+            self.assertNotIn(unwanted, names)
 
 
 if __name__ == "__main__":

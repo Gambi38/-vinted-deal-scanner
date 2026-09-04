@@ -1,0 +1,102 @@
+VINTED DEAL SCANNER V11 — SWITCH JACKPOT ET ANTI-FAUX POSITIFS
+================================================================
+
+CE QUI ÉTAIT FAUX DANS LES LOGS
+-------------------------------
+Le scanner accordait parfois le prix de revente d'une console à un objet qui
+contenait seulement le nom de la plateforme. Exemples observés : coque 3DS,
+adaptateur Switch, gâchette Switch, jeu Nintendo 64 et jeu PS Vita.
+
+La cause était double :
+
+1. « Switch », « 3DS », « PS Vita », « PS4 Pro » ou « Nintendo 64 » pouvaient
+   suffire à sélectionner une règle CONSOLE.
+2. Le cache runtime_data/device_catalog.json pouvait être conservé 24 heures
+   après une modification du CSV, donc les nouvelles exclusions n'étaient pas
+   forcément utilisées tout de suite.
+
+La V11 vérifie désormais la structure du titre. Si le nom de la plateforme est
+suivi du nom d'un produit qui n'est pas un descriptif matériel de console,
+l'annonce n'hérite jamais de la valeur de la console. Le cache appareils est
+également invalidé dès que le CSV ou ses paramètres changent.
+
+
+JEUX SWITCH À TRÈS BAS PRIX
+---------------------------
+- Jeu Switch reconnu à 10 EUR ou moins : zone JACKPOT.
+- Jeu Switch reconnu à 5 EUR ou moins : zone SUPER JACKPOT, priorité maximale.
+- Ce bonus ne s'applique qu'à une règle GAME avec plateforme Switch confirmée.
+- Une boîte vide, une clé USB, un porte-clés, une coque, une housse, un câble,
+  un adaptateur ou une console ne peut pas recevoir ce bonus.
+
+Le catalogue contrôlé contient maintenant 75 jeux, dont 30 nouveaux jeux
+Switch. PriceCharting peut toujours fournir plusieurs milliers de jeux si le
+secret PRICECHARTING_CSV_URL est configuré.
+
+
+CATALOGUES FOURNIS
+------------------
+- produits_cibles.json : 109 références (75 jeux, 24 consoles, 10 accessoires).
+- consoles_cibles.json : 34 consoles et appareils de jeu.
+- electroniques_cibles.json : 28 petites électroniques à demande élevée.
+- appareils_cibles.csv : 84 smartphones, tablettes, liseuses, casques, Mac/PC
+  et outils rentables de départ.
+
+Les calculatrices, Walkman, tablettes graphiques Wacom et Fluke 117 ont été
+retirés pour éviter de consommer les recherches avec des produits moins rapides
+à revendre.
+
+
+FICHIERS À REMPLACER SUR GITHUB
+-------------------------------
+À la racine du dépôt, remplace tous les fichiers contenus dans le ZIP sauf
+vinted-scan.yml. Place ce dernier ici :
+
+  .github/workflows/vinted-scan.yml
+
+Il faut notamment remplacer ensemble le code, les JSON/CSV et les tests. Ne
+garde pas une ancienne version de product_classifier.py, universal_catalog.py
+ou config.json avec le nouveau vinted_api_light.py.
+
+
+APRÈS LE REMPLACEMENT
+---------------------
+1. Lance Actions > Vinted API rapide > Run workflow.
+2. La section « Vérifier le bot » doit afficher :
+
+     Ran 117 tests
+     OK
+
+3. Dans le scan réel, vérifie que le journal indique jusqu'à 15 alertes/cycle.
+4. Les anciennes annonces déjà vues restent dans l'artefact. Ce comportement
+   est normal et évite les notifications en double.
+
+
+RÉSULTATS ATTENDUS SUR LES ANCIENS FAUX POSITIFS
+------------------------------------------------
+Rejetés :
+- Starfox Nintendo Switch 2 keychain
+- Carcasa New Nintendo 3DS XL
+- PS4 Pro controller
+- Nintendo Switch AC adapter
+- gâchette Nintendo Switch
+- pochette de transport Switch
+- jeu Nintendo 64 pris pour la console
+- jeu PS Vita pris pour la console
+
+Correctement conservés comme jeux :
+- Digimon Survive Nintendo Switch
+- Nintendo Switch Sports
+- Mario Kart 8 Deluxe Nintendo Switch
+- Pokémon Émeraude GBA
+
+Correctement conservé comme console :
+- PS4 Slim
+
+
+IMPORTANT
+---------
+Un prix de 5 EUR n'est pas automatiquement une bonne affaire. Le scanner exige
+encore un produit reconnu, le bon type, la bonne plateforme et une marge
+positive. Cette précaution évite qu'une coque à 5 EUR soit classée comme une
+console à forte marge.

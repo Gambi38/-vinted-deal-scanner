@@ -18,8 +18,11 @@ class ElectronicsCatalogTests(unittest.TestCase):
     def test_dedicated_electronics_catalog_has_prudent_prices(self):
         data = bot.load_json(bot.ELECTRONICS_TARGETS_PATH, {})
         products = data.get("products", [])
-        self.assertEqual(len(products), 34)
-        self.assertGreaterEqual(len({item["type"] for item in products}), 9)
+        self.assertEqual(len(products), 28)
+        types = {item["type"] for item in products}
+        self.assertTrue({"EREADER", "AUDIO", "CAMERA", "MINI_PC"}.issubset(types))
+        self.assertNotIn("CALCULATOR", types)
+        self.assertNotIn("DRAWING_TABLET", types)
         for product in products:
             self.assertTrue(product.get("description"), product.get("name"))
             self.assertGreater(float(product.get("price_max", 0)), 0)
