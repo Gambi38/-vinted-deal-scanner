@@ -92,6 +92,12 @@ class UniversalCatalogTests(unittest.TestCase):
         self.assertLess(len(searches), len(self.catalog))
         self.assertIn("iphone", {row["query"] for row in searches})
 
+    def test_precision_searches_use_exact_device_names_and_prices(self):
+        searches = self.catalog.precision_searches()
+        iphone = next(row for row in searches if row["query"] == "iPhone 11")
+        self.assertEqual(iphone["price_to"], 120)
+        self.assertEqual(iphone["product_type"], "SMARTPHONE")
+
     def test_cli_builds_persistent_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "catalog.json"

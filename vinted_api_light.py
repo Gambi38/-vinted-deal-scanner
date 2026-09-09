@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V12_CATALOG_ONLY
+# VINTED_API_AIOHTTP_V14_DUAL_LANE
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -274,9 +274,10 @@ class AsyncRateLimiter(TokenBucketRateLimiter):
 # ---------- Gestion état ----------
 def search_seen_key(search, item_id):
     name = norm(str(search.get("name") or search.get("query") or "search"))
-    # Nouveau préfixe : les anciens échecs de l'API détail ne doivent pas
-    # condamner définitivement des annonces qui n'ont jamais été analysées.
-    return f"api3::search::{name}::{item_id}"
+    # Nouveau préfixe V13 : les annonces rejetées sous l'ancienne fenêtre de
+    # 30 minutes sont réévaluées une fois avec la fenêtre de 3 heures.
+    # Les alertes déjà envoyées restent dédupliquées par alert_seen_key().
+    return f"api4::search::{name}::{item_id}"
 
 def alert_seen_key(item_id):
     return f"alert::{item_id}"
@@ -586,21 +587,81 @@ def _collapse_personal_variants(searches):
             families[family] = search
     return list(families.values()) + regular
 
+
+def interleave_precision_searches(searches):
+    """Répartit jeux, consoles et appareils dans chaque fenêtre de rotation."""
+    buckets = {"GAME": [], "CONSOLE": [], "DEVICE": []}
+    for search in searches:
+        product_type = str(search.get("product_type", "")).upper()
+        bucket = product_type if product_type in {"GAME", "CONSOLE"} else "DEVICE"
+        buckets[bucket].append(search)
+    device_priority = {
+        "SMARTPHONE": 0, "TABLET": 1, "COMPUTER": 2, "LAPTOP": 2,
+        "DESKTOP": 2, "MINI_PC": 2, "EREADER": 3, "AUDIO": 4,
+        "CAMERA": 5, "ACTION_CAMERA": 5, "SMARTWATCH": 6,
+        "STREAMING": 7, "ELECTRONICS": 8, "TOOL": 9,
+    }
+
+    def demand(search):
+        rules = search.get("rules", [])
+        rule = rules[0] if rules else {}
+        return int(search.get("demand_score", rule.get("demand_score", 0)) or 0)
+
+    buckets["DEVICE"].sort(key=lambda search: (
+        device_priority.get(str(search.get("product_type", "")).upper(), 20),
+        -demand(search), norm(search.get("query", "")),
+    ))
+    # Huit recherches précises donnent quatre jeux, deux consoles et deux
+    # appareils tant que chaque famille contient encore des références.
+    pattern = ("GAME", "GAME", "DEVICE", "CONSOLE",
+               "GAME", "DEVICE", "CONSOLE", "GAME")
+    ordered = []
+    positions = {key: 0 for key in buckets}
+    total = sum(len(rows) for rows in buckets.values())
+    while len(ordered) < total:
+        added = False
+        for key in pattern:
+            index = positions[key]
+            if index < len(buckets[key]):
+                ordered.append(buckets[key][index])
+                positions[key] += 1
+                added = True
+        if not added:
+            break
+    return ordered
+
+
 def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
-    """Garde les recherches clés et fait tourner les autres à chaque cycle."""
+    """Planifie un mélange stable de recherches larges et de produits précis.
+
+    Les recherches larges découvrent les titres inattendus. Les recherches
+    précises garantissent que le catalogue contrôlé n'est pas seulement utilisé
+    après le téléchargement : ses noms de produits sont réellement recherchés
+    sur Vinted. Elles ne lisent qu'une page et coûtent donc deux fois moins
+    d'appels qu'une recherche large en mode snipe.
+    """
     searches = _collapse_personal_variants(_merge_searches(searches))
     limit = max(1, int(cfg.get("max_searches_per_run", 10)))
     anchors = {norm(x) for x in cfg.get("always_search_queries", [])}
     fixed = [search for search in searches if norm(search.get("query", "")) in anchors]
     fixed = fixed[:limit]
     remaining = [search for search in searches if search not in fixed]
+    precision = [
+        search for search in remaining
+        if search.get("_search_pool") == "precision"
+    ]
+    discovery = [
+        search for search in remaining
+        if search.get("_search_pool") != "precision"
+    ]
     slots = max(0, limit - len(fixed))
     if cursor is None:
         cursor_data = load_json(SCAN_CURSOR_PATH, {})
         try:
             cursor = (
                 int(cursor_data.get("cursor", 0))
-                if isinstance(cursor_data, dict) and cursor_data.get("schema") == 4
+                if (isinstance(cursor_data, dict)
+                    and cursor_data.get("schema") in {4, 5})
                 else 0
             )
         except (TypeError, ValueError):
@@ -610,15 +671,47 @@ def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
             cursor = int(cursor)
         except (TypeError, ValueError):
             cursor = 0
-    rotating = []
+    precision_limit = max(0, int(cfg.get("precision_searches_per_run", 0)))
+    precision_slots = min(slots, precision_limit, len(precision))
+    discovery_slots = min(slots - precision_slots, len(discovery))
+
+    def rotate(pool, count):
+        if not pool or count <= 0:
+            return []
+        start = cursor % len(pool)
+        return [pool[(start + index) % len(pool)] for index in range(count)]
+
+    rotating_precision = rotate(precision, precision_slots)
+    rotating_discovery = rotate(discovery, discovery_slots)
+
+    # Si un pool ne remplit pas son quota, l'autre récupère les créneaux.
+    missing = slots - len(rotating_precision) - len(rotating_discovery)
+    if missing > 0 and len(precision) > len(rotating_precision):
+        extra_pool = [row for row in precision if row not in rotating_precision]
+        rotating_precision.extend(rotate(extra_pool, min(missing, len(extra_pool))))
+        missing = slots - len(rotating_precision) - len(rotating_discovery)
+    if missing > 0 and len(discovery) > len(rotating_discovery):
+        extra_pool = [row for row in discovery if row not in rotating_discovery]
+        rotating_discovery.extend(rotate(extra_pool, min(missing, len(extra_pool))))
+
+    rotating_count = max(
+        len(rotating_precision), len(rotating_discovery), 1 if remaining else 0,
+    )
     if remaining and slots:
-        cursor %= len(remaining)
-        rotating = [remaining[(cursor + index) % len(remaining)] for index in range(min(slots, len(remaining)))]
-        cursor = (cursor + len(rotating)) % len(remaining)
+        # Le curseur suit en priorité le pool précis. Utiliser la taille du
+        # mélange total pouvait laisser quelques produits définitivement hors
+        # des fenêtres lorsque les deux tailles avaient un diviseur commun.
+        rotation_modulus = len(precision) or len(discovery) or len(remaining)
+        cursor = (cursor + rotating_count) % max(rotation_modulus, 1)
         if persist_cursor:
-            save_json(SCAN_CURSOR_PATH, {"schema": 4, "cursor": cursor})
+            save_json(SCAN_CURSOR_PATH, {"schema": 5, "cursor": cursor})
+    cfg["_search_plan_counts"] = {
+        "fixed": len(fixed),
+        "precision": len(rotating_precision),
+        "discovery": len(rotating_discovery),
+    }
     cfg["_next_scan_cursor"] = cursor
-    return fixed + rotating
+    return fixed + rotating_precision + rotating_discovery
 
 def candidate_rank(row):
     """Classe rentabilité, demande, fraîcheur et concurrence."""
@@ -1681,8 +1774,9 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
         int(cfg.get("max_items_per_search", 50)),
     )
     per_page = int(cfg.get("catalog_per_page", 50))
+    configured_pages = search.get("max_pages", cfg.get("snipe_max_pages", 2))
     max_pages = (
-        max(1, min(int(cfg.get("snipe_max_pages", 2)), 4))
+        max(1, min(int(configured_pages), 4))
         if cfg.get("snipe_mode", True) else 1
     )
     items = []
@@ -2098,17 +2192,40 @@ async def main_async():
     async with managed_http_session(base_url, cfg, headers) as session:
 
         discovery_mode = bool(cfg.get("discovery_mode", True))
-        all_searches = (
-            list(cfg.get("discovery_searches", []))
-            + reference_catalog.discovery_searches(
-                cfg.get("pricecharting_discovery_max_price", 300),
+        if discovery_mode:
+            broad_searches = (
+                list(cfg.get("discovery_searches", []))
+                + reference_catalog.discovery_searches(
+                    cfg.get("pricecharting_discovery_max_price", 300),
+                )
+                + device_catalog.discovery_searches(
+                    cfg.get("device_catalog_discovery_max_price", 800),
+                )
             )
-            + device_catalog.discovery_searches(
-                cfg.get("device_catalog_discovery_max_price", 800),
+            broad_searches = [
+                {**search, "_search_pool": "discovery"}
+                for search in broad_searches
+            ]
+            # La voie précise parcourt toutes les références contrôlées à tour
+            # de rôle. Une seule page suffit car elle est triée par fraîcheur.
+            precision_sources = (
+                product_searches + device_catalog.precision_searches()
             )
-            if discovery_mode
-            else product_searches
-        )
+            precision_searches = [
+                {
+                    **search,
+                    "_search_pool": "precision",
+                    "max_pages": 1,
+                    "max_items": min(
+                        int(search.get("max_items", cfg.get("catalog_per_page", 50))),
+                        int(cfg.get("catalog_per_page", 50)),
+                    ),
+                }
+                for search in interleave_precision_searches(precision_sources)
+            ]
+            all_searches = broad_searches + precision_searches
+        else:
+            all_searches = product_searches
         searches = select_searches_for_run(
             all_searches, cfg, cursor=scan_cursor, persist_cursor=False,
         )
@@ -2117,10 +2234,34 @@ async def main_async():
         cfg["max_items_per_search"] = min(
             int(cfg.get("max_items_per_search", 5)), per_search,
         )
+        plan = cfg.get("_search_plan_counts", {})
+        planned_requests = sum(
+            max(1, min(int(search.get(
+                "max_pages", cfg.get("snipe_max_pages", 2),
+            )), 4))
+            for search in searches
+        )
+        planned_items = sum(
+            min(
+                int(search.get("max_items", cfg["max_items_per_search"])),
+                int(cfg.get("catalog_per_page", 50)) * max(
+                    1, min(int(search.get(
+                        "max_pages", cfg.get("snipe_max_pages", 2),
+                    )), 4),
+                ),
+            )
+            for search in searches
+        )
         LOGGER.info(
-            "Cycle rapide | %s/%s recherches | maximum %s annonces",
+            "Cycle double voie | %s/%s recherches | jusqu'à %s annonces",
             len(searches), len(_collapse_personal_variants(_merge_searches(all_searches))),
-            len(searches) * cfg["max_items_per_search"],
+            min(max_catalog_items, planned_items),
+        )
+        LOGGER.info(
+            "Plan recherches | fixes %s | produits précis %s | découverte %s | "
+            "budget prévu <= %s requêtes",
+            plan.get("fixed", 0), plan.get("precision", 0),
+            plan.get("discovery", 0), planned_requests,
         )
         semaphore = asyncio.Semaphore(concurrency)
 

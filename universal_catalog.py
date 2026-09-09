@@ -320,6 +320,27 @@ class DeviceCatalog:
             for query, price in sorted(by_query.items()) if price > 0
         ]
 
+    def precision_searches(self) -> list[dict]:
+        """Retourne une requête exacte par appareil pour la rotation snipe."""
+        return [
+            {
+                "name": f"APPAREIL PRECIS - {row['name']}",
+                "category": row["category"],
+                "product_type": row["product_type"],
+                "query": row["name"],
+                "price_to": float(row["price_max"]),
+                "demand_score": int(row.get("demand_score", 0)),
+            }
+            for row in sorted(
+                self.references,
+                key=lambda value: (
+                    -int(value.get("demand_score", 0)),
+                    -int(value.get("sales_volume", 0)),
+                    str(value.get("name", "")),
+                ),
+            )
+        ]
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Construit le catalogue appareils")

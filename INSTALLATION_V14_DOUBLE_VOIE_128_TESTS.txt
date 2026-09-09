@@ -1,0 +1,63 @@
+VINTED DEAL SCANNER V14 — DOUBLE VOIE, PLUS DE VRAIS RESULTATS
+================================================================
+
+OBJECTIF
+--------
+Cette version corrige le principal défaut de couverture de la V13.
+Le bot connaissait 143 produits contrôlés, mais en mode découverte il
+n'envoyait à Vinted que des recherches générales comme « nintendo » ou
+« playstation ». Les références précises servaient seulement à classer les
+annonces déjà reçues. Un bon jeu ou un modèle précis absent des deux premières
+pages générales ne pouvait donc jamais être détecté.
+
+CE QUI CHANGE
+-------------
+1. Double voie à chaque cycle :
+   - 5 recherches fixes importantes ;
+   - 8 recherches exactes de produits rentables ;
+   - 5 recherches larges de découverte.
+
+2. Les recherches exactes lisent seulement la première page triée par date.
+   Le cycle reste limité à 28 requêtes, comme avant.
+
+3. Rotation complète du catalogue : aucune référence précise ne reste bloquée
+   hors du planning.
+
+4. Répartition immédiate des 8 recherches précises :
+   - 4 jeux ;
+   - 2 consoles ;
+   - 2 appareils rentables.
+
+5. Les smartphones et tablettes sont prioritaires parmi les appareils. Le bot
+   peut par exemple chercher « iPhone 13 Pro » au lieu de dépendre uniquement
+   de la page très encombrée « iPhone ».
+
+6. Les garde-fous V13 restent actifs :
+   - coque, housse, verre trempé, adaptateur et pièce détachée rejetés ;
+   - jeu classé comme jeu, jamais valorisé comme console ;
+   - paiement PayPal/virement/hors Vinted rejeté ;
+   - volant supprimé ;
+   - âge maximal strict de 30 minutes, baisses de prix comprises ;
+   - priorité absolue aux annonces instantanées ;
+   - déduplication, baisse de prix, score, photos et rapport conservés.
+
+INSTALLATION
+------------
+Remplacer tous les fichiers du dépôt GitHub par le contenu de cette archive,
+en conservant le secret NTFY_TOPIC dans Settings > Secrets and variables >
+Actions. Ne jamais ajouter le fichier .env réel au dépôt.
+
+Ensuite :
+1. Commit changes.
+2. Ouvrir Actions > Vinted API rapide.
+3. Cliquer Run workflow.
+4. Vérifier dans les logs :
+   « Cycle double voie »
+   « Plan recherches | fixes 5 | produits précis 8 | découverte 5 »
+   « budget prévu <= 28 requêtes »
+
+VALIDATION
+----------
+128 tests passent. Le plan réel a été simulé avec les 143 cibles contrôlées et
+les 84 appareils : 18 recherches par cycle, 28 appels maximum, avec jeux,
+consoles et smartphones présents dès le premier cycle.

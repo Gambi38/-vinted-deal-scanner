@@ -44,13 +44,17 @@ class ApiOnlyTests(unittest.TestCase):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
         self.assertEqual(cfg["catalog_per_page"], 50)
         self.assertEqual(cfg["max_items_per_search"], 100)
-        self.assertEqual(cfg["max_catalog_items_per_run"], 1200)
-        self.assertEqual(cfg["max_searches_per_run"], 12)
-        self.assertEqual(cfg["max_alerts_per_run"], 15)
-        self.assertEqual(cfg["max_alerts_per_category"], 8)
+        self.assertEqual(cfg["max_catalog_items_per_run"], 1400)
+        self.assertEqual(cfg["max_searches_per_run"], 18)
+        self.assertEqual(cfg["precision_searches_per_run"], 8)
+        self.assertEqual(cfg["max_alerts_per_run"], 20)
+        self.assertEqual(cfg["max_alerts_per_category"], 10)
+        self.assertEqual(cfg["max_listing_age_hours"], 0.5)
+        self.assertEqual(cfg["price_drop_max_age_hours"], 0.5)
+        self.assertIn("jeu switch", cfg["always_search_queries"])
         self.assertTrue(cfg["snipe_mode"])
         self.assertEqual(cfg["snipe_max_pages"], 2)
-        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 24)
+        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 28)
         self.assertEqual(cfg["min_candidate_score"], 2.5)
         self.assertEqual(cfg["popularity_penalty_cap"], 1.0)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
@@ -98,6 +102,20 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertTrue(bot.freshness_check((now - timedelta(minutes=29)).isoformat(), cfg, now)[0])
         self.assertFalse(bot.freshness_check((now - timedelta(minutes=31)).isoformat(), cfg, now)[0])
 
+    def test_v14_thirty_minute_window_rechecks_old_search_rejections(self):
+        cfg = bot.load_json(bot.CONFIG_PATH, {})
+        now = datetime.now(timezone.utc)
+        self.assertTrue(bot.freshness_check(
+            (now - timedelta(minutes=29)).isoformat(), cfg, now,
+        )[0])
+        self.assertFalse(bot.freshness_check(
+            (now - timedelta(minutes=31)).isoformat(), cfg, now,
+        )[0])
+        search = {"name": "Jeux Switch", "query": "jeu switch"}
+        old_rejection = {"api3::search::jeux switch::123"}
+        self.assertFalse(bot.item_already_seen(old_rejection, search, "123"))
+        self.assertTrue(bot.item_already_seen({bot.alert_seen_key("123")}, search, "123"))
+
     def test_personal_filter_conversion(self):
         rows = bot.convert_personal_filter({
             "actif": True, "nom": "Switch OLED", "categorie": "CONSOLE",
@@ -137,6 +155,92 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertIn("nintendo switch", [x["query"] for x in first])
         self.assertNotEqual([x["query"] for x in first[2:]],
                             [x["query"] for x in second[2:]])
+
+    def test_dual_lane_scheduler_includes_eight_precise_products(self):
+        broad = [
+            {"name": f"D{i}", "query": f"broad {i}", "_search_pool": "discovery"}
+            for i in range(12)
+        ]
+        precise = [
+            {"name": f"P{i}", "query": f"product {i}",
+             "_search_pool": "precision", "max_pages": 1}
+            for i in range(30)
+        ]
+        cfg = {
+            "max_searches_per_run": 18,
+            "precision_searches_per_run": 8,
+            "always_search_queries": ["broad 0", "broad 1", "broad 2",
+                                      "broad 3", "broad 4"],
+        }
+        selected = bot.select_searches_for_run(
+            broad + precise, cfg, cursor=0, persist_cursor=False,
+        )
+        self.assertEqual(len(selected), 18)
+        self.assertEqual(
+            sum(row.get("_search_pool") == "precision" for row in selected), 8,
+        )
+        self.assertTrue(all(
+            row.get("max_pages") == 1
+            for row in selected if row.get("_search_pool") == "precision"
+        ))
+        self.assertEqual(cfg["_search_plan_counts"], {
+            "fixed": 5, "precision": 8, "discovery": 5,
+        })
+
+    def test_precision_rotation_starts_with_all_profitable_families(self):
+        searches = []
+        for product_type, count in (("CONSOLE", 12), ("GAME", 20),
+                                    ("SMARTPHONE", 12)):
+            searches.extend({
+                "name": f"{product_type}-{index}",
+                "query": f"{product_type.lower()} {index}",
+                "product_type": product_type,
+            } for index in range(count))
+        first = bot.interleave_precision_searches(searches)[:8]
+        types = [row["product_type"] for row in first]
+        self.assertEqual(types.count("GAME"), 4)
+        self.assertEqual(types.count("CONSOLE"), 2)
+        self.assertEqual(types.count("SMARTPHONE"), 2)
+
+    def test_precision_devices_prioritise_phones_over_slow_categories(self):
+        ordered = bot.interleave_precision_searches([
+            {"query": "kindle", "product_type": "EREADER"},
+            {"query": "iphone 13", "product_type": "SMARTPHONE"},
+            {"query": "kobo", "product_type": "EREADER"},
+        ])
+        self.assertEqual(ordered[0]["query"], "iphone 13")
+
+    def test_precision_rotation_eventually_covers_every_product(self):
+        broad = [
+            {"query": f"broad {index}", "_search_pool": "discovery"}
+            for index in range(5)
+        ]
+        precise = [
+            {"query": f"product {index}", "_search_pool": "precision"}
+            for index in range(17)
+        ]
+        cfg = {
+            "max_searches_per_run": 8,
+            "precision_searches_per_run": 4,
+            "always_search_queries": [],
+        }
+        cursor = 0
+        covered = set()
+        for _ in range(17):
+            selected = bot.select_searches_for_run(
+                broad + precise, cfg, cursor=cursor, persist_cursor=False,
+            )
+            cursor = cfg["_next_scan_cursor"]
+            covered.update(
+                row["query"] for row in selected
+                if row.get("_search_pool") == "precision"
+            )
+        self.assertEqual(covered, {row["query"] for row in precise})
+
+    def test_discovery_mode_source_includes_controlled_product_queries(self):
+        source = Path(bot.__file__).read_text(encoding="utf-8")
+        self.assertIn("broad_searches + precision_searches", source)
+        self.assertIn('"_search_pool": "precision"', source)
 
     def test_personal_variants_use_only_the_most_precise_query(self):
         searches = [
@@ -592,9 +696,21 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 147)
+        self.assertEqual(len(searches), 143)
         types = {search["product_type"] for search in searches}
         self.assertTrue({"CONSOLE", "GAME", "ACCESSORY"}.issubset(types))
+
+    def test_wheels_are_not_searched_or_loaded_as_targets(self):
+        cfg = bot.load_json(bot.CONFIG_PATH, {})
+        discovery = " ".join(
+            str(row.get("query", "")) for row in cfg.get("discovery_searches", [])
+        ).lower()
+        self.assertNotIn("volant", discovery)
+        self.assertNotIn("logitech", discovery)
+        targets = bot.load_target_products()
+        for search in targets:
+            for rule in search.get("rules", []):
+                self.assertNotEqual(rule.get("accessory_type"), "WHEEL")
 
     def test_dedicated_console_catalog_has_prices_and_descriptions(self):
         data = bot.load_json(bot.CONSOLES_TARGETS_PATH, {})
