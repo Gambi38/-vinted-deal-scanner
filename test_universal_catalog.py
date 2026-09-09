@@ -98,6 +98,17 @@ class UniversalCatalogTests(unittest.TestCase):
         self.assertEqual(iphone["price_to"], 120)
         self.assertEqual(iphone["product_type"], "SMARTPHONE")
 
+    def test_smartphone_multiplier_lowers_buy_prices_only(self):
+        catalog = DeviceCatalog([dict(row) for row in self.rows])
+        iphone = next(row for row in catalog.references
+                      if row["name"] == "iPhone 11")
+        original_resale = iphone["resale_low"]
+        changed = catalog.apply_buy_price_multiplier("SMARTPHONE", 0.80)
+        self.assertGreater(changed, 0)
+        self.assertEqual(iphone["price_max"], 96)
+        self.assertEqual(iphone["hot_buy"], 76)
+        self.assertEqual(iphone["resale_low"], original_resale)
+
     def test_cli_builds_persistent_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "catalog.json"

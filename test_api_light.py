@@ -45,8 +45,12 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertEqual(cfg["catalog_per_page"], 50)
         self.assertEqual(cfg["max_items_per_search"], 100)
         self.assertEqual(cfg["max_catalog_items_per_run"], 1400)
-        self.assertEqual(cfg["max_searches_per_run"], 18)
-        self.assertEqual(cfg["precision_searches_per_run"], 8)
+        self.assertEqual(cfg["max_searches_per_run"], 19)
+        self.assertEqual(cfg["precision_searches_per_run"], 10)
+        self.assertEqual(cfg["precision_min_demand_score"], 5)
+        self.assertEqual(cfg["cycles_per_workflow"], 4)
+        self.assertEqual(cfg["seconds_between_cycles"], 55)
+        self.assertEqual(cfg["smartphone_buy_price_multiplier"], 0.80)
         self.assertEqual(cfg["max_alerts_per_run"], 20)
         self.assertEqual(cfg["max_alerts_per_category"], 10)
         self.assertEqual(cfg["max_listing_age_hours"], 0.5)
@@ -696,9 +700,33 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 143)
+        self.assertEqual(len(searches), 139)
         types = {search["product_type"] for search in searches}
         self.assertTrue({"CONSOLE", "GAME", "ACCESSORY"}.issubset(types))
+
+    def test_ds_and_3ds_games_are_completely_disabled(self):
+        cfg = bot.load_json(bot.CONFIG_PATH, {})
+        games = [
+            search for search in bot.load_target_products()
+            if search.get("product_type") == "GAME"
+        ]
+        platforms = {
+            bot.norm(platform)
+            for search in games for rule in search.get("rules", [])
+            for platform in rule.get("platform_any", [])
+        }
+        self.assertFalse(platforms & {"ds", "nintendo ds", "3ds", "nintendo 3ds"})
+        self.assertTrue(bot.game_platform_excluded(
+            {"platform_any": ["Nintendo 3DS"]}, cfg,
+        ))
+        self.assertFalse(bot.game_platform_excluded(
+            {"platform_any": ["Nintendo Switch"]}, cfg,
+        ))
+        discovery_queries = {
+            bot.norm(row.get("query", ""))
+            for row in cfg.get("discovery_searches", [])
+        }
+        self.assertNotIn("nintendo 3ds", discovery_queries)
 
     def test_wheels_are_not_searched_or_loaded_as_targets(self):
         cfg = bot.load_json(bot.CONFIG_PATH, {})

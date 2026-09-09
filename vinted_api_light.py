@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V14_DUAL_LANE
+# VINTED_API_AIOHTTP_V15_FOCUS_FAST_DEALS
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -602,14 +602,9 @@ def interleave_precision_searches(searches):
         "STREAMING": 7, "ELECTRONICS": 8, "TOOL": 9,
     }
 
-    def demand(search):
-        rules = search.get("rules", [])
-        rule = rules[0] if rules else {}
-        return int(search.get("demand_score", rule.get("demand_score", 0)) or 0)
-
     buckets["DEVICE"].sort(key=lambda search: (
         device_priority.get(str(search.get("product_type", "")).upper(), 20),
-        -demand(search), norm(search.get("query", "")),
+        -precision_demand_score(search), norm(search.get("query", "")),
     ))
     # Huit recherches précises donnent quatre jeux, deux consoles et deux
     # appareils tant que chaque famille contient encore des références.
@@ -629,6 +624,19 @@ def interleave_precision_searches(searches):
         if not added:
             break
     return ordered
+
+
+def precision_demand_score(search):
+    """Lit la demande d'une recherche locale ou d'un appareil externe."""
+    rules = search.get("rules", [])
+    rule = rules[0] if rules else {}
+    return int(search.get("demand_score", rule.get("demand_score", 0)) or 0)
+
+
+def game_platform_excluded(rule, cfg):
+    excluded = {norm(value) for value in cfg.get("excluded_game_platforms", [])}
+    platforms = {norm(value) for value in rule.get("platform_any", [])}
+    return bool(excluded & platforms)
 
 
 def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
@@ -1913,6 +1921,10 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
 
         category = matched_search.get("category", "")
         product_type = infer_product_type(matched_search, matched_rule)
+        if product_type == "GAME" and game_platform_excluded(matched_rule, cfg):
+            stats["rejected_rule"] += 1
+            mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
+            continue
         # Les accessoires et ambiguïtés ne déclenchent plus un second rejet
         # global : la règle de type a déjà éliminé les incompatibilités sûres.
         filter_risks = soft_filter_risks(
@@ -2059,6 +2071,9 @@ async def main_async():
     target_searches = load_target_products()
     reference_catalog = ReferenceCatalog.load(PRICECHARTING_CATALOG_PATH)
     device_catalog = DeviceCatalog.load(DEVICE_CATALOG_PATH)
+    lowered_phones = device_catalog.apply_buy_price_multiplier(
+        "SMARTPHONE", cfg.get("smartphone_buy_price_multiplier", 1.0),
+    )
     legacy_searches = list(cfg.get("searches", []))
     use_legacy = bool(cfg.get("use_legacy_search_rules", False))
     cfg["searches"] = target_searches + (legacy_searches if use_legacy else [])
@@ -2075,6 +2090,12 @@ async def main_async():
             "Appareils et outils: %s références indexées localement",
             len(device_catalog),
         )
+        if lowered_phones:
+            LOGGER.info(
+                "Smartphones: %s seuils d'achat abaissés à %.0f%%",
+                lowered_phones,
+                float(cfg.get("smartphone_buy_price_multiplier", 1.0)) * 100,
+            )
     else:
         LOGGER.info("Appareils et outils: cache absent, catalogue manuel utilisé")
     if legacy_searches and not use_legacy:
@@ -2202,6 +2223,16 @@ async def main_async():
                     cfg.get("device_catalog_discovery_max_price", 800),
                 )
             )
+            excluded_game_queries = {
+                norm(value) for value in cfg.get("excluded_game_platforms", [])
+            }
+            broad_searches = [
+                search for search in broad_searches
+                if not (
+                    str(search.get("name", "")).startswith("PRICECHARTING - ")
+                    and norm(search.get("query", "")) in excluded_game_queries
+                )
+            ]
             broad_searches = [
                 {**search, "_search_pool": "discovery"}
                 for search in broad_searches
@@ -2211,6 +2242,13 @@ async def main_async():
             precision_sources = (
                 product_searches + device_catalog.precision_searches()
             )
+            precision_min_demand = int(
+                cfg.get("precision_min_demand_score", 0),
+            )
+            precision_sources = [
+                search for search in precision_sources
+                if precision_demand_score(search) >= precision_min_demand
+            ]
             precision_searches = [
                 {
                     **search,

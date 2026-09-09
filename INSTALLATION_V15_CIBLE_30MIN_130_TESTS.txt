@@ -1,0 +1,37 @@
+VINTED DEAL SCANNER V15 — CIBLES RENTABLES, 30 MINUTES
+======================================================
+
+Cette version privilégie la qualité et la fréquence des vrais bons plans.
+
+MODIFICATIONS
+-------------
+- Jeux Nintendo DS et Nintendo 3DS supprimés du catalogue contrôlé.
+- Jeux DS/3DS également bloqués s'ils proviennent de PriceCharting.
+- Recherche générale Nintendo 3DS supprimée pour ne pas gaspiller une page sur
+  une majorité de jeux. Les consoles 3DS rentables restent surveillées par
+  leurs recherches précises.
+- Recherches précises limitées aux références avec demande 5/5.
+- 10 produits précis par cycle au lieu de 8.
+- 19 recherches au total : 5 fixes, 10 précises, 4 découvertes.
+- Budget inchangé : 28 appels maximum par cycle.
+- Prix d'achat maximum des 32 smartphones abaissés de 20 % au chargement.
+- Quatre cycles par workflow au lieu de trois.
+- Pause de 55 secondes : environ quatre minutes de surveillance active.
+- Annonces strictement limitées à 30 minutes, baisses de prix comprises.
+- Filtres coques, vitres, accessoires, faux jeux/consoles et paiements hors
+  Vinted conservés.
+
+INSTALLATION
+------------
+Remplacer le contenu du dépôt GitHub par les fichiers de l'archive, effectuer
+un commit, puis lancer Actions > Vinted API rapide > Run workflow.
+
+LOGS ATTENDUS
+-------------
+Session prolongée | 4 cycle(s) | pause 55s
+Plan recherches | fixes 5 | produits précis 10 | découverte 4
+Budget API | maximum 28 requêtes par cycle
+
+VALIDATION
+----------
+130 tests automatisés réussis.

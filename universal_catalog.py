@@ -247,6 +247,20 @@ class DeviceCatalog:
     def __len__(self):
         return len(self.references)
 
+    def apply_buy_price_multiplier(self, product_type: str, multiplier: float) -> int:
+        """Abaisse les seuils d'achat sans modifier les valeurs de revente."""
+        wanted = str(product_type).upper()
+        factor = max(0.1, min(float(multiplier), 1.0))
+        changed = 0
+        for row in self.references:
+            if str(row.get("product_type", "")).upper() != wanted:
+                continue
+            row["price_max"] = round(float(row["price_max"]) * factor, 2)
+            if row.get("hot_buy"):
+                row["hot_buy"] = round(float(row["hot_buy"]) * factor, 2)
+            changed += 1
+        return changed
+
     @staticmethod
     def _accessory_only(title: str) -> bool:
         title_n = normalise(title)
