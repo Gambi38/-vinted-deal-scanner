@@ -1,0 +1,32 @@
+VINTED DEAL SCANNER V15.2 — CIBLES PRIORITAIRES
+===============================================
+
+NOUVEAUX PRIX D'ACHAT MAXIMUM
+-----------------------------
+- Zelda TOTK / BOTW Switch : 15 EUR
+- Mario Kart 8 Deluxe et Super Mario Odyssey : 15 EUR
+- Luigi's Mansion 3 et Super Smash Bros Ultimate : 15 EUR
+- Just Dance 2026 Switch : 15 EUR
+- Final Fantasy Tactics Ivalice Chronicles Switch : 15 EUR
+- Marvel Guardians of the Galaxy Switch : 15 EUR
+- Nintendo DSi : 25 EUR
+- Nintendo DSi XL : 45 EUR
+- Nintendo Switch LCD : 50 EUR
+- PSP 3000 : 40 EUR
+
+SÉPARATION DES TYPES
+--------------------
+- Les jeux restent de type GAME et ne peuvent pas hériter du prix d'une console.
+- Les DSi, DSi XL, Switch LCD et PSP restent de type CONSOLE.
+- Jeux DS/3DS toujours exclus.
+- Coques, écrans, pièces de téléphone et paiements hors Vinted toujours rejetés.
+- Annonces âgées de 30 minutes maximum.
+
+INSTALLATION
+------------
+Remplacer tous les fichiers du dépôt GitHub par ceux de l'archive, valider le
+commit, puis lancer Actions > Vinted API rapide > Run workflow.
+
+VALIDATION
+----------
+134 tests automatisés réussis.

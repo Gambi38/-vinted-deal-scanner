@@ -620,6 +620,29 @@ class ApiOnlyTests(unittest.TestCase):
             source, rule, "iPhone 13 Pro 128 Go avec coque",
         )[0])
 
+    def test_multilingual_phone_parts_are_never_complete_phones(self):
+        source = {"category": "SMARTPHONE", "product_type": "SMARTPHONE"}
+        rule = {"product_type": "SMARTPHONE", "must_contain": ["iphone 13"]}
+        false_phones = (
+            ("Fundas para iPhone 13", "Comme neuf"),
+            ("Capas iPhone 13", "Très bon état"),
+            ("LCD display iPhone 13", "Fonctionne parfaitement"),
+            ("iPhone 13 scherm", "Nieuw vervangscherm"),
+            ("Écran LCD iPhone 13", "Pièce de remplacement"),
+        )
+        for title, description in false_phones:
+            self.assertFalse(bot.strict_product_type_check(
+                source, rule, title, item_text=description,
+            )[0], title)
+
+    def test_complete_phone_with_case_remains_allowed(self):
+        source = {"category": "SMARTPHONE", "product_type": "SMARTPHONE"}
+        rule = {"product_type": "SMARTPHONE", "must_contain": ["iphone 13"]}
+        self.assertTrue(bot.strict_product_type_check(
+            source, rule, "iPhone 13 128 Go avec sa coque",
+            item_text="Téléphone en très bon état, fonctionne parfaitement",
+        )[0])
+
     def test_off_platform_payment_is_blocked_without_blocking_its_refusal(self):
         blacklist = bot.load_json(bot.BLACKLIST_PATH, {})
         unsafe = (
@@ -700,7 +723,7 @@ class ApiOnlyTests(unittest.TestCase):
 
     def test_market_profile_loads_all_valid_products(self):
         searches = bot.load_target_products()
-        self.assertEqual(len(searches), 139)
+        self.assertEqual(len(searches), 144)
         types = {search["product_type"] for search in searches}
         self.assertTrue({"CONSOLE", "GAME", "ACCESSORY"}.issubset(types))
 
@@ -743,7 +766,7 @@ class ApiOnlyTests(unittest.TestCase):
     def test_dedicated_console_catalog_has_prices_and_descriptions(self):
         data = bot.load_json(bot.CONSOLES_TARGETS_PATH, {})
         products = data.get("products", [])
-        self.assertEqual(len(products), 34)
+        self.assertEqual(len(products), 36)
         for product in products:
             self.assertEqual(product.get("type"), "CONSOLE", product.get("name"))
             self.assertTrue(product.get("description"), product.get("name"))
@@ -752,6 +775,36 @@ class ApiOnlyTests(unittest.TestCase):
                 float(product.get("resale_low", 0)),
                 float(product.get("price_max", 0)),
             )
+
+    def test_requested_console_buy_limits_are_exact(self):
+        searches = bot.load_target_products()
+        limits = {
+            search["rules"][0].get("model"): search.get("price_to")
+            for search in searches if search.get("rules")
+        }
+        self.assertEqual(limits["Nintendo DSi"], 25)
+        self.assertEqual(limits["Nintendo DSi XL"], 45)
+        self.assertEqual(limits["Nintendo Switch LCD"], 50)
+        self.assertEqual(limits["PSP 3000"], 40)
+
+    def test_requested_switch_games_are_games_capped_at_fifteen(self):
+        wanted = {
+            "Zelda Tears of the Kingdom", "Zelda Breath of the Wild",
+            "Mario Kart 8 Deluxe", "Super Mario Odyssey",
+            "Super Smash Bros Ultimate", "Luigi's Mansion 3",
+            "Just Dance 2026 Edition Switch",
+            "Final Fantasy Tactics Ivalice Chronicles Switch",
+            "Marvel Guardians of the Galaxy Switch",
+        }
+        found = {}
+        for search in bot.load_target_products():
+            rule = search["rules"][0]
+            if rule.get("model") in wanted:
+                found[rule["model"]] = (search, rule)
+        self.assertEqual(set(found), wanted)
+        for name, (search, rule) in found.items():
+            self.assertEqual(bot.infer_product_type(search, rule), "GAME", name)
+            self.assertLessEqual(float(search["price_to"]), 15, name)
 
     def test_console_catalog_overrides_general_duplicate(self):
         searches = bot.load_target_products()

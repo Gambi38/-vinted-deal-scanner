@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V15_FOCUS_FAST_DEALS
+# VINTED_API_AIOHTTP_V15_2_PRIORITY_TARGETS
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -1137,6 +1137,42 @@ ELECTRONICS_INCLUDED_MARKERS = frozenset((
     "avec carte memoire",
 ))
 
+PHONE_ACCESSORY_OR_PART_TERMS = frozenset((
+    "coque", "housse", "etui", "étui", "case", "cover", "funda",
+    "fundas", "capa", "capas", "carcasa", "custodia", "hoes", "hoesje",
+    "telefoonhoesje", "beschermhoes",
+    "handyhülle", "handyhulle", "schutzhülle", "schutzhulle",
+    "verre trempé", "verre trempe", "tempered glass", "screen protector",
+    "protecteur écran", "protecteur ecran", "protection écran",
+    "protection ecran", "film hydrogel", "vitre de protection",
+    "cristal templado", "vidrio templado", "vetro temperato",
+    "panzerglas", "beschermglas", "screenprotector", "displayschutz",
+    "pellicola protettiva", "película de vidro", "pelicula de vidro",
+    "vidro temperado", "protetor de tela", "szkło hartowane",
+    "szklo hartowane", "folia ochronna",
+    "écran lcd", "ecran lcd", "lcd screen", "lcd display", "display lcd",
+    "replacement screen", "écran de remplacement", "ecran de remplacement",
+    "scherm", "display", "digitizer", "vitre arrière", "vitre arriere",
+    "back glass", "châssis", "chassis", "nappe", "flex cable",
+    "batterie", "battery", "caméra arrière", "camera module",
+    "pièce détachée", "piece detachee", "replacement part",
+))
+
+PHONE_COMPLETE_SIGNALS = frozenset((
+    "téléphone", "telephone", "smartphone", "mobile phone", "gsm",
+    "fonctionne bien", "fonctionne parfaitement", "parfaitement fonctionnel",
+    "bon état", "bon etat", "très bon état", "tres bon etat",
+    "comme neuf", "état neuf", "etat neuf", "fully working", "works well",
+    "good condition", "excellent condition", "in goede staat",
+    "werkt goed", "funciona bien", "funciona perfectamente",
+    "buone condizioni", "funziona bene", "desbloqueado", "unlocked",
+    "désimlocké", "desimlocke", "double sim", "dual sim",
+))
+
+PHONE_STORAGE_RE = re.compile(
+    r"\b(?:16|32|64|128|256|512)\s*(?:go|gb)\b|\b1\s*tb\b", re.I,
+)
+
 UNSAFE_CONDITION_TERMS = frozenset((
     "non testé", "non teste", "pas testé", "pas teste", "untested",
     "sans chargeur", "sans câble", "sans cable", "sans manette",
@@ -1429,7 +1465,7 @@ def infer_product_type(source_search, rule):
         return "AUDIO"
     return "ELECTRONICS"
 
-def strict_product_type_check(source_search, rule, title, cfg=None):
+def strict_product_type_check(source_search, rule, title, cfg=None, item_text=""):
     """Bloque seulement les incompatibilités certaines entre produit et titre."""
     if cfg is not None and not cfg.get("strict_product_type", True):
         return True, ""
@@ -1439,6 +1475,7 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         return False, "annonce centrée sur la boîte, produit non confirmé"
 
     product_type = infer_product_type(source_search, rule)
+    combined_text = f"{title} {item_text}".strip()
     if product_type == "CONSOLE":
         has_console_word = any(term_present(title, word) for word in (
             "console", "consola", "konsole",
@@ -1526,6 +1563,24 @@ def strict_product_type_check(source_search, rule, title, cfg=None):
         if subtype == "WHEEL" and any(
                 term_present(title, word) for word in ("jeu", "game", "support volant")):
             return False, "jeu ou support, pas volant"
+    elif product_type == "SMARTPHONE":
+        part_hit = any(
+            term_present(combined_text, word)
+            for word in PHONE_ACCESSORY_OR_PART_TERMS
+        )
+        part_first = _starts_with_term(title, PHONE_ACCESSORY_OR_PART_TERMS)
+        complete_signal = (
+            any(term_present(combined_text, marker)
+                for marker in PHONE_COMPLETE_SIGNALS)
+            or bool(PHONE_STORAGE_RE.search(combined_text))
+        )
+        phone_included = any(term_present(combined_text, marker) for marker in (
+            "téléphone avec", "telephone avec", "smartphone avec",
+            "iphone avec", "galaxy avec", "pixel avec", "phone with",
+            "vendu avec coque", "fourni avec coque", "avec sa coque",
+        ))
+        if part_hit and (part_first or not (complete_signal or phone_included)):
+            return False, "accessoire ou pièce de téléphone"
     else:
         accessory_hit = any(
             term_present(title, word) for word in ELECTRONICS_ACCESSORY_TERMS
@@ -1893,6 +1948,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             if matched_rule is not None:
                 type_ok, _ = strict_product_type_check(
                     matched_search, matched_rule, title, cfg,
+                    item_text=item_text,
                 )
                 if not type_ok:
                     matched_search, matched_rule = (None, None)
@@ -1901,6 +1957,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             if matched_rule is not None:
                 type_ok, _ = strict_product_type_check(
                     matched_search, matched_rule, title, cfg,
+                    item_text=item_text,
                 )
                 if not type_ok:
                     matched_search, matched_rule = (None, None)
@@ -1917,6 +1974,15 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             )
         if matched_rule is None or matched_search is None:
             stats["rejected_rule"] += 1
+            continue
+
+        type_ok, type_reason = strict_product_type_check(
+            matched_search, matched_rule, title, cfg, item_text=item_text,
+        )
+        if not type_ok:
+            stats["rejected_rule"] += 1
+            LOGGER.debug("  X Type | %s | %s", type_reason, title[:60])
+            mark_seen(seen_ids, search_seen_key(search, item_id), seen_meta)
             continue
 
         category = matched_search.get("category", "")
