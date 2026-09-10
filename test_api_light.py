@@ -44,11 +44,11 @@ class ApiOnlyTests(unittest.TestCase):
         cfg = bot.load_json(Path(bot.__file__).with_name("config.json"), {})
         self.assertEqual(cfg["catalog_per_page"], 50)
         self.assertEqual(cfg["max_items_per_search"], 100)
-        self.assertEqual(cfg["max_catalog_items_per_run"], 1400)
-        self.assertEqual(cfg["max_searches_per_run"], 19)
-        self.assertEqual(cfg["precision_searches_per_run"], 10)
+        self.assertEqual(cfg["max_catalog_items_per_run"], 2500)
+        self.assertEqual(cfg["max_searches_per_run"], 30)
+        self.assertEqual(cfg["precision_searches_per_run"], 16)
         self.assertEqual(cfg["precision_min_demand_score"], 5)
-        self.assertEqual(cfg["cycles_per_workflow"], 4)
+        self.assertEqual(cfg["cycles_per_workflow"], 6)
         self.assertEqual(cfg["seconds_between_cycles"], 55)
         self.assertEqual(cfg["smartphone_buy_price_multiplier"], 0.80)
         self.assertEqual(cfg["max_alerts_per_run"], 20)
@@ -58,7 +58,7 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertIn("jeu switch", cfg["always_search_queries"])
         self.assertTrue(cfg["snipe_mode"])
         self.assertEqual(cfg["snipe_max_pages"], 2)
-        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 28)
+        self.assertEqual(cfg["api_budget_max_requests_per_cycle"], 46)
         self.assertEqual(cfg["min_candidate_score"], 2.5)
         self.assertEqual(cfg["popularity_penalty_cap"], 1.0)
         self.assertLessEqual(cfg["request_delay_max_seconds"], 1.2)
@@ -81,6 +81,49 @@ class ApiOnlyTests(unittest.TestCase):
         scans, sleeps = asyncio.run(run())
         self.assertEqual(scans, 3)
         self.assertEqual([call.args[0] for call in sleeps], [75.0, 75.0])
+
+    def test_workflow_restarts_long_sessions_without_cancelling_them(self):
+        workflow = Path(bot.__file__).with_name("vinted-scan.yml").read_text(
+            encoding="utf-8",
+        )
+        self.assertIn('cron: "*/10 * * * *"', workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+        self.assertIn("timeout-minutes: 12", workflow)
+
+    def test_adaptive_budget_shrinks_after_rate_limits(self):
+        cfg = {
+            "api_budget_max_requests_per_cycle": 46,
+            "api_budget_max_units_per_cycle": 46,
+        }
+        self.assertEqual(bot.adaptive_api_budget(cfg, {}), (46, 46.0))
+        self.assertEqual(bot.adaptive_api_budget(
+            cfg, {"penalty_level": 1},
+        ), (34, 34.5))
+        self.assertEqual(bot.adaptive_api_budget(
+            cfg, {"penalty_level": 3},
+        ), (19, 19.40625))
+
+    def test_profitable_search_is_reserved_without_blocking_rotation(self):
+        pool = [{"query": f"query {index}"} for index in range(8)]
+        history = {
+            "query 6": {"runs": 3, "alerts": 2, "candidates": 3},
+            "query 7": {"runs": 8, "empty_streak": 8},
+        }
+        selected = bot._priority_rotation(pool, 3, cursor=0, history=history)
+        self.assertEqual(selected[0]["query"], "query 6")
+        self.assertEqual(len(selected), 3)
+        self.assertNotIn("query 7", {row["query"] for row in selected})
+
+    def test_search_performance_tracks_alerts_and_empty_streaks(self):
+        history = bot.update_search_performance({}, {
+            "iphone": {"query": "iphone", "received": 50,
+                       "candidates": 2, "alerts": 1},
+            "empty": {"query": "empty", "received": 50,
+                      "candidates": 0, "alerts": 0},
+        })
+        self.assertEqual(history["iphone"]["alerts"], 1)
+        self.assertEqual(history["iphone"]["empty_streak"], 0)
+        self.assertEqual(history["empty"]["empty_streak"], 1)
 
     def test_term_regexes_are_cached(self):
         bot._term_regex.cache_clear()
@@ -1140,11 +1183,16 @@ class ApiOnlyTests(unittest.TestCase):
                 "item_id": "1", "title": "Mario Kart", "url": "https://example/1",
                 "rank_score": 900,
             }],
+            "search_metrics": {
+                "mario kart": {"query": "mario kart", "received": 50,
+                               "examined": 45, "candidates": 3, "alerts": 2},
+            },
         }
         report = build_workflow_report([cycle])
         self.assertEqual(report["summary"]["listings_examined"], 100)
         self.assertEqual(report["rejection_rates"]["rule"]["rate_pct"], 70)
         self.assertEqual(report["best_opportunities"][0]["url"], "https://example/1")
+        self.assertEqual(report["search_performance"][0]["alerts"], 2)
         self.assertEqual(len(report["history_30_days"]), 1)
 
     def test_authentic_high_demand_gba_games_remain_targets(self):

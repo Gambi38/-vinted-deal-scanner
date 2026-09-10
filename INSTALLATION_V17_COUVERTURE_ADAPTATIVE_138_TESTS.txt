@@ -1,0 +1,58 @@
+VINTED DEAL SCANNER V17 - COUVERTURE ADAPTATIVE
+================================================
+
+OBJECTIF
+--------
+Analyser strictement davantage d'annonces récentes sans multiplier les faux
+positifs ni continuer aveuglément après une limitation HTTP 429.
+
+CE QUI CHANGE
+-------------
+- 30 recherches maximum par cycle : 5 recherches principales, 16 recherches
+  précises et 9 recherches de découverte en rotation.
+- Jusqu'à environ 2 200 annonces récupérées par cycle selon la pagination,
+  avec une limite de sécurité fixée à 2 500.
+- Déduplication globale immédiate : une annonce présente dans plusieurs
+  recherches n'est classifiée qu'une fois par cycle.
+- Pagination adaptative : la page 2 est demandée seulement si la fin de la
+  page 1 contient encore des annonces de 30 minutes ou moins.
+- Priorité adaptative : les recherches qui génèrent réellement des candidats
+  et des alertes obtiennent des places réservées. Les recherches vides sont
+  progressivement moins prioritaires, mais restent dans la rotation.
+- Budget API adaptatif après HTTP 429 : 46 requêtes, puis environ 34, 25 et 19
+  selon le niveau de pénalité. Le budget remonte progressivement sans 429.
+- rapport.json contient maintenant les doublons évités, les HTTP 429 et les
+  performances par recherche.
+- 6 cycles par workflow, espacés de 55 secondes. Le cron reste à 10 minutes,
+  avec un délai maximal GitHub Actions de 12 minutes.
+
+FICHIERS D'APPRENTISSAGE AUTOMATIQUES
+-------------------------------------
+Ils sont créés dans runtime_data et sauvegardés avec l'artifact vinted-state :
+- search_performance.json : efficacité et séries de cycles vides par recherche.
+- rate_state.json : niveau temporaire de réduction du budget après HTTP 429.
+- rapport.json : résumé du workflow et historique consolidé.
+
+GARANTIES CONSERVÉES
+--------------------
+- Annonces âgées de plus de 30 minutes rejetées.
+- Jeux, consoles, téléphones et accessoires classés séparément.
+- Coques, écrans seuls, batteries, boîtes vides et paiements hors Vinted
+  restent bloqués.
+- Les annonces vues et les prix sont persistés entre les workflows.
+
+INSTALLATION
+------------
+1. Remplacer les fichiers du dépôt par ceux de cette archive.
+2. Vérifier que le workflow est placé dans :
+   .github/workflows/vinted-scan.yml
+3. Conserver le secret GitHub Actions NTFY_TOPIC si les notifications ntfy
+   sont utilisées.
+4. Lancer Actions > Vinted Scan > Run workflow.
+
+VALIDATION
+----------
+Commande locale :
+python -m unittest -v
+
+Résultat validé : 138 tests réussis.

@@ -18,12 +18,20 @@ def build_workflow_report(cycle_results, previous=None, now=None, history_days=3
     totals = {}
     opportunities = []
     cycle_seconds = 0.0
+    search_totals = {}
     for result in valid:
         for key, value in result.get("stats", {}).items():
             if isinstance(value, (int, float)):
                 totals[key] = totals.get(key, 0) + value
         opportunities.extend(result.get("top_opportunities", []))
         cycle_seconds += float(result.get("duration_seconds", 0) or 0)
+        for key, metric in result.get("search_metrics", {}).items():
+            target = search_totals.setdefault(key, {
+                "query": metric.get("query", key), "received": 0,
+                "examined": 0, "candidates": 0, "alerts": 0,
+            })
+            for field in ("received", "examined", "candidates", "alerts"):
+                target[field] += int(metric.get(field, 0) or 0)
 
     examined = int(totals.get("items_examined", 0))
     rejections = {
@@ -99,6 +107,10 @@ def build_workflow_report(cycle_results, previous=None, now=None, history_days=3
             "searches_failed": int(totals.get("searches_failed", 0)),
             "api_requests": int(totals.get("catalog_requested", 0)),
             "api_budget_blocked": int(totals.get("catalog_budget_blocked", 0)),
+            "http_429": int(totals.get("http_429", 0)),
+            "duplicates_skipped_early": int(
+                totals.get("duplicates_skipped_early", 0)
+            ),
             "photos_analysed": int(totals.get("photo_analysed", 0)),
             "photos_flagged": int(totals.get("photo_flagged", 0)),
             "photos_failed": int(totals.get("photo_failed", 0)),
@@ -117,5 +129,10 @@ def build_workflow_report(cycle_results, previous=None, now=None, history_days=3
         },
         "rejection_rates": rejections,
         "best_opportunities": top,
+        "search_performance": sorted(
+            search_totals.values(),
+            key=lambda row: (row["alerts"], row["candidates"], row["received"]),
+            reverse=True,
+        ),
         "history_30_days": retained[-500:],
     }

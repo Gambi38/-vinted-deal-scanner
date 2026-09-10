@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V15_2_PRIORITY_TARGETS
+# VINTED_API_AIOHTTP_V17_ADAPTIVE_COVERAGE
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -58,6 +58,8 @@ PRICE_HISTORY_PATH = DATA_DIR / "annonces_prix.json"
 SEARCH_CACHE_PATH = DATA_DIR / "searches_cache.json"
 SOLD_LISTINGS_PATH = DATA_DIR / "sold_listings_cache.json"
 REPORT_PATH = DATA_DIR / "rapport.json"
+SEARCH_PERFORMANCE_PATH = DATA_DIR / "search_performance.json"
+RATE_STATE_PATH = DATA_DIR / "rate_state.json"
 PRICECHARTING_CATALOG_PATH = DATA_DIR / "pricecharting_catalog.json"
 DEVICE_CATALOG_PATH = DATA_DIR / "device_catalog.json"
 CONFIRMED_REJECTIONS_PATH = ROOT / "rejets.txt"
@@ -639,7 +641,71 @@ def game_platform_excluded(rule, cfg):
     return bool(excluded & platforms)
 
 
-def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
+def _search_history_score(search, history):
+    row = history.get(norm(search.get("query", "")), {}) if isinstance(history, dict) else {}
+    alerts = float(row.get("alerts", 0) or 0)
+    candidates = float(row.get("candidates", 0) or 0)
+    runs = float(row.get("runs", 0) or 0)
+    empty_streak = float(row.get("empty_streak", 0) or 0)
+    # Une alerte vaut beaucoup plus qu'un simple candidat. Les recherches
+    # jamais essayées restent devant celles qui sont durablement vides.
+    if runs <= 0:
+        return 1.0
+    return alerts * 20.0 + candidates * 3.0 - min(empty_streak, 8.0) * 2.0
+
+
+def _priority_rotation(pool, count, cursor, history):
+    if not pool or count <= 0:
+        return []
+    ranked = sorted(
+        pool, key=lambda row: _search_history_score(row, history), reverse=True,
+    )
+    proven = [row for row in ranked if _search_history_score(row, history) > 1.0]
+    priority_count = min(len(proven), max(1, count // 3))
+    selected = proven[:priority_count]
+    rotating = [row for row in ranked if row not in selected]
+    if rotating:
+        start = cursor % len(rotating)
+        for offset in range(len(rotating)):
+            row = rotating[(start + offset) % len(rotating)]
+            if row not in selected:
+                selected.append(row)
+            if len(selected) >= count:
+                break
+    return selected[:count]
+
+
+def update_search_performance(previous, cycle_metrics, retention_runs=200):
+    history = previous if isinstance(previous, dict) else {}
+    for query_key, current in cycle_metrics.items():
+        old = history.get(query_key, {})
+        candidates = int(current.get("candidates", 0) or 0)
+        alerts = int(current.get("alerts", 0) or 0)
+        history[query_key] = {
+            "query": current.get("query", query_key),
+            "runs": min(int(old.get("runs", 0) or 0) + 1, retention_runs),
+            "received": min(int(old.get("received", 0) or 0)
+                            + int(current.get("received", 0) or 0), 1_000_000),
+            "candidates": min(int(old.get("candidates", 0) or 0)
+                              + candidates, 100_000),
+            "alerts": min(int(old.get("alerts", 0) or 0) + alerts, 100_000),
+            "empty_streak": 0 if candidates else min(
+                int(old.get("empty_streak", 0) or 0) + 1, 50,
+            ),
+        }
+    return history
+
+
+def adaptive_api_budget(cfg, rate_state):
+    base_requests = int(cfg.get("api_budget_max_requests_per_cycle", 20))
+    base_units = float(cfg.get("api_budget_max_units_per_cycle", base_requests))
+    level = max(0, min(int((rate_state or {}).get("penalty_level", 0) or 0), 3))
+    factor = 0.75 ** level
+    return max(10, int(base_requests * factor)), max(10.0, base_units * factor)
+
+
+def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True,
+                            search_history=None):
     """Planifie un mélange stable de recherches larges et de produits précis.
 
     Les recherches larges découvrent les titres inattendus. Les recherches
@@ -689,8 +755,13 @@ def select_searches_for_run(searches, cfg, cursor=None, persist_cursor=True):
         start = cursor % len(pool)
         return [pool[(start + index) % len(pool)] for index in range(count)]
 
-    rotating_precision = rotate(precision, precision_slots)
-    rotating_discovery = rotate(discovery, discovery_slots)
+    history = search_history or {}
+    rotating_precision = _priority_rotation(
+        precision, precision_slots, cursor, history,
+    )
+    rotating_discovery = _priority_rotation(
+        discovery, discovery_slots, cursor, history,
+    )
 
     # Si un pool ne remplit pas son quota, l'autre récupère les créneaux.
     missing = slots - len(rotating_precision) - len(rotating_discovery)
@@ -1804,6 +1875,8 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
     try:
         async with session.get(url, params=params, headers=headers, timeout=10) as resp:
             await limiter.register_response(resp.status, resp.headers, "catalog")
+            if resp.status == 429 and stats is not None:
+                stats["http_429"] = stats.get("http_429", 0) + 1
             if resp.status != 200:
                 LOGGER.warning(
                     "Catalogue HTTP %s pour %s page %s",
@@ -1827,7 +1900,9 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                       limiter, session, base_url, headers, stats,
                       rule_index=None, price_history=None, api_budget=None,
-                      reference_catalog=None, device_catalog=None):
+                      reference_catalog=None, device_catalog=None,
+                      cycle_claimed_ids=None, claimed_lock=None,
+                      search_metrics=None):
     query = search["query"]
     name = search.get("name", query)
     LOGGER.info(f"\n[API-TEST] {name} → {query}")
@@ -1867,7 +1942,28 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
                 page, last_age * 60,
             )
             break
+    if cycle_claimed_ids is not None:
+        unique_items = []
+        if claimed_lock is None:
+            claimed_lock = asyncio.Lock()
+        async with claimed_lock:
+            for item in items:
+                item_id = str(item.get("id"))
+                if item_id in cycle_claimed_ids:
+                    stats["duplicates_skipped_early"] = stats.get(
+                        "duplicates_skipped_early", 0,
+                    ) + 1
+                    continue
+                cycle_claimed_ids.add(item_id)
+                unique_items.append(item)
+        items = unique_items
+
     if not items:
+        if search_metrics is not None:
+            search_metrics[norm(query)] = {
+                "query": query, "received": 0, "examined": 0,
+                "candidates": 0, "alerts": 0,
+            }
         return []
 
     alerts = []
@@ -2109,6 +2205,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "url": f"{base_url}/items/{item_id}",
             "item_id": item_id,
             "_seen_key": search_seen_key(search, item_id),
+            "_source_query": query,
         }
 
         alerts.append(row)
@@ -2118,6 +2215,14 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             score, freshness_label(age, cfg), title[:58], price, margin_low,
         )
 
+    if search_metrics is not None:
+        search_metrics[norm(query)] = {
+            "query": query,
+            "received": len(items),
+            "examined": min(len(items), max_items),
+            "candidates": len(alerts),
+            "alerts": 0,
+        }
     return alerts
 
 # ---------- Main ----------
@@ -2244,10 +2349,14 @@ async def main_async():
         max_jitter=cfg.get("request_delay_max_seconds", 0.50),
         max_backoff=cfg.get("backoff_max_seconds", 60.0),
     )
-    api_budget = ApiCostController(
-        cfg.get("api_budget_max_requests_per_cycle", 20),
-        cfg.get("api_budget_max_units_per_cycle", 20),
-    )
+    rate_state = load_json(RATE_STATE_PATH, {})
+    budget_requests, budget_units = adaptive_api_budget(cfg, rate_state)
+    api_budget = ApiCostController(budget_requests, budget_units)
+    if int((rate_state or {}).get("penalty_level", 0) or 0):
+        LOGGER.warning(
+            "Budget API adaptatif | niveau %s | %s requêtes maximum",
+            rate_state.get("penalty_level"), budget_requests,
+        )
 
     base_url = cfg.get("base_url", "https://www.vinted.be").rstrip("/")
     headers = {
@@ -2264,7 +2373,8 @@ async def main_async():
         "rejected_old", "rejected_seen", "rejected_pro",
         "rejected_blacklist", "rejected_rule", "rejected_profit",
         "rejected_score", "rejected_unsafe_payment", "catalog_budget_blocked",
-        "photo_analysed", "photo_failed", "photo_flagged",
+        "photo_analysed", "photo_failed", "photo_flagged", "http_429",
+        "duplicates_skipped_early",
     )}
 
     concurrency = max(1, int(cfg.get("api_max_concurrency", 3)))
@@ -2330,8 +2440,10 @@ async def main_async():
             all_searches = broad_searches + precision_searches
         else:
             all_searches = product_searches
+        search_history = load_json(SEARCH_PERFORMANCE_PATH, {})
         searches = select_searches_for_run(
             all_searches, cfg, cursor=scan_cursor, persist_cursor=False,
+            search_history=search_history,
         )
         max_catalog_items = int(cfg.get("max_catalog_items_per_run", 50))
         per_search = max(1, max_catalog_items // max(1, len(searches)))
@@ -2368,6 +2480,9 @@ async def main_async():
             plan.get("discovery", 0), planned_requests,
         )
         semaphore = asyncio.Semaphore(concurrency)
+        cycle_claimed_ids = set()
+        claimed_lock = asyncio.Lock()
+        search_metrics = {}
 
         async def bounded_scan(search):
             async with semaphore:
@@ -2381,6 +2496,9 @@ async def main_async():
                         api_budget=api_budget,
                         reference_catalog=reference_catalog,
                         device_catalog=device_catalog,
+                        cycle_claimed_ids=cycle_claimed_ids,
+                        claimed_lock=claimed_lock,
+                        search_metrics=search_metrics,
                     )
                     stats["searches_completed"] += 1
                     return rows
@@ -2457,6 +2575,10 @@ async def main_async():
             cfg.get("max_alerts_per_category", 4),
         )
         selected_ids = {str(row.get("item_id")) for row in selected}
+        for row in selected:
+            query_key = norm(row.get("_source_query", ""))
+            if query_key and query_key in search_metrics:
+                search_metrics[query_key]["alerts"] += 1
 
         # Les candidats non retenus ont été analysés mais ne doivent pas
         # encombrer les cycles suivants.
@@ -2486,6 +2608,20 @@ async def main_async():
             seen_ids, seen_meta, cfg.get("_next_scan_cursor", scan_cursor),
             price_history,
         )
+        search_history = update_search_performance(search_history, search_metrics)
+        save_json(SEARCH_PERFORMANCE_PATH, search_history)
+        previous_penalty = max(0, min(int((rate_state or {}).get(
+            "penalty_level", 0,
+        ) or 0), 3))
+        next_penalty = min(3, previous_penalty + 1) if stats["http_429"] else max(
+            0, previous_penalty - 1,
+        )
+        save_json(RATE_STATE_PATH, {
+            "schema": 1,
+            "penalty_level": next_penalty,
+            "last_429_count": stats["http_429"],
+            "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
         state_seconds = time.perf_counter() - state_started
         cycle_seconds = time.perf_counter() - cycle_started
         throughput = stats["items_examined"] / max(cycle_seconds, 0.001)
@@ -2545,6 +2681,7 @@ async def main_async():
         return {
             "stats": dict(stats),
             "top_opportunities": top_opportunities,
+            "search_metrics": search_metrics,
             "dns": dns_status,
             "api_budget": budget_status,
             "duration_seconds": round(cycle_seconds, 3),
@@ -2553,7 +2690,10 @@ async def main_async():
 async def run_workflow_session():
     """Répète plusieurs cycles courts pendant un même workflow GitHub."""
     cfg = load_json(CONFIG_PATH, {})
-    cycles = max(1, min(int(cfg.get("cycles_per_workflow", 1)), 6))
+    # Une session GitHub reste bornée pour garantir la sauvegarde des données,
+    # puis le cron la relance. La limite haute permet une couverture quasi
+    # continue sans créer une boucle infinie impossible à terminer proprement.
+    cycles = max(1, min(int(cfg.get("cycles_per_workflow", 1)), 12))
     pause_seconds = max(15.0, float(cfg.get("seconds_between_cycles", 75)))
     alert_limit = max(1, int(cfg.get("max_alerts_per_run", 5)))
     LOGGER.info(
