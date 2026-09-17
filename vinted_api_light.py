@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V17_ADAPTIVE_COVERAGE
+# VINTED_API_AIOHTTP_V17_1_CATALOG_HEALTH
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -1870,6 +1870,25 @@ def choose_known_product(rule_index, title, price, cfg=None):
     return source_search, rule
 
 # ---------- Appels API ----------
+class CatalogUnavailable(RuntimeError):
+    """Le catalogue ne peut pas être utilisé pendant ce cycle."""
+
+
+async def check_catalog_health(base_url, limiter, session, headers, stats, api_budget):
+    """Une réponse d'accueil 200 ne valide pas l'accès au catalogue."""
+    before = stats.get("catalog_success", 0)
+    await catalog_items("nintendo", None, base_url, limiter, session, headers,
+                        per_page=1, stats=stats, api_budget=api_budget)
+    if stats.get("catalog_success", 0) == before:
+        status = stats.get("catalog_last_status", "réseau ou JSON invalide")
+        raise CatalogUnavailable(
+            f"Catalogue indisponible (HTTP {status}) sur "
+            f"{base_url}/api/v2/catalog/items. Aucune recherche lancée. "
+            "Vérifier l'accès au catalogue; une réponse 404 ne prouve pas "
+            "à elle seule un bannissement ou un changement d'API."
+        )
+
+
 async def catalog_items(query, price_to, base_url, limiter, session, headers,
                         per_page=50, page=1, stats=None, api_budget=None):
     request_started = time.perf_counter()
@@ -1895,6 +1914,10 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
         stats["catalog_requested"] += 1
     try:
         async with session.get(url, params=params, headers=headers, timeout=10) as resp:
+            if stats is not None:
+                stats["catalog_last_status"] = resp.status
+                statuses = stats.setdefault("catalog_http_statuses", {})
+                statuses[str(resp.status)] = statuses.get(str(resp.status), 0) + 1
             await limiter.register_response(resp.status, resp.headers, "catalog")
             if resp.status == 429 and stats is not None:
                 stats["http_429"] = stats.get("http_429", 0) + 1
@@ -1905,7 +1928,15 @@ async def catalog_items(query, price_to, base_url, limiter, session, headers,
                 )
                 return []
             data = await resp.json()
-            items = data.get("items", [])
+            if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+                LOGGER.error("Catalogue HTTP 200 mais schéma JSON invalide")
+                if stats is not None:
+                    stats["catalog_invalid_payloads"] = stats.get("catalog_invalid_payloads", 0) + 1
+                return []
+            items = data["items"]
+            if not all(isinstance(item, dict) for item in items):
+                LOGGER.error("Catalogue: entrées JSON invalides")
+                return []
             if stats is not None:
                 stats["catalog_success"] += 1
                 stats["catalog_items"] += len(items)
@@ -2408,6 +2439,7 @@ async def main_async():
         ", ".join(dns_status["addresses"][:2]),
     )
     async with managed_http_session(base_url, cfg, headers) as session:
+        await check_catalog_health(base_url, limiter, session, headers, stats, api_budget)
 
         discovery_mode = bool(cfg.get("discovery_mode", True))
         if discovery_mode:
@@ -2682,7 +2714,7 @@ async def main_async():
         if requested and stats["catalog_success"] / requested < 0.5:
             raise RuntimeError("Moins de 50% des catalogues ont répondu: scan invalide")
         if requested and stats["catalog_success"] and stats["catalog_items"] == 0:
-            raise RuntimeError("Catalogues vides: scan probablement bloqué par Vinted")
+            LOGGER.info("Catalogues valides sans résultat; aucune annonce à notifier")
         sampled_ages = stats["age_known"] + stats["age_unknown"]
         if sampled_ages >= 3 and stats["age_known"] == 0:
             raise RuntimeError("Aucun âge lisible dans le catalogue: scan invalide")
@@ -2711,6 +2743,7 @@ async def main_async():
 async def run_workflow_session():
     """Répète plusieurs cycles courts pendant un même workflow GitHub."""
     cfg = load_json(CONFIG_PATH, {})
+    LOGGER.info("Version scanner V17.1 | contrôle du catalogue avant recherches")
     # Une session GitHub reste bornée pour garantir la sauvegarde des données,
     # puis le cron la relance. La limite haute permet une couverture quasi
     # continue sans créer une boucle infinie impossible à terminer proprement.
@@ -2725,7 +2758,20 @@ async def run_workflow_session():
     cycle_results = []
     for cycle_number in range(1, cycles + 1):
         LOGGER.info("Démarrage cycle %s/%s", cycle_number, cycles)
-        result = await main_async()
+        try:
+            result = await main_async()
+        except Exception as exc:
+            # Toujours laisser une trace récente, sans écraser le dernier rapport réussi.
+            save_json(DATA_DIR / "dernier_echec.json", {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "cycle": cycle_number,
+                "version": "V17.1",
+                "error_type": type(exc).__name__,
+                "message": str(exc) if isinstance(exc, CatalogUnavailable) else
+                    "Erreur du scanner; consulter la trace GitHub Actions.",
+                "completed_cycles": cycle_results,
+            })
+            raise
         if isinstance(result, dict):
             cycle_results.append(result)
         if cycle_number < cycles:

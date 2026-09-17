@@ -83,7 +83,7 @@ class ApiOnlyTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in sleeps], [75.0, 75.0])
 
     def test_workflow_restarts_long_sessions_without_cancelling_them(self):
-        workflow = Path(bot.__file__).with_name("vinted-scan.yml").read_text(
+        workflow = (Path(bot.__file__).parent / ".github/workflows/vinted-scan.yml").read_text(
             encoding="utf-8",
         )
         self.assertIn('cron: "*/10 * * * *"', workflow)
