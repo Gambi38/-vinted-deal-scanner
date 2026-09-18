@@ -4,7 +4,7 @@
   "cycles_per_workflow": 6,
   "seconds_between_cycles": 55,
   "request_delay_min_seconds": 0.15,
-  "request_delay_max_seconds": 0.50,
+  "request_delay_max_seconds": 0.5,
   "backoff_max_seconds": 60,
   "token_bucket_capacity": 3,
   "token_bucket_refill_per_second": 1.0,
@@ -22,7 +22,13 @@
   "precision_min_demand_score": 5,
   "max_alerts_per_run": 20,
   "max_alerts_per_category": 10,
-  "always_search_queries": ["nintendo", "jeu switch", "playstation", "iphone", "ipad"],
+  "always_search_queries": [
+    "nintendo",
+    "jeu switch",
+    "playstation",
+    "iphone",
+    "ipad"
+  ],
   "candidate_min_margin": 8,
   "candidate_min_roi_pct": 20,
   "min_candidate_score": 2.5,
@@ -34,27 +40,132 @@
   "strict_product_type": true,
   "require_game_platform_in_title": false,
   "discovery_searches": [
-    {"name": "DECOUVERTE - Nintendo", "category": "DISCOVERY", "query": "nintendo", "price_to": 200},
-    {"name": "DECOUVERTE - Jeux Switch", "category": "DISCOVERY", "query": "jeu switch", "price_to": 20},
-    {"name": "DECOUVERTE - Jeux Switch sous 10 EUR", "category": "DISCOVERY", "query": "nintendo switch", "price_to": 10},
-    {"name": "DECOUVERTE - PlayStation", "category": "DISCOVERY", "query": "playstation", "price_to": 300},
-    {"name": "DECOUVERTE - Xbox", "category": "DISCOVERY", "query": "xbox", "price_to": 220},
-    {"name": "DECOUVERTE - Consoles", "category": "DISCOVERY", "query": "console", "price_to": 300},
-    {"name": "DECOUVERTE - Jeux vidéo", "category": "DISCOVERY", "query": "jeu video", "price_to": 50},
-    {"name": "DECOUVERTE - Game Boy", "category": "DISCOVERY", "query": "game boy", "price_to": 150},
-    {"name": "DECOUVERTE - PS Vita", "category": "DISCOVERY", "query": "ps vita", "price_to": 120},
-    {"name": "DECOUVERTE - PSP", "category": "DISCOVERY", "query": "psp", "price_to": 70},
-    {"name": "DECOUVERTE - DualSense", "category": "DISCOVERY", "query": "dualsense", "price_to": 35},
-    {"name": "DECOUVERTE - Joy-Con", "category": "DISCOVERY", "query": "joy con", "price_to": 40},
-    {"name": "DECOUVERTE - Appareils photo", "category": "DISCOVERY", "query": "appareil photo", "price_to": 200},
-    {"name": "DECOUVERTE - Mini PC", "category": "DISCOVERY", "query": "mini pc", "price_to": 140},
-    {"name": "DECOUVERTE - Liseuses Kindle", "category": "DISCOVERY", "query": "kindle paperwhite", "price_to": 60},
-    {"name": "DECOUVERTE - Liseuses Kobo", "category": "DISCOVERY", "query": "kobo clara", "price_to": 60},
-    {"name": "DECOUVERTE - Apple TV", "category": "DISCOVERY", "query": "apple tv 4k", "price_to": 70},
-    {"name": "DECOUVERTE - Nvidia Shield", "category": "DISCOVERY", "query": "nvidia shield tv", "price_to": 100},
-    {"name": "DECOUVERTE - Casques premium", "category": "DISCOVERY", "query": "sony wh 1000xm", "price_to": 140},
-    {"name": "DECOUVERTE - Cameras action", "category": "DISCOVERY", "query": "gopro hero", "price_to": 160},
-    {"name": "DECOUVERTE - Montres Garmin", "category": "DISCOVERY", "query": "garmin forerunner", "price_to": 140}
+    {
+      "name": "DECOUVERTE - Nintendo",
+      "category": "DISCOVERY",
+      "query": "nintendo",
+      "price_to": 200
+    },
+    {
+      "name": "DECOUVERTE - Jeux Switch",
+      "category": "DISCOVERY",
+      "query": "jeu switch",
+      "price_to": 20
+    },
+    {
+      "name": "DECOUVERTE - Jeux Switch sous 10 EUR",
+      "category": "DISCOVERY",
+      "query": "nintendo switch",
+      "price_to": 10
+    },
+    {
+      "name": "DECOUVERTE - PlayStation",
+      "category": "DISCOVERY",
+      "query": "playstation",
+      "price_to": 300
+    },
+    {
+      "name": "DECOUVERTE - Xbox",
+      "category": "DISCOVERY",
+      "query": "xbox",
+      "price_to": 220
+    },
+    {
+      "name": "DECOUVERTE - Consoles",
+      "category": "DISCOVERY",
+      "query": "console",
+      "price_to": 300
+    },
+    {
+      "name": "DECOUVERTE - Jeux vidéo",
+      "category": "DISCOVERY",
+      "query": "jeu video",
+      "price_to": 50
+    },
+    {
+      "name": "DECOUVERTE - Game Boy",
+      "category": "DISCOVERY",
+      "query": "game boy",
+      "price_to": 150
+    },
+    {
+      "name": "DECOUVERTE - PS Vita",
+      "category": "DISCOVERY",
+      "query": "ps vita",
+      "price_to": 120
+    },
+    {
+      "name": "DECOUVERTE - PSP",
+      "category": "DISCOVERY",
+      "query": "psp",
+      "price_to": 70
+    },
+    {
+      "name": "DECOUVERTE - DualSense",
+      "category": "DISCOVERY",
+      "query": "dualsense",
+      "price_to": 35
+    },
+    {
+      "name": "DECOUVERTE - Joy-Con",
+      "category": "DISCOVERY",
+      "query": "joy con",
+      "price_to": 40
+    },
+    {
+      "name": "DECOUVERTE - Appareils photo",
+      "category": "DISCOVERY",
+      "query": "appareil photo",
+      "price_to": 200
+    },
+    {
+      "name": "DECOUVERTE - Mini PC",
+      "category": "DISCOVERY",
+      "query": "mini pc",
+      "price_to": 140
+    },
+    {
+      "name": "DECOUVERTE - Liseuses Kindle",
+      "category": "DISCOVERY",
+      "query": "kindle paperwhite",
+      "price_to": 60
+    },
+    {
+      "name": "DECOUVERTE - Liseuses Kobo",
+      "category": "DISCOVERY",
+      "query": "kobo clara",
+      "price_to": 60
+    },
+    {
+      "name": "DECOUVERTE - Apple TV",
+      "category": "DISCOVERY",
+      "query": "apple tv 4k",
+      "price_to": 70
+    },
+    {
+      "name": "DECOUVERTE - Nvidia Shield",
+      "category": "DISCOVERY",
+      "query": "nvidia shield tv",
+      "price_to": 100
+    },
+    {
+      "name": "DECOUVERTE - Casques premium",
+      "category": "DISCOVERY",
+      "query": "sony wh 1000xm",
+      "price_to": 140
+    },
+    {
+      "name": "DECOUVERTE - Cameras action",
+      "category": "DISCOVERY",
+      "query": "gopro hero",
+      "price_to": 160
+    },
+    {
+      "name": "DECOUVERTE - Montres Garmin",
+      "category": "DISCOVERY",
+      "query": "garmin forerunner",
+      "price_to": 140
+    }
   ],
   "max_listing_age_hours": 0.5,
   "reject_unknown_listing_age": true,
@@ -73,12 +184,17 @@
   "pricecharting_min_sales_volume": 3,
   "pricecharting_cache_max_age_hours": 24,
   "pricecharting_usd_to_eur": 0.85,
-  "pricecharting_resale_haircut": 0.80,
+  "pricecharting_resale_haircut": 0.8,
   "pricecharting_max_buy_ratio": 0.45,
   "pricecharting_discovery_max_price": 300,
   "device_catalog_discovery_max_price": 800,
-  "smartphone_buy_price_multiplier": 0.80,
-  "excluded_game_platforms": ["ds", "nintendo ds", "3ds", "nintendo 3ds"],
+  "smartphone_buy_price_multiplier": 0.8,
+  "excluded_game_platforms": [
+    "ds",
+    "nintendo ds",
+    "3ds",
+    "nintendo 3ds"
+  ],
   "device_catalog_cache_max_age_hours": 24,
   "dns_healthcheck_timeout_seconds": 3,
   "dns_cache_ttl_seconds": 300,
@@ -95,8 +211,13 @@
   "photo_min_resolution": 320,
   "photo_blur_threshold": 4.0,
   "photo_condition_model_path": "models/condition_classifier.onnx",
-  "photo_condition_min_confidence": 0.70,
-  "photo_condition_labels": ["damaged", "used", "good", "new"],
+  "photo_condition_min_confidence": 0.7,
+  "photo_condition_labels": [
+    "damaged",
+    "used",
+    "good",
+    "new"
+  ],
   "hidden_deal_bonus": 1.0,
   "favourite_penalty_per_user": 0.25,
   "favourite_penalty_cap": 2.0,
@@ -2241,5 +2362,8 @@
   ],
   "profile_version": "GAMING_FR_V6_5_2026_09_01",
   "detail_wait_ms": 350,
-  "run_budget_seconds": 480
+  "run_budget_seconds": 480,
+  "min_seller_rating": 4,
+  "seller_rating_field": "rating_out_of_5",
+  "seller_rating_scale": 5
 }

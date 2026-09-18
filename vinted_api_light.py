@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
+from seller_rating import seller_is_allowed
 from monitoring import build_workflow_report
 from photo_condition import PhotoConditionAnalyzer, enrich_rows_with_photos
 from pricecharting_catalog import ReferenceCatalog
@@ -68,7 +69,7 @@ ALERT_FIELDS = [
     "timestamp", "category", "product_type", "search", "brand", "model", "size",
     "catalog_description", "reference_source", "sales_volume", "match_confidence",
     "opportunity_score", "title", "published_at", "age_minutes",
-    "view_count", "favourite_count", "seller_type", "previous_price",
+    "view_count", "favourite_count", "seller_rating", "seller_type", "previous_price",
     "price_drop_pct", "image_url", "listing_price", "total_buy_est",
     "resale_low", "resale_high", "margin_low", "margin_high", "roi_low",
     "demand_score", "target_price", "price_zone", "photo_condition",
@@ -2059,7 +2060,13 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             continue
 
         # 3. Vendeur pro : blocage uniquement si explicitement demandé.
-        seller = item.get("user", {})
+        seller_ok, seller_stars, seller_rejection = seller_is_allowed(item, cfg)
+        if not seller_ok:
+            counter = "rejected_seller_rating_" + seller_rejection
+            stats[counter] = stats.get(counter, 0) + 1
+            LOGGER.debug("  X Note vendeur | %s | %s", seller_rejection, item_id)
+            continue
+        seller = item.get("user") or item.get("seller") or {}
         if cfg.get("exclude_professional_sellers", True) and (seller.get("is_business") or seller.get("is_pro")):
             stats["rejected_pro"] += 1
             LOGGER.debug("  X Vendeur Pro | %s", title[:60])
@@ -2234,6 +2241,7 @@ async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
             "age_minutes": int(round(age * 60)) if age is not None else "",
             "favourite_count": fav_count if fav_count is not None else "",
             "view_count": view_count if view_count is not None else "",
+            "seller_rating": seller_stars,
             "seller_type": "pro" if seller.get("is_business") else "particulier",
             "previous_price": previous_price if previous_price is not None else "",
             "price_drop_pct": drop_pct if is_price_drop else "",
@@ -2710,6 +2718,9 @@ async def main_async():
             budget_status["blocked"],
         )
 
+        LOGGER.info("Notes vendeurs | sous le seuil %s | absentes ou illisibles %s",
+                    stats.get("rejected_seller_rating_low", 0),
+                    stats.get("rejected_seller_rating_missing", 0))
         requested = stats["catalog_requested"]
         if requested and stats["catalog_success"] / requested < 0.5:
             raise RuntimeError("Moins de 50% des catalogues ont répondu: scan invalide")

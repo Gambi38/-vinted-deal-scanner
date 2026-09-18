@@ -719,7 +719,7 @@ class ApiOnlyTests(unittest.TestCase):
                 "id": 777, "title": "iPhone 13 Pro 128 Go",
                 "description": "Pas de paiement Vinted, PayPal uniquement",
                 "price": {"amount": "180"}, "created_at_ts": now,
-                "user": {}, "view_count": 0, "favourite_count": 0,
+                "user": {"rating_out_of_5": 4.5}, "view_count": 0, "favourite_count": 0,
             }
             cfg = {
                 "catalog_per_page": 50, "max_items_per_search": 50,
@@ -1111,7 +1111,7 @@ class ApiOnlyTests(unittest.TestCase):
                     "title": f"Article inconnu {index}",
                     "price": {"amount": "10"},
                     "created_at_ts": (now - timedelta(minutes=age)).timestamp(),
-                    "user": {},
+                    "user": {"rating_out_of_5": 4.5},
                 })
             stats = {key: 0 for key in (
                 "catalog_requested", "catalog_success", "catalog_items",
@@ -1224,10 +1224,10 @@ class ApiOnlyTests(unittest.TestCase):
             items = [
                 {"id": 1, "title": "Mando para joysticks Nintendo Switch",
                  "price": {"amount": "10"}, "created_at_ts": timestamp,
-                 "user": {}, "view_count": 0, "favourite_count": 0},
+                 "user": {"rating_out_of_5": 4.5}, "view_count": 0, "favourite_count": 0},
                 {"id": 2, "title": "Manette PS5 DualSense officielle",
                  "price": {"amount": "20"}, "created_at_ts": timestamp,
-                 "user": {}, "view_count": 0, "favourite_count": 0},
+                 "user": {"rating_out_of_5": 4.5}, "view_count": 0, "favourite_count": 0},
             ]
             stats = {key: 0 for key in (
                 "catalog_requested", "catalog_success", "catalog_items",
