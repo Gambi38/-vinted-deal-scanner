@@ -1,63 +1,47 @@
-import asyncio
 from collections import defaultdict
 import tempfile
 from pathlib import Path
 import json
 import unittest
 from unittest.mock import AsyncMock, patch
-
+from types import SimpleNamespace
 import vinted_api_light as bot
-
-
-class Response:
-    def __init__(self, status, data):
-        self.status, self.data, self.headers = status, data, {}
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *args):
-        return False
-
-    async def json(self):
-        return self.data
-
-
-class Session:
-    def __init__(self, response):
-        self.response, self.calls = response, 0
-
-    def get(self, *args, **kwargs):
-        self.calls += 1
-        return self.response
+from web_catalog import catalog_payload
 
 
 class CatalogHealthTests(unittest.IsolatedAsyncioTestCase):
-    async def probe(self, status, payload):
+    async def probe(self, payload):
+        items = catalog_payload(payload, trusted_search_response=True)
+        reader = SimpleNamespace(read=AsyncMock())
+        if items is None:
+            reader.read.side_effect = bot.CatalogUnavailable('Schéma inconnu')
+        else:
+            reader.read.return_value = items
         stats = defaultdict(int)
-        session = Session(Response(status, payload))
         await bot.check_catalog_health('https://www.vinted.be', AsyncMock(),
-                                       session, {}, stats, None)
-        return session, stats
+            SimpleNamespace(catalog_reader=reader), {}, stats, None)
+        return stats
 
-    async def test_404_stops_after_one_request(self):
-        session = Session(Response(404, {}))
+    async def test_404_stops_after_one_navigation(self):
+        reader = SimpleNamespace(read=AsyncMock(side_effect=bot.CatalogUnavailable('HTTP 404')))
+        stats = defaultdict(int)
         with self.assertRaisesRegex(bot.CatalogUnavailable, 'HTTP 404'):
             await bot.check_catalog_health('https://www.vinted.be', AsyncMock(),
-                                           session, {}, defaultdict(int), None)
-        self.assertEqual(session.calls, 1)
+                SimpleNamespace(catalog_reader=reader), {}, stats, None)
+        self.assertEqual(reader.read.await_count, 1)
+        self.assertEqual(stats['catalog_success'], 0)
 
     async def test_valid_empty_catalog_is_healthy(self):
-        _, stats = await self.probe(200, {'items': []})
+        stats = await self.probe({'items': []})
         self.assertEqual(stats['catalog_success'], 1)
 
     async def test_error_json_is_not_a_catalog(self):
-        for data in ({'error': 'unavailable'}, [], {'items': None}, {'items': [1]}):
+        for data in ({'error': 'unavailable'}, [], {'items': None}, {'items': [1]}, {'items': [{'id': 1}]}):
             with self.subTest(data=data), self.assertRaises(bot.CatalogUnavailable):
-                await self.probe(200, data)
+                await self.probe(data)
 
     async def test_valid_items_are_accepted(self):
-        _, stats = await self.probe(200, {'items': [{'id': 42}]})
+        stats = await self.probe({'items': [{'id': 42, 'title': 'Nintendo Switch', 'price': {'amount': '40', 'currency_code': 'EUR'}}]})
         self.assertEqual(stats['catalog_items'], 1)
 
     async def test_failure_is_persisted_and_propagated(self):
@@ -70,7 +54,3 @@ class CatalogHealthTests(unittest.IsolatedAsyncioTestCase):
             report = json.loads((Path(folder) / 'dernier_echec.json').read_text())
             self.assertEqual(report['error_type'], 'CatalogUnavailable')
             self.assertEqual(report['cycle'], 1)
-
-
-if __name__ == '__main__':
-    unittest.main()

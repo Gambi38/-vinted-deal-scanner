@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# VINTED_API_AIOHTTP_V17_1_CATALOG_HEALTH
+# VINTED_WEB_V18_EXPERIMENTAL
 # Scanner autonome : catalogue Vinted uniquement, sans appel détail par annonce.
 
 import asyncio
@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
+from web_catalog import WebCatalog, CatalogSession, CatalogUnavailable
 from seller_rating import seller_is_allowed
 from monitoring import build_workflow_report
 from photo_condition import PhotoConditionAnalyzer, enrich_rows_with_photos
@@ -1871,83 +1872,34 @@ def choose_known_product(rule_index, title, price, cfg=None):
     return source_search, rule
 
 # ---------- Appels API ----------
-class CatalogUnavailable(RuntimeError):
-    """Le catalogue ne peut pas être utilisé pendant ce cycle."""
-
-
 async def check_catalog_health(base_url, limiter, session, headers, stats, api_budget):
-    """Une réponse d'accueil 200 ne valide pas l'accès au catalogue."""
-    before = stats.get("catalog_success", 0)
+    """Teste une vraie page de recherche avant de lancer le cycle."""
     await catalog_items("nintendo", None, base_url, limiter, session, headers,
                         per_page=1, stats=stats, api_budget=api_budget)
-    if stats.get("catalog_success", 0) == before:
-        status = stats.get("catalog_last_status", "réseau ou JSON invalide")
-        raise CatalogUnavailable(
-            f"Catalogue indisponible (HTTP {status}) sur "
-            f"{base_url}/api/v2/catalog/items. Aucune recherche lancée. "
-            "Vérifier l'accès au catalogue; une réponse 404 ne prouve pas "
-            "à elle seule un bannissement ou un changement d'API."
-        )
 
 
 async def catalog_items(query, price_to, base_url, limiter, session, headers,
                         per_page=50, page=1, stats=None, api_budget=None):
-    request_started = time.perf_counter()
-    url = f"{base_url}/api/v2/catalog/items"
-    params = {
-        "search_text": query,
-        "order": "newest_first",
-        "per_page": max(1, min(int(per_page), 50)),
-        "page": max(1, int(page)),
-    }
-    if price_to is not None:
-        params["price_to"] = float(price_to)
+    stats = stats if stats is not None else {}
+    started = time.perf_counter()
+    reader = getattr(session, "catalog_reader", None)
+    if reader is None:
+        raise CatalogUnavailable("Lecteur web non initialisé ; installer le paquet V18 complet.")
     if api_budget is not None:
         try:
             await api_budget.spend(1.0, "catalog")
         except ApiBudgetExceeded as exc:
-            if stats is not None:
-                stats["catalog_budget_blocked"] += 1
-            LOGGER.warning("%s", exc)
-            return []
+            stats["catalog_budget_blocked"] = stats.get("catalog_budget_blocked", 0) + 1
+            raise CatalogUnavailable("Budget de navigations web épuisé") from exc
     await limiter.wait("catalog", cost=1.0)
-    if stats is not None:
-        stats["catalog_requested"] += 1
+    stats["catalog_requested"] = stats.get("catalog_requested", 0) + 1
     try:
-        async with session.get(url, params=params, headers=headers, timeout=10) as resp:
-            if stats is not None:
-                stats["catalog_last_status"] = resp.status
-                statuses = stats.setdefault("catalog_http_statuses", {})
-                statuses[str(resp.status)] = statuses.get(str(resp.status), 0) + 1
-            await limiter.register_response(resp.status, resp.headers, "catalog")
-            if resp.status == 429 and stats is not None:
-                stats["http_429"] = stats.get("http_429", 0) + 1
-            if resp.status != 200:
-                LOGGER.warning(
-                    "Catalogue HTTP %s pour %s page %s",
-                    resp.status, query, page,
-                )
-                return []
-            data = await resp.json()
-            if not isinstance(data, dict) or not isinstance(data.get("items"), list):
-                LOGGER.error("Catalogue HTTP 200 mais schéma JSON invalide")
-                if stats is not None:
-                    stats["catalog_invalid_payloads"] = stats.get("catalog_invalid_payloads", 0) + 1
-                return []
-            items = data["items"]
-            if not all(isinstance(item, dict) for item in items):
-                LOGGER.error("Catalogue: entrées JSON invalides")
-                return []
-            if stats is not None:
-                stats["catalog_success"] += 1
-                stats["catalog_items"] += len(items)
-            return items
-    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError) as exc:
-        LOGGER.error("Erreur catalogue %s: %s", query, exc)
-        return []
+        items = await reader.read(query, price_to, page, per_page, limiter, stats)
+        stats["catalog_success"] = stats.get("catalog_success", 0) + 1
+        stats["catalog_items"] = stats.get("catalog_items", 0) + len(items)
+        return items
     finally:
-        if stats is not None:
-            stats["catalog_seconds"] += time.perf_counter() - request_started
+        stats["catalog_seconds"] = stats.get("catalog_seconds", 0) + time.perf_counter() - started
 
 # ---------- Scan principal ----------
 async def scan_search(search, cfg, blacklist, seen_ids, seen_meta,
@@ -2414,7 +2366,7 @@ async def main_async():
     api_budget = ApiCostController(budget_requests, budget_units)
     if int((rate_state or {}).get("penalty_level", 0) or 0):
         LOGGER.warning(
-            "Budget API adaptatif | niveau %s | %s requêtes maximum",
+            "Budget WEB adaptatif | niveau %s | %s navigations maximum",
             rate_state.get("penalty_level"), budget_requests,
         )
 
@@ -2446,7 +2398,8 @@ async def main_async():
         dns_status["host"], dns_status["latency_ms"],
         ", ".join(dns_status["addresses"][:2]),
     )
-    async with managed_http_session(base_url, cfg, headers) as session:
+    async with aiohttp.ClientSession() as http_session, WebCatalog(base_url, cfg) as reader:
+        session = CatalogSession(http_session, reader)
         await check_catalog_health(base_url, limiter, session, headers, stats, api_budget)
 
         discovery_mode = bool(cfg.get("discovery_mode", True))
@@ -2536,7 +2489,7 @@ async def main_async():
         )
         LOGGER.info(
             "Plan recherches | fixes %s | produits précis %s | découverte %s | "
-            "budget prévu <= %s requêtes",
+            "budget prévu <= %s navigations",
             plan.get("fixed", 0), plan.get("precision", 0),
             plan.get("discovery", 0), planned_requests,
         )
@@ -2573,6 +2526,8 @@ async def main_async():
 
         tasks = [bounded_scan(s) for s in searches]
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        if reader.stopped:
+            raise CatalogUnavailable(reader.stopped)
 
         candidates = []
         for search, res in zip(searches, results):
@@ -2686,7 +2641,7 @@ async def main_async():
         state_seconds = time.perf_counter() - state_started
         cycle_seconds = time.perf_counter() - cycle_started
         throughput = stats["items_examined"] / max(cycle_seconds, 0.001)
-        LOGGER.info("Santé API | catalogues %s/%s | articles reçus %s | "
+        LOGGER.info("Santé WEB | catalogues %s/%s | articles reçus %s | "
                     "articles analysés %s | âges connus %s | inconnus %s | notifications %s",
                     stats["catalog_success"], stats["catalog_requested"],
                     stats["catalog_items"], stats["items_examined"],
@@ -2710,9 +2665,16 @@ async def main_async():
             cycle_seconds, throughput, stats["catalog_seconds"], state_seconds,
             stats["searches_completed"], stats["searches_failed"],
         )
+        if stats.get("rejected_seller_rating_missing", 0):
+            LOGGER.warning(
+                "WEB: %s annonces sans note vendeur exploitable ont été écartées. "
+                "Aucune note 4/5 ne peut être supposée.",
+                stats["rejected_seller_rating_missing"],
+            )
         budget_status = api_budget.snapshot()
+        budget_status["scope"] = "catalog_page_navigations_only"
         LOGGER.info(
-            "Budget API | %s/%s requêtes | %.1f/%.1f unités | %s bloquée(s)",
+            "Budget WEB | %s/%s navigations | %.1f/%.1f unités | %s bloquée(s)",
             budget_status["requests"], budget_status["max_requests"],
             budget_status["units"], budget_status["max_units"],
             budget_status["blocked"],
@@ -2754,7 +2716,7 @@ async def main_async():
 async def run_workflow_session():
     """Répète plusieurs cycles courts pendant un même workflow GitHub."""
     cfg = load_json(CONFIG_PATH, {})
-    LOGGER.info("Version scanner V17.1 | contrôle du catalogue avant recherches")
+    LOGGER.info("Version scanner V18 WEB expérimental | lecture de /catalog avec Chromium")
     # Une session GitHub reste bornée pour garantir la sauvegarde des données,
     # puis le cron la relance. La limite haute permet une couverture quasi
     # continue sans créer une boucle infinie impossible à terminer proprement.

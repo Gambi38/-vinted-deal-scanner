@@ -3,3 +3,5 @@ uvloop>=0.21,<1; platform_system != "Windows"
 Pillow>=10,<13
 numpy>=1.26,<3
 onnxruntime>=1.18,<2; platform_machine == "x86_64"
+
+playwright>=1.55,<2
