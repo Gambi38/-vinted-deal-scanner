@@ -1,0 +1,79 @@
+name: Chercher un article precis
+
+"on":
+  workflow_dispatch:
+    inputs:
+      article:
+        description: 'Article exact a chercher (ex: iPhone 11, Nintendo Switch OLED)'
+        required: true
+        type: string
+      max_price:
+        description: 'Prix maximum en euros (optionnel)'
+        required: false
+        type: string
+      top:
+        description: "Nombre de resultats"
+        required: false
+        default: "5"
+        type: string
+      pages:
+        description: "Pages Vinted a lire (1-10)"
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  cherche:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dependances
+        run: |
+          python -m pip install --upgrade pip
+          pip install "playwright>=1.55,<2"
+          python -m playwright install --with-deps chromium
+
+      - name: Chercher les moins chers
+        env:
+          ARTICLE: ${{ inputs.article }}
+          MAX_PRICE: ${{ inputs.max_price }}
+          TOP: ${{ inputs.top }}
+          PAGES: ${{ inputs.pages }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          args=(--top "${TOP:-5}" --pages "${PAGES:-5}")
+          if [ -n "$MAX_PRICE" ]; then args+=(--max-price "$MAX_PRICE"); fi
+          set +e
+          python cheapest_finder.py "$ARTICLE" "${args[@]}" | tee resultat.txt
+          code=${PIPESTATUS[0]}
+          {
+            echo "## Resultat pour : $ARTICLE"
+            echo '```'
+            cat resultat.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
+      - name: Envoyer le resultat sur le telephone (si NTFY_TOPIC existe)
+        if: always()
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          ARTICLE: ${{ inputs.article }}
+        run: |
+          if [ -n "$NTFY_TOPIC" ] && [ -s resultat.txt ]; then
+            curl -fsS -H "Title: Moins chers : $ARTICLE" \
+              -d "$(head -c 3500 resultat.txt)" \
+              "https://ntfy.sh/$NTFY_TOPIC" || true
+          fi
