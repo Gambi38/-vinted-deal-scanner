@@ -22,98 +22,10 @@ from urllib.parse import urlencode
 
 BASE_DIR = Path(__file__).resolve().parent
 SUSPICIOUS_RATIO = 0.4     # prix < 40 % de la médiane = à vérifier
-BLACKLIST_PATH = BASE_DIR / "blacklist.json"
 
-# Mots qui changent le produit : refusés s'ils ne sont pas dans la recherche.
-VARIANT_WORDS = {
-    "pro", "max", "plus", "mini", "ultra", "lite", "xl", "slim", "oled",
-    "air", "se", "fold", "flip", "digital", "s", "x", "xs", "xr",
-    "turbo", "classic", "mega", "neo", "duo",
-}
-
-# Accessoires : refusés sauf si la recherche les demande (FR / NL / DE / ES / IT / EN).
-ACCESSORY_WORDS = {
-    "coque", "etui", "housse", "protection", "protege", "protecteur", "vitre",
-    "verre", "film", "chargeur", "cable", "adaptateur", "support", "notice",
-    "case", "cover", "charger", "stand", "dock", "sticker", "skin", "pochette",
-    "sacoche", "facade", "ecran", "batterie", "tempered", "protector",
-    "funda", "fundas", "capa", "capas", "custodia", "cargador", "hoesje",
-    "hulle", "handyhulle", "kabel", "ladekabel", "folie", "glas",
-}
-
-# Boîte vide / maquette / pièces : refusés quoi qu'il arrive (toutes langues).
-EMPTY_OR_BROKEN_WORDS = {
-    "vide", "vides", "leere", "leer", "lege", "empty", "vacia", "vacio",
-    "vuota", "vuoto", "dummy", "factice", "maquette", "imitation", "attrappe",
-    "piezas", "pezzi", "ricambi", "teile", "ersatzteile", "onderdelen",
-    "defecto", "rotto", "kaputt", "kapot", "defekt", "roto",
-    "pecas", "concertar", "despiece", "despieces", "reparar", "reparacion",
-    "reparation", "reparatie", "reparatur", "bastler", "bastelgerat",
-    "arriere", "trasera", "ruckseite", "rueckseite", "achterkant", "backcover",
-    "blackliste", "blacklisted", "locked", "bloque", "bloquee", "verrouille",
-    "verrouillee",
-}
-
-# Racines d'accessoires (« Bildschirmschutz », « custodie », « handyhulle »…).
-ACCESSORY_STEMS = (
-    "coque", "housse", "hulle", "custod", "funda", "schutz", "protect", "cover",
-    "hoesje", "etui", "pouch", "sleeve", "vitre", "folie", "bumper", "tempered",
+from title_rules import (  # noqa: E402  (règles de titre : voir title_rules.py)
+    BLACKLIST_PATH, load_bad_terms, model_mismatch, plain, rejection_reason,
 )
-
-# Expressions « ne marche pas / verrouillé » dans plusieurs langues.
-BROKEN_PHRASES = (
-    "non fonctionnel", "non fonctionnelle", "pas fonctionnel", "pour piece",
-    "pour pieces", "nicht funktionsfahig", "niet werkend", "no funciona",
-    "sin funcionar", "no funcional", "for repair", "to repair", "icloud bloque",
-    "icloud verrouille", "bloque icloud", "icloud locked", "locked icloud",
-    "compte icloud actif", "sim lock",
-)
-
-# Emballage : refusé s'il est seul, accepté s'il accompagne l'appareil
-# (« iPhone 11 avec boîte », « mit Originalverpackung »).
-PACKAGING_WORDS = {
-    "boite", "box", "doos", "verpackung", "originalverpackung", "emballage",
-    "karton", "carton", "caja", "scatola", "coffret",
-}
-WITH_WORDS = {
-    "avec", "with", "mit", "met", "con", "inclus", "incl", "incluse", "et",
-    "and", "und", "en", "plus", "sans",
-}
-
-# Annonces qui ne sont pas une vente de l'article lui-même.
-NOISE_PHRASES = (
-    "recherche", "cherche", "wanted", "echange", "echanger", "troc",
-    "reserve", "reserved", "vendu", "sold",
-)
-LOT_PHRASES = ("lot", "bundle", "pack de", "x2", "x3", "x4", "2x", "3x", "4x")
-
-
-def plain(value) -> str:
-    text = unicodedata.normalize("NFKD", str(value or ""))
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    text = text.replace("'", "").replace("’", "")
-    # Lettres et chiffres collés sont séparés : « iPhone11 » = « iPhone 11 »,
-    # « PS5 » = « PS 5 », « 64Go » = « 64 Go ».
-    return " ".join(re.findall(r"[a-z]+|[0-9]+", text.lower()))
-
-
-def _has_phrase(tokens_text: str, phrase: str) -> bool:
-    phrase = plain(phrase)
-    if not phrase:
-        return False
-    return re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", tokens_text) is not None
-
-
-def load_bad_terms(path: Path = BLACKLIST_PATH) -> list[str]:
-    """Termes 'cassé / faux' du blacklist.json du projet."""
-    try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
-    terms: list[str] = []
-    for key in ("hard_blacklist", "fake_blacklist"):
-        terms.extend(str(t) for t in data.get(key, []) if str(t).strip())
-    return terms
 
 
 def _price(item) -> float | None:
@@ -129,117 +41,6 @@ def _price(item) -> float | None:
     return number if number > 0 else None
 
 
-def rejection_reason(title: str, query: str, bad_terms=(), allow_lots=False):
-    """None si le titre correspond exactement à la recherche, sinon la raison."""
-    t, q = plain(title), plain(query)
-    q_tokens = q.split()
-    t_tokens = t.split()
-    if not q_tokens:
-        return "recherche vide"
-    missing = [tok for tok in q_tokens if not _token_present(tok, t_tokens)]
-    if missing:
-        return "mot absent : " + missing[0]
-    q_set = set(q_tokens)
-    for tok in t_tokens:
-        if tok in VARIANT_WORDS and tok not in q_set:
-            return "autre variante : " + tok
-    other = _other_model_number(q_tokens, t_tokens)
-    if other:
-        return "autre numéro de modèle : " + other
-    for word in ACCESSORY_WORDS:
-        if word in t_tokens and word not in q_set:
-            return "accessoire : " + word
-    for stem in ACCESSORY_STEMS:
-        if stem in q:
-            continue
-        hit = next((tok for tok in t_tokens if stem in tok), None)
-        if hit:
-            return "accessoire : " + hit
-    for tok in t_tokens:
-        if (len(tok) >= 5 and tok not in q_set
-                and re.fullmatch(r"(?:pro|max|plus|mini|ultra|lite)+", tok)):
-            return "autre variante : " + tok
-    for phrase in BROKEN_PHRASES:
-        if _has_phrase(t, phrase) and not _has_phrase(q, phrase):
-            return "ne fonctionne pas : " + phrase
-    for word in EMPTY_OR_BROKEN_WORDS:
-        if word in t_tokens and word not in q_set:
-            return "vide / pièces / maquette : " + word
-    for index, word in enumerate(t_tokens):
-        if word in PACKAGING_WORDS and word not in q_set:
-            if not WITH_WORDS.intersection(t_tokens[max(0, index - 3):index]):
-                return "emballage seul : " + word
-    for term in bad_terms:
-        if _has_phrase(t, term) and not _has_phrase(q, term):
-            return "défaut/faux : " + term
-    for phrase in NOISE_PHRASES:
-        if _has_phrase(t, phrase) and phrase not in q_set:
-            return "pas une vente directe : " + phrase
-    if not allow_lots:
-        for phrase in LOT_PHRASES:
-            if _has_phrase(t, phrase) and phrase not in q_set:
-                return "lot : " + phrase
-    return None
-
-
-UNIT_WORDS = {"go", "gb", "gig", "to", "tb", "mo", "mb", "g", "gen", "inch",
-              "pouces", "pouce", "cm", "mm", "w", "v", "mah", "hz", "k"}
-
-
-def _token_present(token, title_tokens) -> bool:
-    """Mot exact, ou à une faute de frappe près pour les mots d'au moins 5 lettres."""
-    if token in title_tokens:
-        return True
-    if len(token) < 5 or not token.isalpha():
-        return False
-    from product_classifier import levenshtein_distance
-    return any(
-        t.isalpha() and abs(len(t) - len(token)) <= 1
-        and levenshtein_distance(token, t, 1) <= 1
-        for t in title_tokens
-    )
-
-
-def _small_number_after(title_tokens, index):
-    """Numéro de 1-2 chiffres juste après title_tokens[index], hors capacité/unité."""
-    if index + 1 >= len(title_tokens):
-        return None
-    nxt = title_tokens[index + 1]
-    if not nxt.isdigit() or len(nxt) > 2:
-        return None
-    if index + 2 < len(title_tokens) and title_tokens[index + 2] in UNIT_WORDS:
-        return None
-    return nxt
-
-
-def _other_model_number(q_tokens, t_tokens):
-    """« iPhone 11 » ne doit pas accepter « iPhone 12 » ; « Switch » pas « Switch 2 »."""
-    for position, tok in enumerate(q_tokens):
-        if tok.isdigit() and position > 0:
-            anchor = q_tokens[position - 1]
-            for j, title_tok in enumerate(t_tokens):
-                if _token_present(anchor, [title_tok]):
-                    found = _small_number_after(t_tokens, j)
-                    if found and found != tok:
-                        return found
-    last = q_tokens[-1]
-    if not last.isdigit():
-        for j, title_tok in enumerate(t_tokens):
-            if title_tok == last:
-                found = _small_number_after(t_tokens, j)
-                if found:
-                    return found
-    return None
-
-
-def model_mismatch(model, query) -> bool:
-    """Le champ « Modèle » de Vinted désigne un modèle plus précis (« iPhone 11 Pro »)."""
-    if not model:
-        return False
-    m, q = set(plain(model).split()), set(plain(query).split())
-    return q <= m and bool(m - q)
-
-
 def cost(row) -> float:
     """Coût réel : prix + protection acheteur (total) + livraison si connue."""
     base = row.get("total") or row["price"]
@@ -248,7 +49,12 @@ def cost(row) -> float:
 
 def find_cheapest(items, query, *, top=5, max_price=None, bad_terms=(),
                   allow_lots=False):
-    """Retourne (résultats triés par prix, nombre d'annonces rejetées)."""
+    """Retourne (résultats triés par prix, nombre d'annonces rejetées).
+
+    ``query`` peut être une chaîne ou une liste (article + alias) : une annonce
+    est retenue si elle correspond exactement à l'une d'elles.
+    """
+    queries = [query] if isinstance(query, str) else list(query)
     seen: set[str] = set()
     kept = []
     rejected = 0
@@ -261,8 +67,11 @@ def find_cheapest(items, query, *, top=5, max_price=None, bad_terms=(),
         if price is None or (max_price is not None and price > max_price):
             rejected += 1
             continue
-        if rejection_reason(item.get("title", ""), query, bad_terms, allow_lots) \
-                or model_mismatch(item.get("model"), query):
+        if not any(
+            rejection_reason(item.get("title", ""), q, bad_terms, allow_lots) is None
+            and not model_mismatch(item.get("model"), q)
+            for q in queries
+        ):
             rejected += 1
             continue
         kept.append({

@@ -73,7 +73,7 @@ jobs:
           ARTICLE: ${{ inputs.article }}
         run: |
           if [ -n "$NTFY_TOPIC" ] && [ -s resultat.txt ]; then
-            curl -fsS -H "Title: Moins chers : $ARTICLE" \
-              -d "$(head -c 3500 resultat.txt)" \
+            curl -fsS -H "Title: Moins chers" \
+              -d "$(printf '%s\n\n' "$ARTICLE"; head -c 3400 resultat.txt)" \
               "https://ntfy.sh/$NTFY_TOPIC" || true
           fi

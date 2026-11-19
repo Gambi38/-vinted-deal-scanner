@@ -94,12 +94,13 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: |
           duree="${DUREE:-330}"
+          case "$duree" in ""|*[!0-9]*) duree=330 ;; esac
           if [ "$duree" -gt 340 ]; then duree=340; fi
           args=(--duration-minutes "$duree" --state-dir runtime_data)
           if [ -n "$MAX_PRICE" ]; then args+=(--max-price "$MAX_PRICE"); fi
           IFS='|' read -ra ALIASES <<< "$ALIAS"
           for a in "${ALIASES[@]}"; do
-            if [ -n "$a" ]; then args+=(--alias "$a"); fi
+            if [ -n "$a" ]; then args+=("--alias=$a"); fi
           done
           set +e
           python -u watch_finder.py "$ARTICLE" "${args[@]}" 2>&1 | tee run.log
@@ -131,9 +132,12 @@ jobs:
               cat runtime_data/trouvailles_*.jsonl | python -c "
           import sys, json
           for line in sys.stdin:
-              r = json.loads(line)
+              try:
+                  r = json.loads(line)
+              except ValueError:
+                  continue
               print(r['cost'], r['verdict'], r['title'], r['url'])
-          "
+          " || true
               echo '```'
             else
               echo "Aucune trouvaille dans ce run."
@@ -144,6 +148,18 @@ jobs:
             tail -n 40 run.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prevenir si la surveillance s'est arretee
+        if: steps.run.outputs.code != '0'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          CODE: ${{ steps.run.outputs.code }}
+        run: |
+          if [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: Surveillance arretee" \
+              -d "La surveillance s'est arretee (code $CODE : 2 = Vinted bloque ce serveur, 3 = erreurs). Voir le run GitHub." \
+              "https://ntfy.sh/$NTFY_TOPIC" || true
+          fi
 
       - name: Relancer automatiquement
         if: steps.run.outputs.code == '0'
@@ -157,8 +173,9 @@ jobs:
           RELANCES: ${{ inputs.relances }}
         run: |
           restant="${RELANCES:-0}"
+          case "$restant" in ""|*[!0-9]*) restant=0 ;; esac
           if [ "$restant" -gt 0 ]; then
-            gh workflow run surveille-article.yml \
+            gh workflow run surveille-article.yml --ref "$GITHUB_REF_NAME" \
               -f article="$ARTICLE" -f max_price="$MAX_PRICE" -f alias="$ALIAS" \
               -f duree_minutes="${DUREE:-330}" -f relances="$((restant - 1))"
             echo "Relance programmee (reste $((restant - 1)) apres celle-ci)."

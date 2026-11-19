@@ -5,8 +5,8 @@ from pathlib import Path
 
 from cheapest_finder import load_bad_terms, rejection_reason
 from watch_finder import (
-    backoff_seconds, classify, expand_queries, load_state, matches_any,
-    prune_seen, save_state, slug, split_new,
+    backoff_seconds, classify, expand_queries, load_state, match_terms, matches_any,
+    prune_seen, save_state, slug, split_new, sweep_bounds, synonyms_for,
 )
 
 BAD = load_bad_terms()
@@ -33,6 +33,32 @@ class ExpandQueriesTests(unittest.TestCase):
         queries = expand_queries("PS5")
         self.assertIn("PS5", queries)
         self.assertIn("ps 5", queries)
+
+
+class SynonymTests(unittest.TestCase):
+    def test_ps5_and_playstation_5_are_the_same_article(self):
+        self.assertEqual(synonyms_for("PS5"), ["playstation 5"])
+        self.assertEqual(synonyms_for("PlayStation 5"), ["ps5"])
+        self.assertIn("playstation 5", expand_queries("PS5"))
+        terms = match_terms("PS5")
+        self.assertTrue(matches_any(row(1, "Console PlayStation 5 édition standard", 400), terms, BAD))
+        self.assertFalse(matches_any(row(2, "Console PlayStation 4", 100), terms, BAD))
+
+    def test_unknown_article_has_no_synonym(self):
+        self.assertEqual(synonyms_for("iPhone 11"), [])
+
+
+class SweepTests(unittest.TestCase):
+    class Args:
+        max_price = None
+        deal_ratio = 0.85
+
+    def test_sweep_range_skips_absurdly_low_prices(self):
+        args = self.Args()
+        self.assertEqual(sweep_bounds(args, 150.0), (60, 128))
+        args.max_price = 100.0
+        self.assertEqual(sweep_bounds(args, 150.0), (60, 100.0))
+        self.assertEqual(sweep_bounds(args, None), (None, 100.0))
 
 
 class MatchingTests(unittest.TestCase):
@@ -81,6 +107,57 @@ class RealWorldLeakTests(unittest.TestCase):
             self.assertIsNone(rejection_reason(title, "iPhone 11", BAD), title)
 
 
+class ReviewerFindingsTests(unittest.TestCase):
+    """Cas relevés par la relecture indépendante (faux rejets et faux positifs)."""
+
+    def accepted(self, query, titles):
+        for title in titles:
+            self.assertIsNone(rejection_reason(title, query, BAD), f"{query!r} <- {title!r}")
+
+    def rejected(self, query, titles):
+        for title in titles:
+            self.assertIsNotNone(rejection_reason(title, query, BAD), f"{query!r} <- {title!r}")
+
+    def test_legit_phone_listings_are_kept(self):
+        self.accepted("iPhone 11", [
+            "iPhone 11 batterie 89%", "iPhone 11 64 Go - batterie 92%",
+            "iPhone 11 écran 6,1 Liquid Retina", "iPhone 11 avec coque offerte",
+            "iPhone 11 + coque", "iPhone 11 128 Go + boîte + chargeur",
+            "iPhone 11 sans chargeur", "iPhone 11 64Go (boîte d'origine)",
+            "iPhone 11 dans sa boîte", "iPhone 11 appareil photo arrière 12MP",
+            "iPhone 11 avec copie de la facture", "iPhone 11 écran jamais cassé",
+            "iPhone 11 vendu avec facture", "iPhone 11 plus aucune rayure",
+            "iPhone 11 se vende rápido", "iPhone 11 sans icloud",
+            "iPhone 11 aucun problème",
+            "iPhone 11 64GB Parfait état - Débloqué iCloud, Débloqué Sim",
+            "iPhone 11 128 GB – Muy buen estado – Caja y cargador",
+            "iPhone 11 Lila 64 GB inklusive Originalverpackung",
+            "Iphone 11 64gb inc. Hülle/powerbank", "iPhone 1164gb",
+        ])
+
+    def test_legit_console_and_game_listings_are_kept(self):
+        self.accepted("Nintendo Switch OLED", [
+            "Nintendo Switch OLED avec dock", "Nintendo Switch OLED sans dock",
+            "Switch OLED + 2 Joy-Con Nintendo",
+        ])
+        self.accepted("Pokémon Épée", ["Pokemon Epee 3DS", "Pokémon Épée avec boîte et notice"])
+        self.accepted("PS5", ["PS5 console lecteur 4K ultra HD"])
+
+    def test_wrong_products_are_rejected(self):
+        self.rejected("PS5", [
+            "Manette PS5", "Manette DualSense PS5 blanche", "Casque PS5", "Jeu PS5 Spider-Man 2",
+            "Jeux PS5", "FC 24 PS5", "PS5 faceplate", "PS5 plaques",
+        ])
+        self.rejected("Pokémon Épée", ["Pokémon Épée + Bouclier", "Épée et Bouclier double pack"])
+        self.rejected("iPhone 11", [
+            "iPhone 11 + AirPods", "iPhone 11 et iPad", "iPhone 11 icloud", "iPhone 11 problème Face ID",
+            "iPhone 11 fissuré", "iPhone 11 pantalla rota", "iPhone 11 tela quebrada",
+            "Batterie iPhone 11", "Écran iPhone 11", "Boîte iPhone 11", "iPhone 11 Plus",
+            "Vendu iPhone 11",
+        ])
+        self.rejected("Sony WH-1000XM4", ["Coussinets Sony WH-1000XM4", "Sony WH-1000XM4 gauche seul"])
+
+
 class ClassifyTests(unittest.TestCase):
     def test_max_price_applies_to_the_total_cost(self):
         r = row(1, "iPhone 11", 100, total=106, shipping=5)
@@ -120,7 +197,7 @@ class StateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "s.json"
             self.assertFalse(load_state(path)["baseline_done"])
-            state = {"seen": {"1": 5.0}, "median": 120.0, "baseline_done": True, "alerts": 2}
+            state = {"seen": {"1": 5.0}, "alerted": {"1": 6.0}, "median": 120.0, "baseline_done": True}
             save_state(path, state)
             self.assertEqual(load_state(path), state)
             path.write_text("pas du json", encoding="utf-8")
