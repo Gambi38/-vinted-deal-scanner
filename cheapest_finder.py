@@ -21,12 +21,13 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 BASE_DIR = Path(__file__).resolve().parent
+SUSPICIOUS_RATIO = 0.4     # prix < 40 % de la médiane = à vérifier
 BLACKLIST_PATH = BASE_DIR / "blacklist.json"
 
 # Mots qui changent le produit : refusés s'ils ne sont pas dans la recherche.
 VARIANT_WORDS = {
     "pro", "max", "plus", "mini", "ultra", "lite", "xl", "slim", "oled",
-    "air", "se", "fold", "flip", "digital", "edition", "s", "x", "xs", "xr",
+    "air", "se", "fold", "flip", "digital", "s", "x", "xs", "xr",
     "turbo", "classic", "mega", "neo", "duo",
 }
 
@@ -49,7 +50,24 @@ EMPTY_OR_BROKEN_WORDS = {
     "pecas", "concertar", "despiece", "despieces", "reparar", "reparacion",
     "reparation", "reparatie", "reparatur", "bastler", "bastelgerat",
     "arriere", "trasera", "ruckseite", "rueckseite", "achterkant", "backcover",
+    "blackliste", "blacklisted", "locked", "bloque", "bloquee", "verrouille",
+    "verrouillee",
 }
+
+# Racines d'accessoires (« Bildschirmschutz », « custodie », « handyhulle »…).
+ACCESSORY_STEMS = (
+    "coque", "housse", "hulle", "custod", "funda", "schutz", "protect", "cover",
+    "hoesje", "etui", "pouch", "sleeve", "vitre", "folie", "bumper", "tempered",
+)
+
+# Expressions « ne marche pas / verrouillé » dans plusieurs langues.
+BROKEN_PHRASES = (
+    "non fonctionnel", "non fonctionnelle", "pas fonctionnel", "pour piece",
+    "pour pieces", "nicht funktionsfahig", "niet werkend", "no funciona",
+    "sin funcionar", "no funcional", "for repair", "to repair", "icloud bloque",
+    "icloud verrouille", "bloque icloud", "icloud locked", "locked icloud",
+    "compte icloud actif", "sim lock",
+)
 
 # Emballage : refusé s'il est seul, accepté s'il accompagne l'appareil
 # (« iPhone 11 avec boîte », « mit Originalverpackung »).
@@ -74,7 +92,9 @@ def plain(value) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = "".join(c for c in text if not unicodedata.combining(c))
     text = text.replace("'", "").replace("’", "")
-    return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+    # Lettres et chiffres collés sont séparés : « iPhone11 » = « iPhone 11 »,
+    # « PS5 » = « PS 5 », « 64Go » = « 64 Go ».
+    return " ".join(re.findall(r"[a-z]+|[0-9]+", text.lower()))
 
 
 def _has_phrase(tokens_text: str, phrase: str) -> bool:
@@ -116,23 +136,32 @@ def rejection_reason(title: str, query: str, bad_terms=(), allow_lots=False):
     t_tokens = t.split()
     if not q_tokens:
         return "recherche vide"
-    missing = [tok for tok in q_tokens if tok not in t_tokens]
+    missing = [tok for tok in q_tokens if not _token_present(tok, t_tokens)]
     if missing:
         return "mot absent : " + missing[0]
     q_set = set(q_tokens)
     for tok in t_tokens:
         if tok in VARIANT_WORDS and tok not in q_set:
             return "autre variante : " + tok
-    # Un chiffre collé au modèle (« 11 » puis « 12 ») signale un autre modèle.
-    q_numbers = {tok for tok in q_tokens if tok.isdigit()}
-    if q_numbers:
-        for tok in t_tokens:
-            if tok.isdigit() and tok not in q_numbers and len(tok) <= 2 \
-                    and not _is_storage(t_tokens, tok):
-                return "autre numéro de modèle : " + tok
+    other = _other_model_number(q_tokens, t_tokens)
+    if other:
+        return "autre numéro de modèle : " + other
     for word in ACCESSORY_WORDS:
         if word in t_tokens and word not in q_set:
             return "accessoire : " + word
+    for stem in ACCESSORY_STEMS:
+        if stem in q:
+            continue
+        hit = next((tok for tok in t_tokens if stem in tok), None)
+        if hit:
+            return "accessoire : " + hit
+    for tok in t_tokens:
+        if (len(tok) >= 5 and tok not in q_set
+                and re.fullmatch(r"(?:pro|max|plus|mini|ultra|lite)+", tok)):
+            return "autre variante : " + tok
+    for phrase in BROKEN_PHRASES:
+        if _has_phrase(t, phrase) and not _has_phrase(q, phrase):
+            return "ne fonctionne pas : " + phrase
     for word in EMPTY_OR_BROKEN_WORDS:
         if word in t_tokens and word not in q_set:
             return "vide / pièces / maquette : " + word
@@ -153,10 +182,54 @@ def rejection_reason(title: str, query: str, bad_terms=(), allow_lots=False):
     return None
 
 
-def _is_storage(tokens, number) -> bool:
-    """« 64 go » / « 128 gb » : une capacité n'est pas un autre modèle."""
-    i = tokens.index(number)
-    return i + 1 < len(tokens) and tokens[i + 1] in {"go", "gb", "gig", "to", "tb", "mo"}
+UNIT_WORDS = {"go", "gb", "gig", "to", "tb", "mo", "mb", "g", "gen", "inch",
+              "pouces", "pouce", "cm", "mm", "w", "v", "mah", "hz", "k"}
+
+
+def _token_present(token, title_tokens) -> bool:
+    """Mot exact, ou à une faute de frappe près pour les mots d'au moins 5 lettres."""
+    if token in title_tokens:
+        return True
+    if len(token) < 5 or not token.isalpha():
+        return False
+    from product_classifier import levenshtein_distance
+    return any(
+        t.isalpha() and abs(len(t) - len(token)) <= 1
+        and levenshtein_distance(token, t, 1) <= 1
+        for t in title_tokens
+    )
+
+
+def _small_number_after(title_tokens, index):
+    """Numéro de 1-2 chiffres juste après title_tokens[index], hors capacité/unité."""
+    if index + 1 >= len(title_tokens):
+        return None
+    nxt = title_tokens[index + 1]
+    if not nxt.isdigit() or len(nxt) > 2:
+        return None
+    if index + 2 < len(title_tokens) and title_tokens[index + 2] in UNIT_WORDS:
+        return None
+    return nxt
+
+
+def _other_model_number(q_tokens, t_tokens):
+    """« iPhone 11 » ne doit pas accepter « iPhone 12 » ; « Switch » pas « Switch 2 »."""
+    for position, tok in enumerate(q_tokens):
+        if tok.isdigit() and position > 0:
+            anchor = q_tokens[position - 1]
+            for j, title_tok in enumerate(t_tokens):
+                if _token_present(anchor, [title_tok]):
+                    found = _small_number_after(t_tokens, j)
+                    if found and found != tok:
+                        return found
+    last = q_tokens[-1]
+    if not last.isdigit():
+        for j, title_tok in enumerate(t_tokens):
+            if title_tok == last:
+                found = _small_number_after(t_tokens, j)
+                if found:
+                    return found
+    return None
 
 
 def model_mismatch(model, query) -> bool:
@@ -201,7 +274,7 @@ def find_cheapest(items, query, *, top=5, max_price=None, bad_terms=(),
     if len(kept) >= 4:
         median = statistics.median(row["price"] for row in kept)
         for row in kept:
-            row["suspicious"] = row["price"] < 0.4 * median
+            row["suspicious"] = row["price"] < SUSPICIOUS_RATIO * median
     else:
         for row in kept:
             row["suspicious"] = False
@@ -265,8 +338,10 @@ async def _goto(page, url, delay=2.0):
     return status
 
 
-def catalog_url(query, page_no, price_from=None, price_to=None):
+def catalog_url(query, page_no, price_from=None, price_to=None, order=None):
     params = {"search_text": query, "page": page_no}
+    if order:
+        params["order"] = order
     if price_from is not None:
         params["price_from"] = price_from
     if price_to is not None:
@@ -286,6 +361,7 @@ async def read_catalog(page, query, pages, price_from=None, price_to=None):
                 seen.add(row["id"])
                 items.append(row)
                 fresh += 1
+        print(f"  page {page_no} : {len(cards)} cartes, {fresh} annonces lisibles", flush=True)
         if fresh == 0:
             break
     return items
@@ -329,6 +405,17 @@ async def search(query, *, top, pages, max_price, min_price, allow_lots, bad_ter
             return items, pool[:top], doubtful, rejected
         finally:
             await browser.close()
+
+
+def reject_stats(items, query, bad_terms, allow_lots=False, limit=6):
+    """Pourquoi les annonces sont rejetées (utile pour comprendre un résultat maigre)."""
+    from collections import Counter
+    counts = Counter()
+    for item in items:
+        reason = rejection_reason(item.get("title", ""), query, bad_terms, allow_lots)
+        if reason:
+            counts[reason.split(" : ")[0]] += 1
+    return counts.most_common(limit)
 
 
 def format_row(rank, row) -> str:
